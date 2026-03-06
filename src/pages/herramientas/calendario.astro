@@ -1,0 +1,26 @@
+---
+// src/pages/herramientas/calendario.astro
+import Layout from "../../layouts/Layout.astro";
+import CalendarioPaesComponent from "../../components/CalendarioPaes.tsx";
+---
+
+<Layout title="Calendario PAES - Fechas Clave y Ensayos">
+  <div
+    class="bg-[#FAFAFA] min-h-screen pt-24 pb-32 overflow-hidden relative flex flex-col justify-center"
+  >
+    {/* Fondos ambientales Premium (Orbes de luz súper tenues) */}
+    <div
+      class="absolute top-0 right-0 w-[600px] h-[600px] bg-[#6544FF]/5 rounded-full blur-[150px] pointer-events-none mix-blend-multiply"
+    >
+    </div>
+    <div
+      class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#947BFF]/5 rounded-full blur-[120px] pointer-events-none mix-blend-multiply"
+    >
+    </div>
+
+    <div class="container mx-auto px-6 lg:px-8 relative z-10 w-full">
+      {/* El Componente Inmersivo */}
+      <CalendarioPaesComponent client:load />
+    </div>
+  </div>
+</Layout>
