@@ -42,7 +42,7 @@ const tools = [
     icon: PiggyBank, 
     title: "Becas y Gratuidad", 
     description: "Guía paso a paso del FUAS",
-    href: "/herramientas/becas"
+    href: "/herramientas/fuas"
   },
   { 
     icon: Megaphone, 

@@ -1,0 +1,23 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import BuscadorCarreras from "../../components/BuscadorCarreras.tsx";
+---
+
+<Layout title="Buscador de Carreras - Filtra por U, Región y Gratuidad">
+  <div
+    class="bg-[#FAFAFA] min-h-screen pt-24 pb-32 overflow-hidden relative flex flex-col justify-center"
+  >
+    <div
+      class="absolute top-0 right-0 w-[600px] h-[600px] bg-[#6544FF]/5 rounded-full blur-[150px] pointer-events-none mix-blend-multiply"
+    >
+    </div>
+    <div
+      class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#947BFF]/5 rounded-full blur-[120px] pointer-events-none mix-blend-multiply"
+    >
+    </div>
+
+    <div class="container mx-auto px-6 lg:px-8 relative z-10 w-full">
+      <BuscadorCarreras client:load />
+    </div>
+  </div>
+</Layout>
