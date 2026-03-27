@@ -60,7 +60,7 @@ const tools = [
     icon: Building2, 
     title: "Todas las Instituciones", 
     description: "Directorio completo por región",
-    href: "/instituciones"
+    href: "/herramientas/instituciones"
   },
 ];
 
