@@ -1,0 +1,61 @@
+---
+// src/pages/carrera/[id].astro
+import { supabase } from "../../../lib/supabase";
+import CarreraDetalle from "../../components/CarreraDetalle";
+import Layout from "../../layouts/Layout.astro"; // Asegúrate de que esta ruta sea correcta
+
+export async function getStaticPaths() {
+  let allCarreras: any[] = [];
+  let hasMore = true;
+  let page = 0;
+  const limit = 1000;
+
+  console.log("🚀 Iniciando generación estática (SSG)...");
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("carreras")
+      .select(
+        `
+        *,
+        instituciones (nombre, tipo)
+      `,
+      )
+      .range(page * limit, (page + 1) * limit - 1);
+
+    if (error) {
+      console.error("Error en Supabase:", error);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allCarreras = [...allCarreras, ...data];
+      page++;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allCarreras.map((carrera) => ({
+    params: { id: carrera.codigo_carrera.toString() },
+    props: { carrera },
+  }));
+}
+
+const { carrera } = Astro.props;
+const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | Elige Tu Futuro`;
+---
+
+<Layout title={title}>
+  <main>
+    <CarreraDetalle carrera={carrera} client:load />
+  </main>
+</Layout>
+
+<style>
+  /* Fix para asegurar que el contenido ocupe el alto visual */
+  main {
+    min-height: 100vh;
+    background-color: #f8f9fe;
+  }
+</style>
