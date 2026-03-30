@@ -26,10 +26,13 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
         <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-gradient-to-br from-[#6544FF]/20 to-cyan-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
 
         <div className="max-w-6xl mx-auto relative z-10">
-          <a href="http://localhost:4321/herramientas/buscador" className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-10 group text-sm font-bold uppercase tracking-wider">
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-2 transition-transform" />
-            Volver al Buscador
-          </a>
+        <button 
+            onClick={() => window.history.back()} 
+            className="inline-flex items-center text-slate-400 hover:text-white transition-all mb-10 group font-semibold text-sm tracking-wide bg-transparent border-none cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform" />
+            Volver al buscador
+          </button>
 
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
             {/* Logo con Glassmorphism */}

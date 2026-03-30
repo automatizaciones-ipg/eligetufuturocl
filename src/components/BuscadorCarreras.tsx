@@ -6,19 +6,19 @@ import {
   ChevronRight, Sparkles, ChevronDown, Loader2,
   ChevronLeft, CheckCircle2 
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; 
+import { supabase } from "../../lib/supabase"; // ¡Ojo! Asegúrate de que esta ruta sea la correcta para tu proyecto
 
 interface CarreraUI {
   id: string;
   nombre: string;
-  sigla: string;
+  sigla: string; // Ahora guardará las iniciales de la Institución
   institucion: string;
   tipoInst: string;
   region: string;
   puntaje: string;
   duracion: string;
   color: string;
-  logoArchivo: string; // Nueva propiedad
+  logoArchivo: string; 
 }
 
 const REGIONES = [
@@ -65,22 +65,27 @@ const generarTipoInst = (tipoBD: string | null) => {
   return "N/A";
 };
 
-const generarSigla = (nombre: string) => {
-  const palabras = nombre.replace(/de|en|el|la|los/gi, '').split(' ').filter(p => p.length > 0);
+// MODIFICADO: Ahora extrae las iniciales de la Institución
+const generarSiglaInstitucion = (nombre: string) => {
+  if (!nombre) return "N/A";
+  // Ignoramos palabras comunes para sacar la verdadera sigla (ej: de, la, los)
+  const palabras = nombre.replace(/\b(de|en|el|la|los|las|y)\b/gi, '').split(' ').filter(p => p.trim().length > 0);
+  
   if (palabras.length > 1) {
+    // Si tiene más de una palabra, tomamos la primera letra de las primeras 3 palabras
     return (palabras[0][0] + (palabras[1]?.[0] || '') + (palabras[2]?.[0] || '')).toUpperCase().substring(0, 3);
   }
+  // Si es una sola palabra (ej: DUOC), tomamos las 3 primeras letras
   return nombre.substring(0, 3).toUpperCase();
 };
 
-// NUEVA FUNCIÓN: Transforma el nombre exacto a formato archivo
 const normalizarNombreLogo = (nombre: string) => {
   return nombre
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes
-    .replace(/[^a-z0-9\s-]/g, "") // Quita caracteres especiales
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .trim()
-    .replace(/\s+/g, "-"); // Cambia espacios por guiones
+    .replace(/\s+/g, "-");
 };
 
 export default function BuscadorCarreras() {
@@ -91,8 +96,6 @@ export default function BuscadorCarreras() {
   
   const [carreras, setCarreras] = useState<CarreraUI[]>([]);
   const [cargando, setCargando] = useState(false);
-  
-  // ESTADO PARA MANEJAR IMÁGENES ROTAS O FALTANTES
   const [erroresLogos, setErroresLogos] = useState<Record<string, boolean>>({});
 
   const [dropdownRegionAbierto, setDropdownRegionAbierto] = useState(false);
@@ -154,14 +157,15 @@ export default function BuscadorCarreras() {
           return {
             id: item.codigo_carrera,
             nombre: item.nombre_carrera,
-            sigla: generarSigla(item.nombre_carrera),
+            // AQUÍ LLAMAMOS A LA NUEVA FUNCIÓN CON EL NOMBRE DE LA INSTITUCIÓN
+            sigla: generarSiglaInstitucion(instNombre), 
             institucion: instNombre,
             tipoInst: generarTipoInst(item.instituciones?.tipo),
             region: item.region || "No informada",
             puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "No informado",
             duracion: item.duracion_semestres ? `${item.duracion_semestres} Sem. ` : "No informada",
             color: PALETA_COLORES[index % PALETA_COLORES.length],
-            logoArchivo: `${normalizarNombreLogo(instNombre)}.png` // Se genera el nombre del archivo
+            logoArchivo: `${normalizarNombreLogo(instNombre)}.png`
           };
         });
 
@@ -361,68 +365,71 @@ export default function BuscadorCarreras() {
           </div>
 
           {!cargando && carreras.map((carrera, i) => (
-            <div 
+            <a 
               key={carrera.id}
-              className={`group bg-white rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-[#6544FF]/20 hover:shadow-[0_15px_40px_rgba(101,68,255,0.08)] transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-6 animate-in slide-in-from-bottom-8 fade-in fill-mode-both relative overflow-hidden`}
+              href={`/carrera/${carrera.id}`}
+              className={`group block bg-white rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-[#6544FF]/20 hover:shadow-[0_15px_40px_rgba(101,68,255,0.08)] transition-all duration-300 animate-in slide-in-from-bottom-8 fade-in fill-mode-both relative overflow-hidden cursor-pointer`}
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              
-              <div className={`absolute -right-20 -top-20 w-40 h-40 bg-gradient-to-br ${carrera.color} rounded-full opacity-5 blur-[60px] pointer-events-none group-hover:opacity-20 transition-opacity duration-500`}></div>
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                
+                <div className={`absolute -right-20 -top-20 w-40 h-40 bg-gradient-to-br ${carrera.color} rounded-full opacity-5 blur-[60px] pointer-events-none group-hover:opacity-20 transition-opacity duration-500`}></div>
 
-              {/* RENDERIZADO INTELIGENTE DE LOGO O SIGLA */}
-              <div className={`w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg bg-gradient-to-br ${carrera.color} transform group-hover:-rotate-3 group-hover:scale-105 transition-all duration-500 overflow-hidden`}>
-                {erroresLogos[carrera.id] ? (
-                  <span className="text-white">{carrera.sigla}</span>
-                ) : (
-                  <img 
-                    src={`/logos/${carrera.logoArchivo}`} 
-                    alt={`Logo ${carrera.institucion}`} 
-                    className="w-full h-full object-contain bg-white p-2"
-                    onError={() => handleLogoError(carrera.id)}
-                  />
-                )}
-              </div>
+                {/* RENDERIZADO INTELIGENTE DE LOGO O SIGLA (AHORA DE LA INSTITUCIÓN) */}
+                <div className={`w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg bg-gradient-to-br ${carrera.color} transform group-hover:-rotate-3 group-hover:scale-105 transition-all duration-500 overflow-hidden`}>
+                  {erroresLogos[carrera.id] ? (
+                    <span className="text-white">{carrera.sigla}</span>
+                  ) : (
+                    <img 
+                      src={`/logos/${carrera.logoArchivo}`} 
+                      alt={`Logo ${carrera.institucion}`} 
+                      className="w-full h-full object-contain bg-white p-2"
+                      onError={(e) => {
+                        e.preventDefault();
+                        handleLogoError(carrera.id);
+                      }}
+                    />
+                  )}
+                </div>
 
-              <div className="flex-1 w-full z-10">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <div className="flex items-center justify-center px-2.5 h-[26px] rounded bg-[#1A1528] text-white shadow-sm">
-                    <span className="text-[10px] font-black uppercase tracking-wider">{carrera.tipoInst}</span>
+                <div className="flex-1 w-full z-10">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <div className="flex items-center justify-center px-2.5 h-[26px] rounded bg-[#1A1528] text-white shadow-sm">
+                      <span className="text-[10px] font-black uppercase tracking-wider">{carrera.tipoInst}</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-black text-xl md:text-xl text-[#1A1528] mb-1 leading-tight group-hover:text-[#6544FF] transition-colors">
+                    {carrera.nombre}
+                  </h3>
+                  
+                  <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-gray-500 mt-3">
+                    <span className="flex items-center gap-1.5">
+                      <Building className="w-4 h-4 text-gray-400" />
+                      <span className="truncate max-w-[200px] md:max-w-none">{carrera.institucion}</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Calculator className="w-4 h-4 text-gray-400" />
+                      Arancel: <span className="text-[#1A1528]">{carrera.puntaje}</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      {carrera.duracion}
+                    </span>
                   </div>
                 </div>
-                
-                <h3 className="font-black text-xl md:text-2xl text-[#1A1528] mb-1 leading-tight group-hover:text-[#6544FF] transition-colors">
-                  {carrera.nombre}
-                </h3>
-                
-                <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-gray-500 mt-3">
-                  <span className="flex items-center gap-1.5">
-                    <Building className="w-4 h-4 text-gray-400" />
-                    <span className="truncate max-w-[200px] md:max-w-none">{carrera.institucion}</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calculator className="w-4 h-4 text-gray-400" />
-                    Arancel: <span className="text-[#1A1528]">{carrera.puntaje}</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-gray-400" />
-                    {carrera.duracion}
-                  </span>
-                </div>
-              </div>
 
-              <div className="w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 flex md:flex-col items-center justify-between md:justify-center gap-4 shrink-0 z-10">
-                <div className="hidden md:block text-center mb-2">
-                  <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Ver Detalles</p>
+                <div className="w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 flex md:flex-col items-center justify-between md:justify-center gap-4 shrink-0 z-10">
+                  <div className="hidden md:block text-center mb-2">
+                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Ver Detalles</p>
+                  </div>
+                  <div className="bg-[#1A1528] group-hover:bg-[#6544FF] text-white w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-md group-hover:shadow-[0_10px_30px_rgba(101,68,255,0.3)]">
+                    <ChevronRight className="w-6 h-6" />
+                  </div>
                 </div>
-                <a 
-                  href={`/carrera/${carrera.id}`}
-                  className="bg-[#1A1528] hover:bg-[#6544FF] text-white w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-md group-hover:shadow-[0_10px_30px_rgba(101,68,255,0.3)]"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </a>
-              </div>
 
-            </div>
+              </div>
+            </a>
           ))}
 
           {/* CONTROLES DE PAGINACIÓN */}
