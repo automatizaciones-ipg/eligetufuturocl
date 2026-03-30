@@ -48,14 +48,16 @@ export default function Hero() {
             {/* Accesos Directos (Cards inferiores) - Diseño limpio como en Figma */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-10 md:mt-14 w-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-[600ms]">
               {[
-                { icon: PenSquare, label: "Test Vocacional" },
-                { icon: Search, label: "Carreras" },
-                { icon: Calendar, label: "Calendario" },
-                { icon: Calculator, label: "Calculadora" },
+                // AQUÍ ESTÁ EL CAMBIO: Agregamos la propiedad 'href' a cada objeto
+                { icon: PenSquare, label: "Test Vocacional", href: "herramientas/test-vocacional" },
+                { icon: Search, label: "Carreras", href: "herramientas/buscador" },
+                { icon: Calendar, label: "Calendario", href: "herramientas/calendario" },
+                { icon: Calculator, label: "Calculadora", href: "herramientas/calculadora" },
               ].map((item) => (
                 <a
                   key={item.label}
-                  href="#"
+                  // AQUÍ ESTÁ EL SEGUNDO CAMBIO: Le pasamos el href del objeto a la etiqueta <a>
+                  href={item.href} 
                   className="group flex items-center gap-3 bg-white hover:bg-[#F3F0FF] rounded-2xl p-3 md:p-4 transition-all duration-200 shadow-sm border border-gray-100 hover:border-[#8B75FF]/30 hover:shadow-md"
                 >
                   <div className="text-[#6544FF] group-hover:scale-110 transition-transform duration-200 shrink-0">
