@@ -399,7 +399,7 @@ export default function BuscadorCarreras() {
                     </div>
                   </div>
                   
-                  <h3 className="font-black text-xl md:text-xl text-[#1A1528] mb-1 leading-tight group-hover:text-[#6544FF] transition-colors">
+                  <h3 className=" font-bold text-[#1A1528] mb-1 group-hover:text-[#6544FF] transition-colors">
                     {carrera.nombre}
                   </h3>
                   
