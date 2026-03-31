@@ -6,12 +6,12 @@ import {
   ChevronRight, Sparkles, ChevronDown, Loader2,
   ChevronLeft, CheckCircle2 
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; // ¡Ojo! Asegúrate de que esta ruta sea la correcta para tu proyecto
+import { supabase } from "../../lib/supabase"; // ¡Ojo! Asegúrate de que esta ruta sea la correcta
 
 interface CarreraUI {
   id: string;
   nombre: string;
-  sigla: string; // Ahora guardará las iniciales de la Institución
+  sigla: string; 
   institucion: string;
   tipoInst: string;
   region: string;
@@ -65,17 +65,13 @@ const generarTipoInst = (tipoBD: string | null) => {
   return "N/A";
 };
 
-// MODIFICADO: Ahora extrae las iniciales de la Institución
 const generarSiglaInstitucion = (nombre: string) => {
   if (!nombre) return "N/A";
-  // Ignoramos palabras comunes para sacar la verdadera sigla (ej: de, la, los)
   const palabras = nombre.replace(/\b(de|en|el|la|los|las|y)\b/gi, '').split(' ').filter(p => p.trim().length > 0);
   
   if (palabras.length > 1) {
-    // Si tiene más de una palabra, tomamos la primera letra de las primeras 3 palabras
     return (palabras[0][0] + (palabras[1]?.[0] || '') + (palabras[2]?.[0] || '')).toUpperCase().substring(0, 3);
   }
-  // Si es una sola palabra (ej: DUOC), tomamos las 3 primeras letras
   return nombre.substring(0, 3).toUpperCase();
 };
 
@@ -157,7 +153,6 @@ export default function BuscadorCarreras() {
           return {
             id: item.codigo_carrera,
             nombre: item.nombre_carrera,
-            // AQUÍ LLAMAMOS A LA NUEVA FUNCIÓN CON EL NOMBRE DE LA INSTITUCIÓN
             sigla: generarSiglaInstitucion(instNombre), 
             institucion: instNombre,
             tipoInst: generarTipoInst(item.instituciones?.tipo),
@@ -306,7 +301,7 @@ export default function BuscadorCarreras() {
         </div>
 
         {/* RESULTADOS DE CARRERAS */}
-        <div className="flex-1 w-full space-y-4">
+        <div className="flex-1 w-full space-y-6">
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-2 animate-in fade-in gap-4 relative z-20">
             <p className="font-bold text-gray-500 text-sm flex items-center gap-2">
@@ -364,90 +359,115 @@ export default function BuscadorCarreras() {
             </div>
           </div>
 
+          {/* VISTA PREMIUM 10.0 - LAS TARJETAS */}
           {!cargando && carreras.map((carrera, i) => (
             <a 
               key={carrera.id}
               href={`/carrera/${carrera.id}`}
-              className={`group block bg-white rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-2 border-transparent hover:border-[#6544FF]/20 hover:shadow-[0_15px_40px_rgba(101,68,255,0.08)] transition-all duration-300 animate-in slide-in-from-bottom-8 fade-in fill-mode-both relative overflow-hidden cursor-pointer`}
+              className="group relative block bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-2 border-transparent hover:border-[#6544FF]/30 hover:shadow-[0_20px_80px_-15px_rgba(101,68,255,0.2)] hover:-translate-y-2 transition-all duration-500 animate-in slide-in-from-bottom-8 fade-in fill-mode-both overflow-hidden cursor-pointer"
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                
-                <div className={`absolute -right-20 -top-20 w-40 h-40 bg-gradient-to-br ${carrera.color} rounded-full opacity-5 blur-[60px] pointer-events-none group-hover:opacity-20 transition-opacity duration-500`}></div>
+              {/* Resplandor radial de fondo extremo (animado en hover) */}
+              <div className={`absolute -right-20 -top-40 w-[30rem] h-[30rem] bg-gradient-to-br ${carrera.color} rounded-full opacity-0 blur-[100px] group-hover:opacity-10 transition-opacity duration-700 pointer-events-none`}></div>
+              <div className="absolute left-0 top-0 w-2 h-full bg-gradient-to-b opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-l-[2.5rem] z-0" style={{ backgroundImage: `linear-gradient(to bottom, var(--tw-gradient-stops))` }}></div>
 
-                {/* RENDERIZADO INTELIGENTE DE LOGO O SIGLA (AHORA DE LA INSTITUCIÓN) */}
-                <div className={`w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg bg-gradient-to-br ${carrera.color} transform group-hover:-rotate-3 group-hover:scale-105 transition-all duration-500 overflow-hidden`}>
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
+                
+                {/* LOGO CONTAINER: Estilo App Icon de iOS */}
+                <div className={`relative w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-[2rem] shadow-[0_10px_30px_rgba(0,0,0,0.1)] border-4 border-white bg-gradient-to-br ${carrera.color} transform group-hover:scale-105 group-hover:-rotate-3 transition-transform duration-500 overflow-hidden flex items-center justify-center font-black text-3xl`}>
                   {erroresLogos[carrera.id] ? (
-                    <span className="text-white">{carrera.sigla}</span>
+                    <span className="text-white drop-shadow-md">{carrera.sigla}</span>
                   ) : (
                     <img 
                       src={`/logos/${carrera.logoArchivo}`} 
                       alt={`Logo ${carrera.institucion}`} 
-                      className="w-full h-full object-contain bg-white p-2"
+                      className="w-full h-full object-contain bg-white/95 p-3"
                       onError={(e) => {
                         e.preventDefault();
                         handleLogoError(carrera.id);
                       }}
                     />
                   )}
+                  {/* Brillo interior sutil */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/0 to-white/20 pointer-events-none"></div>
                 </div>
 
-                <div className="flex-1 w-full z-10">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <div className="flex items-center justify-center px-2.5 h-[26px] rounded bg-[#1A1528] text-white shadow-sm">
-                      <span className="text-[10px] font-black uppercase tracking-wider">{carrera.tipoInst}</span>
-                    </div>
+                {/* CONTENIDO PRINCIPAL */}
+                <div className="flex-1 w-full">
+                  {/* Fila de Badges */}
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="inline-flex items-center justify-center px-4 py-1.5 rounded-xl bg-[#6544FF]/10 text-[#6544FF] text-xs font-black uppercase tracking-widest shadow-sm">
+                      {carrera.tipoInst}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-slate-100/80 text-slate-500 text-xs font-bold uppercase tracking-widest border border-slate-200/50">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      {carrera.region}
+                    </span>
                   </div>
                   
-                  <h3 className=" font-bold text-[#1A1528] mb-1 group-hover:text-[#6544FF] transition-colors">
+                  {/* Título Interactivo */}
+                  <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#6544FF] group-hover:to-cyan-500 transition-all duration-300">
                     {carrera.nombre}
                   </h3>
                   
-                  <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-gray-500 mt-3">
-                    <span className="flex items-center gap-1.5">
-                      <Building className="w-4 h-4 text-gray-400" />
-                      <span className="truncate max-w-[200px] md:max-w-none">{carrera.institucion}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Calculator className="w-4 h-4 text-gray-400" />
-                      Arancel: <span className="text-[#1A1528]">{carrera.puntaje}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      {carrera.duracion}
-                    </span>
+                  {/* Estadísticas encapsuladas (Pills) */}
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 group-hover:bg-[#6544FF]/5 rounded-2xl border border-slate-100 transition-colors duration-300 w-full sm:w-auto">
+                      <Building className="w-4 h-4 text-slate-400 group-hover:text-[#6544FF] transition-colors" />
+                      <span className="text-sm font-semibold text-slate-600 truncate max-w-[200px]" title={carrera.institucion}>{carrera.institucion}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 group-hover:bg-[#6544FF]/5 rounded-2xl border border-slate-100 transition-colors duration-300 w-full sm:w-auto">
+                      <Calculator className="w-4 h-4 text-slate-400 group-hover:text-[#6544FF] transition-colors" />
+                      <span className="text-sm font-bold text-slate-800">{carrera.puntaje}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 group-hover:bg-[#6544FF]/5 rounded-2xl border border-slate-100 transition-colors duration-300 w-full sm:w-auto">
+                      <Clock className="w-4 h-4 text-slate-400 group-hover:text-[#6544FF] transition-colors" />
+                      <span className="text-sm font-semibold text-slate-600">{carrera.duracion}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 flex md:flex-col items-center justify-between md:justify-center gap-4 shrink-0 z-10">
-                  <div className="hidden md:block text-center mb-2">
-                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Ver Detalles</p>
+                {/* CALL TO ACTION MAGNÉTICO */}
+                <div className="w-full md:w-auto mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-none border-slate-100 flex flex-col items-center justify-center shrink-0">
+                  <div className="hidden md:block text-center mb-3 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                    <p className="text-[11px] uppercase font-black text-[#6544FF] tracking-widest">
+                      Ver Detalles
+                    </p>
                   </div>
-                  <div className="bg-[#1A1528] group-hover:bg-[#6544FF] text-white w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-md group-hover:shadow-[0_10px_30px_rgba(101,68,255,0.3)]">
-                    <ChevronRight className="w-6 h-6" />
+                  
+                  {/* Botón que explota en color al hacer hover */}
+                  <div className="w-full md:w-16 h-14 md:h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-[#6544FF] group-hover:to-cyan-400 group-hover:text-white transition-all duration-500 group-hover:shadow-[0_10px_40px_rgba(101,68,255,0.4)] group-hover:scale-110 relative overflow-hidden">
+                    <span className="md:hidden font-bold text-sm uppercase tracking-wider mr-2 text-slate-600 group-hover:text-white transition-colors relative z-10">Ver Carrera</span>
+                    <ChevronRight className="w-6 h-6 transform group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
+                    
+                    {/* Efecto de luz cruzando el botón */}
+                    <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
                   </div>
                 </div>
 
               </div>
             </a>
           ))}
+          {/* FIN DEL UPGRADE 10.0 */}
 
           {/* CONTROLES DE PAGINACIÓN */}
           {!cargando && totalPaginas > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-8 pt-6 border-t border-gray-100 animate-in fade-in">
+            <div className="flex items-center justify-center gap-4 mt-12 pt-8 border-t border-gray-100 animate-in fade-in">
               <button
                 onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
                 disabled={paginaActual === 1}
-                className="p-3 rounded-2xl border border-gray-200 text-gray-500 bg-white hover:text-[#6544FF] hover:border-[#6544FF]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="w-12 h-12 flex items-center justify-center rounded-2xl border-2 border-slate-100 text-slate-500 bg-white hover:text-[#6544FF] hover:border-[#6544FF]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-bold text-[#1A1528]">
+              <div className="flex flex-col items-center px-4">
+                <span className="text-sm font-black text-slate-800">
                   Página {paginaActual} de {totalPaginas}
                 </span>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
                   {totalResultados} Resultados
                 </span>
               </div>
@@ -455,7 +475,7 @@ export default function BuscadorCarreras() {
               <button
                 onClick={() => setPaginaActual(prev => prev + 1)}
                 disabled={paginaActual >= totalPaginas}
-                className="p-3 rounded-2xl border border-gray-200 text-gray-500 bg-white hover:text-[#6544FF] hover:border-[#6544FF]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                className="w-12 h-12 flex items-center justify-center rounded-2xl border-2 border-slate-100 text-slate-500 bg-white hover:text-[#6544FF] hover:border-[#6544FF]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -464,12 +484,12 @@ export default function BuscadorCarreras() {
 
           {/* Empty State */}
           {!cargando && carreras.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-200 mt-4">
-              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-gray-400" />
+            <div className="text-center py-20 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 mt-4">
+              <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Sparkles className="w-10 h-10 text-slate-300" />
               </div>
-              <h3 className="font-black text-xl text-[#1A1528] mb-2">Sin resultados</h3>
-              <p className="text-gray-500 text-sm font-medium">Intenta ajustar los filtros, usar menos letras o cambiar la región.</p>
+              <h3 className="font-black text-2xl text-slate-800 mb-3">Sin resultados</h3>
+              <p className="text-slate-500 text-base font-medium max-w-sm mx-auto">Intenta ajustar los filtros, usar menos letras o cambiar la región de búsqueda.</p>
             </div>
           )}
         </div>
