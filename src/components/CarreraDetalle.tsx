@@ -121,21 +121,20 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
               {/* Brillo dinámico detrás del logo */}
               <div className="absolute -inset-1 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[2.5rem] blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200"></div>
               
-              <div className="relative w-full h-full bg-[#130B29]/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 flex items-center justify-center overflow-hidden shadow-2xl">
-                {/* Reflejo superior estilo Apple */}
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+              {/* Contenedor exactamente BLANCO */}
+              <div className="relative w-full h-full bg-white rounded-[2.5rem] p-6 flex items-center justify-center overflow-hidden shadow-2xl">
                 
                 <img 
                   src={logoPath} 
                   alt={`Logo ${institucionNombre}`}
-                  className="w-full h-full object-contain relative z-10 drop-shadow-2xl transition-transform duration-700 group-hover:scale-110"
+                  className="w-full h-full object-contain relative z-10 drop-shadow-sm transition-transform duration-700 group-hover:scale-110"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     e.currentTarget.parentElement?.querySelector('.fallback-logo')?.classList.remove('hidden');
                   }}
                 />
                 
-                {/* Fallback en caso de que no exista la imagen */}
+                {/* Fallback en caso de que no exista la imagen (se mantiene oscuro para contraste de las letras) */}
                 <div className="fallback-logo hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#2E1065] to-[#170F2E]">
                   <Building className="w-10 h-10 text-white/20 mb-2" />
                   <span className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">
