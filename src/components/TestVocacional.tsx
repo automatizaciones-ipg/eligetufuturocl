@@ -1,15 +1,16 @@
 // src/components/TestVocacional.tsx
 import { 
   User, Mail, Smartphone, ChevronRight, Sparkles, BrainCircuit, 
-  CheckCircle2, GraduationCap, Building2, MapPin, ArrowRight
+  CheckCircle2
 } from "lucide-react";
 import { useTestVocacional } from "../hooks/useTestVocacional";
+import ResultadosTest from "./ResultadosTest";
 
 export default function TestVocacional() {
   // Destructuramos la lógica de nuestro Controlador (Hook)
   const {
     paso, datos, setDatos, respuestas, seleccionarOpcion, avanzar,
-    perfilResult, carrerasMatch, institucionesDestacadas,
+    perfilResult, areaPredominante, carrerasDB,
     fraseIndex, progresoTest, preguntaActual, PREGUNTAS, FRASES_ANALISIS
   } = useTestVocacional();
 
@@ -136,114 +137,15 @@ export default function TestVocacional() {
     );
   }
 
-  if (paso === PREGUNTAS.length + 4 && perfilResult) {
-    const parametroBusqueda = carrerasMatch.length > 0 ? carrerasMatch[0].carrera : perfilResult.keywordBuscador;
-    const enlaceBuscadorInteligente = `/herramientas/buscador?q=${encodeURIComponent(parametroBusqueda)}`;
-
+  if (paso === PREGUNTAS.length + 4 && perfilResult && areaPredominante) {
     return (
-      <div key="resultados" className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 ease-out-quint py-10">
-        <div className="text-center mb-16 relative py-10">
-          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-64 bg-gradient-to-r ${perfilResult.color} opacity-10 blur-[120px] -z-10 rounded-full`}></div>
-          <span className="inline-block py-1.5 px-4 rounded-full bg-[#15803d]/10 text-[#15803d] font-bold text-sm mb-6 border border-[#15803d]/20 uppercase tracking-widest animate-pulse">
-            Afinidad Algorítmica: {perfilResult.afinidad}%
-          </span>
-          <h2 className="font-black italic uppercase text-4xl md:text-6xl text-[#1A1528] tracking-tight mb-5 leading-[1.05]">
-            Tu Perfil Vocacional <br/>
-            es <span className={perfilResult.textClass}>{perfilResult.titulo}</span>
-          </h2>
-          <p className="text-gray-500 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-            {perfilResult.descripcion}
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-8 mb-16">
-          <div className="lg:col-span-7 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
-            <div className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br ${perfilResult.color} opacity-5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-700`}></div>
-            
-            <div className="flex items-center gap-5 mb-10 border-b border-gray-100 pb-8">
-              <div className={`w-16 h-16 rounded-3xl bg-gradient-to-br ${perfilResult.color} flex items-center justify-center shadow-lg`}>
-                <GraduationCap className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-[#1A1528]">Carreras Compatibles</h3>
-                <p className="text-gray-500 text-sm font-medium">Extraídas de la base de datos oficial 2026</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {carrerasMatch.length > 0 ? (
-                carrerasMatch.map((item, i) => (
-                  <div key={i} className={`flex flex-col md:flex-row md:items-center justify-between p-6 rounded-2xl border border-gray-100 hover:border-gray-300 bg-white hover:bg-gray-50 transition-all duration-300 hover:shadow-sm animate-in slide-in-from-bottom-8`} style={{ animationDelay: `${i * 150}ms` }}>
-                    <div>
-                      <h4 className="font-bold text-lg text-[#1A1528] leading-tight mb-1">{item.carrera}</h4>
-                      <p className="text-xs text-gray-400 uppercase tracking-widest font-bold">Match Oficial</p>
-                    </div>
-                    <div className="flex items-center gap-5 mt-4 md:mt-0">
-                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden hidden md:block">
-                        <div className={`h-full bg-gradient-to-r ${perfilResult.color} rounded-full`} style={{ width: `${item.match}%` }}></div>
-                      </div>
-                      <span className={`font-black text-2xl ${perfilResult.textClass} tabular-nums`}>{item.match}%</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10">
-                  <p className="text-gray-500 font-medium">No se encontraron carreras exactas, pero tus áreas afines son amplias.</p>
-                </div>
-              )}
-            </div>
-
-            <a 
-              href={enlaceBuscadorInteligente} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full mt-10 py-5 bg-gray-100 hover:bg-gray-200 rounded-xl text-[#1A1528] font-bold transition-colors flex items-center justify-center gap-2 group shadow-inner cursor-pointer"
-            >
-              Ver Carreras con Mayor Compatibilidad
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </a>
-          </div>
-
-          <div className="lg:col-span-5 bg-[#1A1528] rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-gray-800 relative overflow-hidden group hover:shadow-[0_20px_60px_rgba(101,68,255,0.15)] transition-all duration-500">
-            <div className={`absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-br ${perfilResult.color} rounded-full blur-[90px] opacity-10 group-hover:opacity-30 transition-opacity duration-700`}></div>
-            
-            <div className="relative z-10 flex items-center gap-5 mb-10 border-b border-white/10 pb-8">
-              <div className="w-16 h-16 rounded-3xl bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10">
-                <Building2 className="w-8 h-8 text-white/70" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-white">Instituciones</h3>
-                <p className="text-gray-400 text-sm font-medium">Casas de estudio destacadas</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4 relative z-10">
-              {institucionesDestacadas.map((inst, i) => (
-                <a 
-                  key={i} 
-                  href={`https://www.google.com/search?q=${encodeURIComponent(inst.nombre + ' Admisión Chile')}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer animate-in slide-in-from-right-8" 
-                  style={{ animationDelay: `${(i + 3) * 150}ms` }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 shrink-0 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center font-black text-white/50 border border-white/10 shadow-inner overflow-hidden text-xs">
-                      {inst.logo}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-sm leading-tight mb-1">{inst.nombre}</h4>
-                      <span className="text-xs text-gray-400 flex items-center gap-1.5 font-medium group-hover:text-white/70 transition-colors">
-                        <MapPin className="w-3.5 h-3.5" /> Buscar en Google <ArrowRight className="w-3 h-3 ml-1" />
-                      </span>
-                    </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ResultadosTest
+        areaPredominante={areaPredominante}
+        perfilInfo={perfilResult}
+        carrerasDB={carrerasDB}
+        datosUsuario={datos}
+        respuestas={respuestas}
+      />
     );
   }
 

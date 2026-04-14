@@ -1,0 +1,199 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Solicitar Informacion | Elige tu Futuro">
+  <main class="min-h-screen bg-[radial-gradient(circle_at_top_right,#ece8ff_0%,#f6f6fb_35%,#f6f6fb_100%)] py-16 px-4">
+    <section class="max-w-3xl mx-auto">
+      <div class="bg-white rounded-[2.25rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.05)] p-8 md:p-10 relative overflow-hidden">
+        <div class="absolute -top-20 -right-20 w-64 h-64 bg-[#6544FF]/10 blur-3xl rounded-full"></div>
+        <div class="absolute -bottom-20 -left-20 w-56 h-56 bg-[#1A1528]/5 blur-3xl rounded-full"></div>
+        <div class="mb-8 text-center">
+          <span class="inline-flex items-center px-4 py-1 rounded-full bg-[#6544FF]/10 text-[#6544FF] text-xs font-bold uppercase tracking-wider">
+            Paso siguiente
+          </span>
+          <h1 class="mt-4 text-3xl md:text-5xl font-black italic uppercase text-[#1A1528] tracking-tight leading-[0.95]">
+            Solicitar informacion personalizada
+          </h1>
+          <p class="mt-4 text-gray-500 font-medium max-w-2xl mx-auto">
+            Completa los datos para enviarte recomendaciones de carreras e instituciones.
+          </p>
+        </div>
+
+        <form id="solicitud-form" class="space-y-5 relative z-10">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="nombre">Nombre completo</label>
+              <input id="nombre" name="nombre" value="" class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-medium text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="correo">Correo</label>
+              <input id="correo" name="correo" type="email" value="" class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-medium text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all" />
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="telefono">Telefono</label>
+              <input id="telefono" name="telefono" value="" class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-medium text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="perfil">Perfil detectado</label>
+              <input id="perfil" name="perfil" value="" class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-semibold text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="carreras">Carreras sugeridas</label>
+            <textarea id="carreras" name="carreras" rows={3} class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-medium text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all">Por definir</textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" for="mensaje">Mensaje</label>
+            <textarea id="mensaje" name="mensaje" rows={4} placeholder="Cuéntanos qué te gustaría recibir (mallas, arancel, becas, etc.)." class="w-full rounded-xl border border-gray-200 bg-[#fafafa] px-4 py-3 font-medium text-[#1A1528] focus:outline-none focus:ring-4 focus:ring-[#6544FF]/10 focus:border-[#6544FF] focus:bg-white transition-all"></textarea>
+          </div>
+
+          <p id="form-feedback" class="hidden text-sm font-semibold rounded-xl px-4 py-3"></p>
+
+          <button
+            id="submit-btn"
+            type="submit"
+            class="w-full bg-[#1A1528] hover:bg-[#2a243d] text-white font-bold py-4 rounded-xl transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            Solicitar informacion
+          </button>
+        </form>
+
+        <div id="success-state" class="hidden relative z-10 mt-8 animate-in zoom-in-95 fade-in duration-500">
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-7 text-center">
+            <div class="w-14 h-14 mx-auto rounded-full bg-emerald-500/15 border border-emerald-300 flex items-center justify-center mb-4 animate-pulse">
+              <span class="text-emerald-600 text-2xl font-black">✓</span>
+            </div>
+            <h3 class="text-2xl font-black italic text-[#1A1528] mb-2">Solicitud enviada con exito</h3>
+            <p class="text-gray-600 font-medium">
+              Tu informacion fue registrada y enviada al equipo de orientacion.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+
+      const nombre = document.getElementById("nombre");
+      if (nombre instanceof HTMLInputElement) nombre.value = params.get("nombre") ?? "";
+
+      const correo = document.getElementById("correo");
+      if (correo instanceof HTMLInputElement) correo.value = params.get("correo") ?? "";
+
+      const telefono = document.getElementById("telefono");
+      if (telefono instanceof HTMLInputElement) telefono.value = params.get("telefono") ?? "";
+
+      const perfil = document.getElementById("perfil");
+      if (perfil instanceof HTMLInputElement) perfil.value = params.get("perfil") ?? "";
+
+      const carreras = document.getElementById("carreras");
+      if (carreras instanceof HTMLTextAreaElement) {
+        const valorCarreras = params.get("carreras");
+        carreras.value = valorCarreras && valorCarreras.trim().length > 0 ? valorCarreras : "Por definir";
+      }
+
+      const form = document.getElementById("solicitud-form");
+      const feedback = document.getElementById("form-feedback");
+      const submitBtn = document.getElementById("submit-btn");
+      const successState = document.getElementById("success-state");
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      /**
+       * @param {string} message
+       * @param {boolean} [ok]
+       */
+      // @ts-ignore
+      function showFeedback(message, ok = false) {
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.classList.remove("hidden", "bg-red-50", "text-red-700", "border", "border-red-200", "bg-emerald-50", "text-emerald-700", "border-emerald-200");
+        if (ok) {
+          feedback.classList.add("bg-emerald-50", "text-emerald-700", "border", "border-emerald-200");
+        } else {
+          feedback.classList.add("bg-red-50", "text-red-700", "border", "border-red-200");
+        }
+      }
+
+      if (form instanceof HTMLFormElement) {
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const nombreInput = document.getElementById("nombre");
+          const correoInput = document.getElementById("correo");
+          const telefonoInput = document.getElementById("telefono");
+          const perfilInput = document.getElementById("perfil");
+          const carrerasInput = document.getElementById("carreras");
+          const mensajeInput = document.getElementById("mensaje");
+
+          if (!(nombreInput instanceof HTMLInputElement)) return;
+          if (!(correoInput instanceof HTMLInputElement)) return;
+          if (!(telefonoInput instanceof HTMLInputElement)) return;
+          if (!(perfilInput instanceof HTMLInputElement)) return;
+          if (!(carrerasInput instanceof HTMLTextAreaElement)) return;
+          if (!(mensajeInput instanceof HTMLTextAreaElement)) return;
+
+          const nombreValue = nombreInput.value.trim();
+          const correoValue = correoInput.value.trim();
+          const telefonoValue = telefonoInput.value.trim();
+          const perfilValue = perfilInput.value.trim();
+          const carrerasValue = carrerasInput.value.trim();
+          const mensajeValue = mensajeInput.value.trim();
+
+          if (!nombreValue) return showFeedback("Debes completar el nombre.");
+          if (!correoValue) return showFeedback("Debes completar el correo.");
+          if (!emailRegex.test(correoValue)) return showFeedback("El correo no tiene un formato valido.");
+          if (!telefonoValue) return showFeedback("Debes completar el telefono.");
+          if (!perfilValue) return showFeedback("Debes completar el perfil detectado.");
+          if (!carrerasValue) return showFeedback("Debes completar las carreras sugeridas.");
+          if (!mensajeValue) return showFeedback("Debes ingresar un mensaje.");
+
+          if (submitBtn instanceof HTMLButtonElement) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Enviando solicitud...";
+          }
+
+          try {
+            const response = await fetch("/api/solicitar-informacion", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                nombre: nombreValue,
+                correo: correoValue,
+                telefono: telefonoValue,
+                perfil: perfilValue,
+                carreras: carrerasValue,
+                mensaje: mensajeValue,
+              }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+              showFeedback(data.message ?? "No se pudo procesar la solicitud.");
+              return;
+            }
+
+            showFeedback("Solicitud registrada y correo enviado correctamente.", true);
+            form.classList.add("opacity-60", "pointer-events-none");
+            successState?.classList.remove("hidden");
+          } catch {
+            showFeedback("Error de red. Intenta nuevamente.");
+          } finally {
+            if (submitBtn instanceof HTMLButtonElement) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Solicitar informacion";
+            }
+          }
+        });
+      }
+    })();
+  </script>
+</Layout>
