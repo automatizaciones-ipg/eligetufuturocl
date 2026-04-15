@@ -378,11 +378,31 @@ export default function BuscadorCarreras() {
                style={{ animationDelay: `${i * 50}ms` }}>
               
               <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-                <div className={`relative w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-[2rem] shadow-lg border-4 border-white bg-gradient-to-br ${carrera.color} flex items-center justify-center font-black text-3xl`}>
-                  {erroresLogos[carrera.id] ? <span className="text-white">{carrera.sigla}</span> : 
-                    <img src={`/logos/${carrera.logoArchivo}`} alt={carrera.institucion} className="w-full h-full object-contain bg-white/95 p-3" onError={() => handleLogoError(carrera.id)} />
-                  }
+                
+                {/* --- NUEVO CONTENEDOR DE LOGO --- */}
+                <div className="relative w-24 h-24 md:w-28 md:h-28 shrink-0">
+                  {/* Resplandor animado de fondo */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${carrera.color} rounded-[2rem] blur-xl opacity-0 group-hover:opacity-30 transition-all duration-500 group-hover:scale-110`}></div>
+                  
+                  {/* Contenedor principal del Logo */}
+                  <div className="relative w-full h-full bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 flex items-center justify-center overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] z-10">
+                    {erroresLogos[carrera.id] ? (
+                      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${carrera.color} group-hover:scale-105 transition-transform duration-500`}>
+                        <span className="text-white font-black text-2xl md:text-3xl tracking-tighter drop-shadow-md">
+                          {carrera.sigla}
+                        </span>
+                      </div>
+                    ) : (
+                      <img 
+                        src={`/logos/${carrera.logoArchivo}`} 
+                        alt={carrera.institucion} 
+                        className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" 
+                        onError={() => handleLogoError(carrera.id)} 
+                      />
+                    )}
+                  </div>
                 </div>
+                {/* --- FIN NUEVO CONTENEDOR DE LOGO --- */}
 
                 <div className="flex-1 w-full">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
