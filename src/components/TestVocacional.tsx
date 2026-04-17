@@ -1,7 +1,8 @@
 // src/components/TestVocacional.tsx
 import { 
   User, Mail, Smartphone, ChevronRight, Sparkles, BrainCircuit, 
-  CheckCircle2
+  CheckCircle2,
+  ArrowLeft
 } from "lucide-react";
 import { useTestVocacional } from "../hooks/useTestVocacional";
 import ResultadosTest from "./ResultadosTest";
@@ -16,13 +17,25 @@ export default function TestVocacional() {
 
   if (paso === 0) {
     return (
-      <div key="paso-0" className="max-w-3xl mx-auto text-center animate-in fade-in zoom-in-95 duration-700 ease-out-quint py-10">
-        <div className="bg-white rounded-[3rem] p-12 md:p-16 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
+      <div key="paso-0" className="min-h-screen mx-auto animate-in fade-in zoom-in-95 duration-700 ease-out-quint">
+
+        <div className="container mx-auto relative z-10 max-w-7xl">
+        {/* Botón Volver */}
+           <button 
+            onClick={() => window.history.back()} 
+            className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-[#A78BFA] px-5 py-2.5 rounded-full border border-[#A78BFA] backdrop-blur-md cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" />
+            Volver
+          </button>
+        </div>
+        
+        <div className="max-w-3xl justify-center items-center mx-auto bg-white rounded-[3rem] p-12 md:p-16 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#6544FF]/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2"></div>
           <div className="w-24 h-24 mx-auto bg-gradient-to-br from-[#6544FF] to-[#947BFF] rounded-3xl flex items-center justify-center mb-8 shadow-lg shadow-[#6544FF]/20 animate-pulse">
             <BrainCircuit className="w-12 h-12 text-white" />
           </div>
-          <h2 className="font-black italic uppercase text-4xl md:text-5xl text-[#1A1528] tracking-tight leading-[1.05] mb-6">
+          <h2 className="font-black text-center italic uppercase text-4xl md:text-5xl text-[#1A1528] tracking-tight leading-[1.05] mb-6">
             Descubre tu <br/>
             <span className="text-[#6544FF]">Futuro Ideal</span> en 3 minutos
           </h2>
