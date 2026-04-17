@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { 
   CalendarDays, Bell, BookOpen, PenTool, Award, 
-  ChevronRight, Sparkles, Clock, AlertCircle, FileText
+  ChevronRight, Sparkles, Clock, AlertCircle, FileText,
+  ArrowLeft
 } from "lucide-react";
 
 // --- DATOS DEL CALENDARIO ---
@@ -162,6 +163,17 @@ export default function CalendarioPaes() {
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000 pointer-events-none"></div>
           <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000 pointer-events-none"></div>
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+        </div>
+
+        <div className="container mx-auto relative z-10 max-w-7xl">
+        {/* Botón Volver */}
+           <button 
+            onClick={() => window.history.back()} 
+            className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" />
+            Volver
+          </button>
         </div>
 
         <div className="max-w-5xl mx-auto relative z-10 text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
