@@ -88,6 +88,9 @@ export default function BuscadorCarreras() {
 
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalResultados, setTotalResultados] = useState(0);
+  
+  // NUEVO: Estado para manejar la animación de redirección
+  const [navegandoA, setNavegandoA] = useState<string | null>(null);
 
   // --- CARGA INICIAL DE FILTROS ---
   useEffect(() => {
@@ -212,6 +215,36 @@ export default function BuscadorCarreras() {
     if (region === "todas") return "Todas las Regiones";
     if (region === "Metropolitana") return "Región Metropolitana";
     return `Región de ${region}`;
+  };
+
+  // NUEVO: Lógica para generar los números de la paginación dinámicamente
+  const generarArregloPaginacion = () => {
+    const paginas = [];
+    if (totalPaginas <= 7) {
+      for (let i = 1; i <= totalPaginas; i++) {
+        paginas.push(i);
+      }
+    } else {
+      if (paginaActual <= 4) {
+        paginas.push(1, 2, 3, 4, 5, '...', totalPaginas);
+      } else if (paginaActual >= totalPaginas - 3) {
+        paginas.push(1, '...', totalPaginas - 4, totalPaginas - 3, totalPaginas - 2, totalPaginas - 1, totalPaginas);
+      } else {
+        paginas.push(1, '...', paginaActual - 1, paginaActual, paginaActual + 1, '...', totalPaginas);
+      }
+    }
+    return paginas;
+  };
+
+  // NUEVO: Interceptor de click para la animación espectacular de carga
+  const handleNavegarACarrera = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    setNavegandoA(id);
+    
+    // Dejamos que la animación se ejecute por 600ms antes de forzar la redirección
+    setTimeout(() => {
+      window.location.href = `/carrera/${id}`;
+    }, 600);
   };
 
   return (
@@ -373,13 +406,32 @@ export default function BuscadorCarreras() {
           </div>
 
           {!cargando && carreras.map((carrera, i) => (
-            <a key={carrera.id} href={`/carrera/${carrera.id}`}
-               className="group relative block bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-sm border-2 border-transparent hover:border-[#6544FF]/30 hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+            <a key={carrera.id} 
+               href={`/carrera/${carrera.id}`}
+               onClick={(e) => handleNavegarACarrera(e, carrera.id)}
+               className={`group relative block bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-sm border-2 overflow-hidden transition-all duration-500 ease-out
+                 ${navegandoA === carrera.id 
+                    ? 'border-[#6544FF] scale-[0.98] opacity-90 shadow-inner z-50' 
+                    : 'border-transparent hover:border-[#6544FF]/30 hover:-translate-y-2'
+                 }`}
                style={{ animationDelay: `${i * 50}ms` }}>
               
+              {/* --- NUEVA CAPA DE ANIMACIÓN DE CARGA (Al hacer click) --- */}
+              {navegandoA === carrera.id && (
+                <div className="absolute inset-0 bg-white/70 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
+                  <div className="relative mb-3">
+                    <div className="absolute inset-0 bg-[#6544FF] blur-xl opacity-40 rounded-full animate-pulse"></div>
+                    <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin relative z-10" />
+                  </div>
+                  <span className="font-black text-xl text-[#1A1528] tracking-tight animate-pulse bg-white/50 px-4 py-1 rounded-full">
+                    Accediendo...
+                  </span>
+                </div>
+              )}
+
               <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
                 
-                {/* --- NUEVO CONTENEDOR DE LOGO --- */}
+                {/* --- CONTENEDOR DE LOGO --- */}
                 <div className="relative w-24 h-24 md:w-28 md:h-28 shrink-0">
                   {/* Resplandor animado de fondo */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${carrera.color} rounded-[2rem] blur-xl opacity-0 group-hover:opacity-30 transition-all duration-500 group-hover:scale-110`}></div>
@@ -402,7 +454,6 @@ export default function BuscadorCarreras() {
                     )}
                   </div>
                 </div>
-                {/* --- FIN NUEVO CONTENEDOR DE LOGO --- */}
 
                 <div className="flex-1 w-full">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -424,21 +475,52 @@ export default function BuscadorCarreras() {
             </a>
           ))}
 
-          {/* PAGINACIÓN */}
+          {/* NUEVA PAGINACIÓN NUMÉRICA */}
           {!cargando && totalPaginas > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-12">
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-14 mb-8">
                <button 
                  onClick={() => { 
                    setPaginaActual(p => Math.max(1, p - 1)); 
                    window.scrollTo({ top: 0, behavior: 'smooth' }); 
                  }} 
                  disabled={paginaActual === 1} 
-                 className="w-12 h-12 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all duration-300"
+                 aria-label="Página anterior"
                >
                  <ChevronLeft className="w-5 h-5" />
                </button>
                
-               <span className="font-black text-slate-700">Página {paginaActual} de {totalPaginas}</span>
+               {/* Números de página con lógica de puntos suspensivos */}
+               <div className="flex items-center gap-1 md:gap-2 mx-2">
+                 {generarArregloPaginacion().map((pagina, index) => {
+                   if (pagina === '...') {
+                     return (
+                       <span key={`ellipsis-${index}`} className="w-8 h-10 flex items-center justify-center text-gray-400 font-bold">
+                         ...
+                       </span>
+                     );
+                   }
+                   
+                   const esPaginaActual = pagina === paginaActual;
+                   
+                   return (
+                     <button
+                       key={`page-${pagina}`}
+                       onClick={() => {
+                         setPaginaActual(pagina as number);
+                         window.scrollTo({ top: 0, behavior: 'smooth' });
+                       }}
+                       className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center font-black text-sm md:text-base transition-all duration-300
+                         ${esPaginaActual 
+                           ? 'bg-[#6544FF] text-white shadow-md shadow-[#6544FF]/30 scale-105 border-transparent' 
+                           : 'bg-white border-2 border-gray-200 text-slate-600 hover:border-[#6544FF]/50 hover:text-[#6544FF]'
+                         }`}
+                     >
+                       {pagina}
+                     </button>
+                   );
+                 })}
+               </div>
                
                <button 
                  onClick={() => { 
@@ -446,7 +528,8 @@ export default function BuscadorCarreras() {
                    window.scrollTo({ top: 0, behavior: 'smooth' }); 
                  }} 
                  disabled={paginaActual >= totalPaginas} 
-                 className="w-12 h-12 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all duration-300"
+                 aria-label="Página siguiente"
                >
                  <ChevronRight className="w-5 h-5" />
                </button>
