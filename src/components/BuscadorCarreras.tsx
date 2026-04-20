@@ -90,8 +90,23 @@ export default function BuscadorCarreras() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalResultados, setTotalResultados] = useState(0);
   
-  // NUEVO: Estado para manejar la animación de redirección
+  // Estado para manejar la animación de redirección
   const [navegandoA, setNavegandoA] = useState<string | null>(null);
+
+  // --- NUEVO: EFECTO PARA DESCONGELAR ESTADO AL VOLVER ATRÁS ---
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // Si el navegador restaura la página desde su caché (al presionar "Atrás")
+      if (event.persisted) {
+        setNavegandoA(null);
+      }
+    };
+    
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
 
   // --- CARGA INICIAL DE FILTROS ---
   useEffect(() => {
@@ -258,17 +273,17 @@ export default function BuscadorCarreras() {
         
         {/* Fondo Animado Mesh Gradient Brutal */}
         <div className="absolute inset-0 overflow-hidden z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob pointer-events-none"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000 pointer-events-none"></div>
+          <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
         </div>
- 
-       <div className="container mx-auto relative z-10 max-w-7xl">
-        {/* Botón Volver */}
-           <button 
+
+        <div className="container mx-auto relative z-10 max-w-7xl">
+          {/* Botón Volver */}
+          <button 
             onClick={() => window.history.back()} 
-            className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer"
+            className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer animate-fade-in-up"
           >
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" />
             Volver
@@ -276,16 +291,24 @@ export default function BuscadorCarreras() {
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center space-y-4">
-          <h2 className="font-bold text-4xl md:text-5xl lg:text-6xl text-white tracking-tight mb-6 animate-fade-in-up">
-            Encuentra tu <br className="md:hidden" /><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Carrera Ideal</span>
+          
+          {/* BADGE COMPATIBLE CON EL NUEVO DISEÑO */}
+          <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-[#D8B4FE] font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md animate-fade-in-up">
+            <Search className="w-4 h-4" /> Búsqueda Inteligente
+          </div>
+
+          {/* TIPOGRAFÍA ACTUALIZADA (Idéntica a Beneficios y Calendario) */}
+          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            Encuentra tu <br className="md:hidden" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Carrera Ideal</span>
           </h2>
 
-          <p className="text-gray-300 max-w-2xl text-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed" style={{ animationDelay: '0.2s' }}>
             Busca la carrera que quieres para tu futuro, seleccionala y encuentra información importante relacionada.
           </p>
           
-          <div className="relative group w-full max-w-3xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[1.5rem] blur-xl opacity-30 group-hover:opacity-60 transition-opacity duration-500"></div>
+          <div className="relative group w-full max-w-3xl animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[1.5rem] blur-xl opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none"></div>
             <div className="relative bg-white rounded-[1.5rem] p-2 md:p-3 flex items-center shadow-2xl transition-transform focus-within:scale-[1.02] duration-300">
               <div className="pl-4 pr-3 text-[#7C3AED]"><Search className="w-7 h-7" /></div>
               <input 
@@ -303,12 +326,11 @@ export default function BuscadorCarreras() {
       {/* =========================================================================
           2. ÁREA DE CONTENIDO RESTRINGIDO (Filtros y Resultados)
       ========================================================================= */}
-      {/* SE USA EXACTAMENTE EL MISMO MARGEN NEGATIVO (-MT-24) QUE EN CARRERA DETALLE */}
       <div className="max-w-7xl mx-auto px-6 -mt-24 relative z-30">
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           
-          {/* PANEL DE CONTROL (Filtros) */}
-          <div className="w-full lg:w-80 shrink-0 sticky top-24 z-30 animate-in fade-in slide-in-from-bottom-8 delay-150">
+          {/* PANEL DE CONTROL (Filtros) -> relative lg:sticky PARA NO INVADIR EN MÓVIL */}
+          <div className="w-full lg:w-80 shrink-0 relative lg:sticky top-24 z-30 animate-in fade-in slide-in-from-bottom-8 delay-150">
             <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80">
               <h3 className="font-black text-lg text-[#1A1528] uppercase tracking-wider mb-6 flex items-center gap-2 pb-4 border-b border-gray-100">
                 <SlidersHorizontal className="w-5 h-5 text-[#6544FF]" /> Filtros
@@ -432,8 +454,8 @@ export default function BuscadorCarreras() {
           {/* RESULTADOS */}
           <div className="flex-1 w-full space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-2 animate-in fade-in gap-4 relative z-20">
-              <p className="font-bold text-white text-xl flex items-center gap-2">
-                {cargando ? <><Loader2 className="w-24 h-24 animate-spin text-[#6544FF]" /> Buscando...</> : <>Mostrando <span className="text-[#A78BFA]">{carreras.length}</span> de <span className="text-[#A78BFA]">{totalResultados}</span> carreras</>}
+              <p className="font-bold text-gray-500 text-xl flex items-center gap-2">
+                {cargando ? <><Loader2 className="w-6 h-6 animate-spin text-[#6544FF]" /> Buscando...</> : <>Mostrando <span className="text-[#6544FF]">{carreras.length}</span> de <span className="text-[#6544FF]">{totalResultados}</span> carreras</>}
               </p>
             </div>
 

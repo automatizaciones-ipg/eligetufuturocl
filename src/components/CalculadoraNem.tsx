@@ -78,7 +78,7 @@ export default function CalculadoraNem() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans pb-20 selection:bg-[#7C3AED] selection:text-white">
+    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white">
       
       {/* =========================================================================
           1. HERO SECTION (BANNER) - EXACTAMENTE EL MISMO COLOR QUE EL BUSCADOR
@@ -110,8 +110,10 @@ export default function CalculadoraNem() {
             <span className="text-xs font-bold text-white/90 uppercase tracking-widest">Herramienta Oficial</span>
           </div>
 
-          <h2 className="font-bold text-4xl md:text-5xl lg:text-6xl text-white tracking-tight mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            Calcula tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">NEM y Ranking</span>
+          {/* === APLICAMOS LAS LETRAS EXACTAS AQUÍ === */}
+          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            Calcula tu <br className="md:hidden" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">NEM y Ranking</span>
           </h2>
           
           <p className="text-gray-300 max-w-2xl text-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>

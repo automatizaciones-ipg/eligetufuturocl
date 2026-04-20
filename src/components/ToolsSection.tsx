@@ -7,7 +7,9 @@ import {
   Megaphone, 
   TrendingUp, 
   Building2,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Sparkles
 } from "lucide-react";
 
 // Configuramos las URLs reales (slugs) a las que irán en el futuro
@@ -71,22 +73,30 @@ export default function ToolsSection() {
       {/* =========================================================================
           1. HERO BANNER - EXACTAMENTE IGUAL AL RESTO DEL SITIO (CURVO)
       ========================================================================= */}
-      <div className="relative w-full bg-[#0A0518] pt-20 pb-40 px-6  overflow-hidden shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20 border-b border-white/5">
+      <div className="relative w-full bg-[#0A0518] pt-20 pb-40 px-6 overflow-hidden shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20 border-b border-white/5">
         
         {/* Fondo Animado Mesh Gradient Brutal */}
-        <div className="absolute inset-0 overflow-hidden z-0">
+        <div className="absolute inset-0 overflow-hidden z-0 ">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob pointer-events-none"></div>
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000 pointer-events-none"></div>
           <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000 pointer-events-none"></div>
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
         </div>
 
-        {/* Textos del Banner */}
-        <div className="max-w-7xl mx-auto relative z-10 text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <h2 className="font-black text-4xl md:text-5xl lg:text-6xl text-white tracking-tight">
-            Nuestras <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Herramientas</span>
+        {/* Textos del Banner (Tipografía estandarizada) */}
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center space-y-4">
+          
+          {/* Badge superior */}
+          <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-[#D8B4FE] font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md animate-fade-in-up">
+            <Sparkles className="w-4 h-4" /> Explora y Decide
+          </div>
+
+          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            Nuestras <br className="md:hidden" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Herramientas</span>
           </h2>
-          <p className="text-gray-300 text-lg md:text-xl mt-6 max-w-2xl mx-auto font-medium">
+          
+          <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed" style={{ animationDelay: '0.2s' }}>
             Todo lo que necesites para elegir tu futuro con confianza
           </p>
         </div>
@@ -160,6 +170,14 @@ export default function ToolsSection() {
         }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
+
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
       `}} />
     </section>
   );

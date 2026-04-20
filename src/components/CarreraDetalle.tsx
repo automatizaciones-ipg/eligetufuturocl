@@ -215,17 +215,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                 <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5 rounded-3xl"></div>
               </div>
             </section>
-            
-            {/* Tarjeta de Código Oficial */}
-            <section className="bg-gradient-to-r from-gray-50 to-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Código Único Oficial (SIES)</p>
-                <p className="font-mono text-2xl font-black text-[#0A0518] tracking-widest">{carrera.codigo_carrera || "N/A"}</p>
-              </div>
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
-                <Sparkles className="w-7 h-7 text-[#7C3AED]" />
-              </div>
-            </section>
           </div>
 
           {/* Columna Derecha: LEAD FORM 3.0 */}
