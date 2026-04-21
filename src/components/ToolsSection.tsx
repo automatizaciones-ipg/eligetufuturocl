@@ -117,18 +117,6 @@ export default function ToolsSection() {
               className="group bg-white rounded-[2rem] p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgba(101,68,255,0.15)] transition-all duration-300 hover:-translate-y-2 border border-gray-100 flex flex-col h-full relative overflow-hidden animate-in fade-in slide-in-from-bottom-8"
               style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
             >
-              {/* --- INICIO INTERVENCIÓN QUIRÚRGICA --- */}
-              {tool.isNew && (
-                <div className="absolute top-6 right-6">
-                  <span className="relative flex h-full w-full items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6544FF] opacity-20"></span>
-                    <span className="relative inline-flex rounded-full bg-gradient-to-r from-[#6544FF] to-[#947BFF] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-md shadow-[#6544FF]/20">
-                      Nuevo
-                    </span>
-                  </span>
-                </div>
-              )}
-              {/* --- FIN INTERVENCIÓN QUIRÚRGICA --- */}
 
               {/* Contenedor del Ícono ORIGINAL (#6544FF) */}
               <div className="w-16 h-16 rounded-2xl bg-[#6544FF]/10 flex items-center justify-center mb-6 group-hover:bg-[#6544FF] transition-colors duration-300">

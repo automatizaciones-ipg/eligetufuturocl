@@ -98,9 +98,7 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
-          {/* Overlay de ruido/textura muy sutil para darle aspecto premium */}
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-          {/* SE HA ELIMINADO LA GRUDA TECH AQUÍ */}
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
@@ -116,12 +114,10 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
 
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 animate-fade-in-up">
             
-            {/* Contenedor del Logo (Glassmorphism Avanzado + Fallback Elegante) */}
+            {/* Contenedor del Logo */}
             <div className="relative group animate-float w-40 h-40 md:w-52 md:h-52 shrink-0">
-              {/* Brillo dinámico detrás del logo */}
               <div className="absolute -inset-1 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[2.5rem] blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200"></div>
               
-              {/* Contenedor exactamente BLANCO */}
               <div className="relative w-full h-full bg-white rounded-[2.5rem] p-6 flex items-center justify-center overflow-hidden shadow-2xl">
                 
                 <img 
@@ -134,7 +130,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                   }}
                 />
                 
-                {/* Fallback en caso de que no exista la imagen (se mantiene oscuro para contraste de las letras) */}
                 <div className="fallback-logo hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#2E1065] to-[#170F2E]">
                   <Building className="w-10 h-10 text-white/20 mb-2" />
                   <span className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">
@@ -147,7 +142,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
             {/* Encabezado e Info de la Carrera */}
             <div className="flex-1 text-center md:text-left flex flex-col justify-center md:pt-4">
               
-              {/* Badges */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
                 <span className="bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-inner">
                   {tipoInstitucion}
@@ -157,12 +151,10 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                 </span>
               </div>
               
-              {/* Título Brutal */}
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tight mb-4 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E2E8F0] to-[#94A3B8] drop-shadow-lg">
                 {carrera.nombre_carrera}
               </h1>
               
-              {/* Subtítulo / Institución */}
               <h2 className="text-xl md:text-3xl text-[#A78BFA] font-medium flex items-center justify-center md:justify-start gap-3">
                 {institucionNombre}
               </h2>
@@ -176,12 +168,59 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
       ========================================================================= */}
       <div className="max-w-7xl mx-auto px-6 -mt-24 relative z-30">
         
-        {/* Grilla de Métricas Rápidas (Glassmorphism mixto para cruzar el hero y el body) */}
+        {/* =========================================================
+            NUEVA GRILLA DE MÉTRICAS RÁPIDAS (BENTO CARDS 4.0)
+        ========================================================= */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-          <StatCard delay="0s" icon={<Briefcase />} title="Empleabilidad (1er Año)" value={formatoPorcentaje(carrera.empleabilidad_1er_anio)} color="text-emerald-500" bg="bg-emerald-50" border="border-emerald-100" />
-          <StatCard delay="0.1s" icon={<TrendingUp />} title="Ingreso (4to Año)" value={carrera.ingreso_promedio_4to_anio && carrera.ingreso_promedio_4to_anio !== "s/i" ? carrera.ingreso_promedio_4to_anio : "No informado"} color="text-blue-500" bg="bg-blue-50" border="border-blue-100" />
-          <StatCard delay="0.2s" icon={<DollarSign />} title="Arancel Anual (2026)" value={formatoDinero(carrera.arancel_anual)} color="text-amber-500" bg="bg-amber-50" border="border-amber-100" />
-          <StatCard delay="0.3s" icon={<Clock />} title="Duración Formal" value={carrera.duracion_semestres ? `${carrera.duracion_semestres} Semestres` : "No informada"} color="text-violet-500" bg="bg-violet-50" border="border-violet-100" />
+          
+          {/* Tarjeta 1: Empleabilidad */}
+          <StatCard 
+            delay="0s" 
+            icon={<Briefcase className="w-6 h-6" />} 
+            bgIcon={<Briefcase className="w-32 h-32" />} 
+            title="Empleabilidad (1er Año)" 
+            value={formatoPorcentaje(carrera.empleabilidad_1er_anio)} 
+            color="text-emerald-500" 
+            bg="bg-emerald-50" 
+            isDark={false}
+          />
+          
+          {/* Tarjeta 2: Ingreso (Tarjeta Oscura como Mercado Laboral) */}
+          <StatCard 
+            delay="0.1s" 
+            icon={<TrendingUp className="w-6 h-6" />} 
+            bgIcon={<DollarSign className="w-40 h-40" />} 
+            title="Ingreso (4to Año)" 
+            value={carrera.ingreso_promedio_4to_anio && carrera.ingreso_promedio_4to_anio !== "s/i" ? carrera.ingreso_promedio_4to_anio : "No informado"} 
+            color="text-[#C1AFFF]" 
+            bg="bg-white/10" 
+            isDark={true}
+          />
+          
+          {/* Tarjeta 3: Arancel */}
+          <StatCard 
+            delay="0.2s" 
+            icon={<DollarSign className="w-6 h-6" />} 
+            bgIcon={<DollarSign className="w-32 h-32" />} 
+            title="Arancel Anual (2026)" 
+            value={formatoDinero(carrera.arancel_anual)} 
+            color="text-amber-500" 
+            bg="bg-amber-50" 
+            isDark={false}
+          />
+          
+          {/* Tarjeta 4: Duración */}
+          <StatCard 
+            delay="0.3s" 
+            icon={<Clock className="w-6 h-6" />} 
+            bgIcon={<Clock className="w-32 h-32" />} 
+            title="Duración Formal" 
+            value={carrera.duracion_semestres ? `${carrera.duracion_semestres} Semestres` : "No informada"} 
+            color="text-violet-500" 
+            bg="bg-violet-50" 
+            isDark={false}
+          />
+
         </div>
 
         {/* Detalles Profundos */}
@@ -251,7 +290,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Inputs de texto (simplificados visualmente para integrarse al diseño UIX) */}
                     <InputField label="Nombre Completo" icon={<User />} type="text" name="nombre" value={formState.nombre} onChange={handleChange} placeholder="Ej. Camila Valdés" required />
                     
                     <div className="grid grid-cols-1 gap-5">
@@ -350,7 +388,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                       disabled={isSubmitting || (formState.tiposPregunta.length === 0)}
                       className="w-full mt-4 relative group overflow-hidden bg-[#0A0518] text-white font-black py-4 px-6 rounded-xl shadow-xl transition-all hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none"
                     >
-                      {/* Hover effect para el botón */}
                       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-[#7C3AED] to-[#D946EF] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       
                       <div className="relative flex items-center justify-center gap-2 z-10">
@@ -379,7 +416,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94A3B8; }
         
-        /* Flote de las esferas del Hero (Blob) */
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }
           33% { transform: translate(40px, -60px) scale(1.1); }
@@ -392,7 +428,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
 
-        /* Flote suave del Logo */
         @keyframes float {
           0% { transform: translateY(0px); }
           50% { transform: translateY(-12px); }
@@ -402,7 +437,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
           animation: float 6s ease-in-out infinite;
         }
 
-        /* Fade in subiendo */
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
@@ -415,9 +449,54 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
   );
 }
 
-// Sub-componentes para limpiar el JSX
+// =========================================================================
+// NUEVO COMPONENTE STATCARD 4.0 (DISEÑO BENTO GRID EXACTO)
+// =========================================================================
+function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any) {
+  
+  // Lógica para textos muy largos (Como el de Ingreso que dice "De $2 millones...")
+  const valueLength = String(value).length;
+  const textSizeClass = valueLength > 20 
+    ? 'text-[1.1rem] md:text-[1.2rem] leading-snug' // Texto adaptativo para frases largas
+    : 'text-2xl md:text-3xl'; // Texto gigante para números cortos (Ej. 98.2%)
 
-// Componente input reutilizable para el form
+  return (
+    <div 
+      className={`relative overflow-hidden p-6 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:-translate-y-2 transition-all duration-500 group animate-fade-in-up flex flex-col justify-center min-h-[160px]
+        ${isDark 
+          ? 'bg-gradient-to-br from-[#1A1528] to-[#2D2442] border border-white/5 shadow-xl shadow-[#1A1528]/10' 
+          : 'bg-white border-2 border-gray-100 hover:border-[#6544FF]/20 hover:shadow-[0_15px_40px_rgba(101,68,255,0.08)]'
+        }`} 
+      style={{ animationDelay: delay, animationFillMode: 'both' }}
+    >
+      {/* Fondo Icono Gigante Transparente */}
+      <div className={`absolute -right-4 -bottom-4 pointer-events-none transition-transform duration-700 ease-out group-hover:scale-110 
+        ${isDark ? 'opacity-10 text-white' : 'opacity-[0.03] text-[#1A1528]'}`}>
+        {bgIcon}
+      </div>
+
+      {/* Icono pequeño superior */}
+      <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center mb-4 relative z-10 shadow-inner group-hover:scale-110 transition-transform duration-300`}>
+        {React.cloneElement(icon, { className: `w-6 h-6 ${color}` })}
+      </div>
+
+      {/* Textos */}
+      <div className="relative z-10">
+        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 
+          ${isDark ? 'text-[#C1AFFF]' : 'text-gray-400'}`}
+        >
+          {title}
+        </p>
+        <p className={`font-black tracking-tight ${textSizeClass} 
+          ${isDark ? 'text-white' : 'text-[#1A1528]'}`}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function InputField({ label, icon, type, name, value, onChange, placeholder, required }: any) {
   return (
     <div className="relative">
@@ -438,21 +517,6 @@ function InputField({ label, icon, type, name, value, onChange, placeholder, req
           placeholder={placeholder}
         />
       </div>
-    </div>
-  );
-}
-
-function StatCard({ icon, title, value, color, bg, border, delay }: any) {
-  return (
-    <div 
-      className={`bg-white/80 backdrop-blur-xl p-6 rounded-[1.5rem] shadow-xl shadow-gray-200/30 border border-white hover:border-${border.split('-')[1]}-200 transition-all duration-300 hover:-translate-y-2 group animate-fade-in-up`} 
-      style={{ animationDelay: delay, animationFillMode: 'both' }}
-    >
-      <div className={`w-14 h-14 rounded-2xl ${bg} ${color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-        {React.cloneElement(icon, { className: "w-6 h-6" })}
-      </div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{title}</p>
-      <p className="text-2xl font-black text-[#0A0518] leading-tight tracking-tight">{value}</p>
     </div>
   );
 }

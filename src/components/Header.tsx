@@ -37,6 +37,7 @@ const NAV_ITEMS = [
     children: [
       { name: "Eventos y Charlas", href: "/herramientas/eventos", desc: "Ferias vocacionales y ensayos" },
       { name: "Mercado Laboral", href: "/herramientas/mercado-laboral", desc: "Sueldos y empleabilidad" },
+      { name: "Explora tu futuro", href: "/noticias", desc: "Noticias de interés diarias" },
     ],
   }
 ];

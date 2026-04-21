@@ -1,0 +1,13 @@
+---
+import Layout from "../layouts/Layout.astro";
+import NoticiasExplora from "../components/NoticiasExplora.tsx";
+---
+
+<Layout title="Explora tu Futuro | Noticias y Motivación">
+  <main>
+    {
+      /* client:load es vital para que las animaciones y filtros de React funcionen de inmediato */
+    }
+    <NoticiasExplora client:load />
+  </main>
+</Layout>
