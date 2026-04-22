@@ -1,16 +1,38 @@
 ---
 // src/pages/carrera/[id].astro
+import type { GetStaticPaths } from "astro";
 import { supabase } from "../../../lib/supabase";
 import CarreraDetalle from "../../components/CarreraDetalle";
-import Layout from "../../layouts/Layout.astro"; // Asegúrate de que esta ruta sea correcta
+import Layout from "../../layouts/Layout.astro";
 
-export async function getStaticPaths() {
-  let allCarreras: any[] = [];
+// ============================================================================
+// 1. INTERFACES ESTRICTAS
+// ============================================================================
+export interface CarreraDB {
+  codigo_carrera: number;
+  nombre_carrera: string;
+  nivel_carrera: string;
+  duracion_semestres: number;
+  arancel_anual: number;
+  instituciones: {
+    nombre: string;
+    tipo: string;
+  };
+  // Agrega aquí otros campos que uses en CarreraDetalle
+}
+
+interface Props {
+  carrera: CarreraDB;
+}
+
+// ============================================================================
+// 2. GENERACIÓN DE RUTAS (SSG OPTIMIZADO)
+// ============================================================================
+export const getStaticPaths = (async () => {
+  let allCarreras: CarreraDB[] = [];
   let hasMore = true;
   let page = 0;
   const limit = 1000;
-
-  console.log("🚀 Iniciando generación estática (SSG)...");
 
   while (hasMore) {
     const { data, error } = await supabase
@@ -24,12 +46,12 @@ export async function getStaticPaths() {
       .range(page * limit, (page + 1) * limit - 1);
 
     if (error) {
-      console.error("Error en Supabase:", error);
+      console.error("Error en Supabase:", error.message);
       break;
     }
 
     if (data && data.length > 0) {
-      allCarreras = [...allCarreras, ...data];
+      allCarreras = [...allCarreras, ...(data as CarreraDB[])];
       page++;
     } else {
       hasMore = false;
@@ -40,22 +62,21 @@ export async function getStaticPaths() {
     params: { id: carrera.codigo_carrera.toString() },
     props: { carrera },
   }));
-}
+}) satisfies GetStaticPaths;
 
-const { carrera } = Astro.props;
+const { carrera } = Astro.props as Props;
 const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | Elige Tu Futuro`;
 ---
 
 <Layout title={title}>
-  <main>
+  <main class="min-h-screen bg-[#F4F5F9]">
     <CarreraDetalle carrera={carrera} client:load />
   </main>
 </Layout>
 
 <style>
-  /* Fix para asegurar que el contenido ocupe el alto visual */
   main {
-    min-height: 100vh;
-    background-color: #f8f9fe;
+    /* Evita el salto visual (CLS) al cargar */
+    contain: content;
   }
 </style>

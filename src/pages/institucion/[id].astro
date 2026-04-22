@@ -1,0 +1,73 @@
+---
+// src/pages/institucion/[id].astro
+import type { GetStaticPaths } from "astro";
+import Layout from "../../layouts/Layout.astro";
+import InstitucionDetalle from "../../components/InstitucionDetalle";
+import { supabase } from "../../../lib/supabase";
+
+// ============================================================================
+// 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
+// ============================================================================
+export interface InstitucionDB {
+  codigo_institucion: number;
+  nombre: string;
+  tipo: string;
+  adscrita_gratuidad: boolean;
+  acreditada: boolean;
+  anios_acreditacion: number;
+}
+
+// Le decimos a Astro exactamente qué props va a recibir este componente
+interface Props {
+  institucion: InstitucionDB;
+}
+
+// ============================================================================
+// 2. GENERACIÓN DE RUTAS ESTÁTICAS CON TIPADO
+// ============================================================================
+export const getStaticPaths = (async () => {
+  try {
+    const { data, error } = await supabase.from("instituciones").select("*");
+
+    if (error) {
+      console.error(
+        "Error al obtener instituciones para rutas:",
+        error.message,
+      );
+      return [];
+    }
+
+    // Afirmación de tipo (Type Assertion) para que TS reconozca la data
+    const instituciones = data as InstitucionDB[];
+
+    return instituciones.map((inst) => ({
+      params: { id: inst.codigo_institucion.toString() },
+      props: { institucion: inst },
+    }));
+  } catch (error) {
+    console.error("Error crítico generando rutas:", error);
+    return [];
+  }
+}) satisfies GetStaticPaths;
+
+// ============================================================================
+// 3. CAPTURAMOS LOS DATOS CON TIPADO ESTRICTO
+// ============================================================================
+const { institucion } = Astro.props as Props;
+
+// Seguridad adicional de redirección
+if (!institucion) {
+  return Astro.redirect("/404");
+}
+
+// ============================================================================
+// 4. METADATA Y SEO DINÁMICO
+// ============================================================================
+const metaTitle = `${institucion.nombre} | Directorio de Educación Superior`;
+const metaDescription = `Explora la información oficial de ${institucion.nombre}. Conoce su nivel de acreditación, gratuidad y perfil institucional en nuestro directorio.`;
+---
+
+<Layout title={metaTitle} description={metaDescription}>
+  {/* Pasamos el objeto fuertemente tipado al componente de React */}
+  <InstitucionDetalle client:load institucion={institucion} />
+</Layout>

@@ -1,11 +1,48 @@
 // src/components/Header.tsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Search, Menu, X, ChevronDown, Sparkles, Compass, 
-  Building2, CalendarDays, Calculator, GraduationCap, ArrowRight 
+  Building2, CalendarDays, Calculator, GraduationCap, ArrowRight,
+  Loader2
 } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
-// 1. DATA LAYER (Menú de Navegación Actualizado)
+// ============================================================================
+// 1. INTERFACES (TIPADO ESTRICTO)
+// ============================================================================
+interface ToolItem {
+  id: string;
+  tipo: 'herramienta';
+  titulo: string;
+  subtitulo: string;
+  url: string;
+  icono: React.ReactNode;
+}
+
+interface DynamicItem {
+  id: string;
+  tipo: 'carrera' | 'institucion';
+  titulo: string;
+  subtitulo: string;
+  url: string;
+  icono: React.ReactNode;
+}
+
+interface CarreraResp {
+  codigo_carrera: number;
+  nombre_carrera: string;
+  instituciones: { nombre: string } | { nombre: string }[] | null;
+}
+
+interface InstitucionResp {
+  codigo_institucion: number;
+  nombre: string;
+  tipo: string;
+}
+
+// ============================================================================
+// 2. DATA LAYER Y HERRAMIENTAS ESTÁTICAS
+// ============================================================================
 const NAV_ITEMS = [
   {
     label: "Herramientas",
@@ -19,7 +56,7 @@ const NAV_ITEMS = [
     label: "Instituciones",
     icon: <Building2 className="w-4 h-4" />,
     children: [
-      { name: "Buscador de Carreras", href: "/herramientas/buscador", desc: "Filtra por arancel, malla y más" },
+      { name: "Buscador de Carreras", href: "/herramientas/buscador", desc: "Filtra por carrera, arancel y más" },
       { name: "Todas las Instituciones", href: "/herramientas/instituciones", desc: "Universidades, IPs y CFTs" },
     ],
   },
@@ -35,24 +72,23 @@ const NAV_ITEMS = [
     label: "Comunidad & Futuro",
     icon: <Compass className="w-4 h-4" />,
     children: [
-      { name: "Eventos y Charlas", href: "/herramientas/eventos", desc: "Ferias vocacionales y ensayos" },
+      { name: "Eventos y Charlas", href: "/herramientas/eventos", desc: "Ferias vocacionales y charlas" },
       { name: "Mercado Laboral", href: "/herramientas/mercado-laboral", desc: "Sueldos y empleabilidad" },
       { name: "Explora tu futuro", href: "/noticias", desc: "Noticias de interés diarias" },
     ],
   }
 ];
 
-// 2. MOCK DE DATOS PARA EL BUSCADOR PREDICTIVO (Simula tu Base de Datos)
-const MOCK_DATOS_BUSQUEDA = [
-  // Herramientas destacadas
-  { id: 'h1', tipo: 'herramienta', titulo: 'Test Vocacional Interactivo', subtitulo: 'Descubre tu camino profesional', url: '/herramientas/test-vocacional', icono: <Sparkles className="w-5 h-5" /> },
-  { id: 'h2', tipo: 'herramienta', titulo: 'Calculadora de Puntaje PAES', subtitulo: 'Simulador oficial', url: '/herramientas/calculadora', icono: <Calculator className="w-5 h-5" /> },
-  { id: 'h3', tipo: 'herramienta', titulo: 'Buscador de Carreras', subtitulo: 'Filtra mallas y aranceles', url: '/buscador/carreras', icono: <Search className="w-5 h-5" /> },
-  // Carreras de ejemplo
-  { id: 'c1', tipo: 'carrera', titulo: 'Ingeniería Civil Informática', subtitulo: 'Universidad de Chile', url: '/carrera/informatica-uchile', icono: <GraduationCap className="w-5 h-5" /> },
-  { id: 'c2', tipo: 'carrera', titulo: 'Medicina', subtitulo: 'Pontificia Universidad Católica', url: '/carrera/medicina-puc', icono: <GraduationCap className="w-5 h-5" /> },
-  { id: 'c3', tipo: 'carrera', titulo: 'Ingeniería Comercial', subtitulo: 'Universidad Adolfo Ibáñez', url: '/carrera/comercial-uai', icono: <GraduationCap className="w-5 h-5" /> },
-  { id: 'c4', tipo: 'carrera', titulo: 'Enfermería', subtitulo: 'Universidad San Sebastián', url: '/carrera/enfermeria-uss', icono: <GraduationCap className="w-5 h-5" /> },
+const HERRAMIENTAS_ESTATICAS: ToolItem[] = [
+  { id: 'h1', tipo: 'herramienta', titulo: 'Test Vocacional', subtitulo: 'Descubre tu perfil ideal', url: '/herramientas/test-vocacional', icono: <Sparkles className="w-5 h-5" /> },
+  { id: 'h2', tipo: 'herramienta', titulo: 'Buscador de Carreras', subtitulo: 'Filtra por carrera, arancel y más', url: '/herramientas/buscador', icono: <Search className="w-5 h-5" /> },
+  { id: 'h3', tipo: 'herramienta', titulo: 'Calendario PAES', subtitulo: 'Fechas clave y plazos oficiales', url: '/herramientas/calendario', icono: <CalendarDays className="w-5 h-5" /> },
+  { id: 'h4', tipo: 'herramienta', titulo: 'Calculadora de Puntaje NEM', subtitulo: 'Simula tu ponderación PAES', url: '/herramientas/calculadora', icono: <Calculator className="w-5 h-5" /> },
+  { id: 'h5', tipo: 'herramienta', titulo: 'Becas y Gratuidad', subtitulo: 'Beneficios estatales y requisitos', url: '/herramientas/fuas', icono: <Sparkles className="w-5 h-5" /> },
+  { id: 'h6', tipo: 'herramienta', titulo: 'Eventos y Charlas', subtitulo: 'Ferias vocacionales y ensayos', url: '/herramientas/eventos', icono: <CalendarDays className="w-5 h-5" /> },
+  { id: 'h7', tipo: 'herramienta', titulo: 'Mercado Laboral', subtitulo: 'Sueldos y empleabilidad', url: '/herramientas/mercado-laboral', icono: <Compass className="w-5 h-5" /> },
+  { id: 'h8', tipo: 'herramienta', titulo: 'Buscador de Instituciones', subtitulo: 'Universidades, IPs y CFTs', url: '/herramientas/instituciones', icono: <Building2 className="w-5 h-5" /> },
+  { id: 'h9', tipo: 'herramienta', titulo: 'Explora tu Futuro', subtitulo: 'Noticias de interés diarias', url: '/noticias', icono: <Compass className="w-5 h-5" /> },
 ];
 
 export default function Header() {
@@ -60,20 +96,99 @@ export default function Header() {
   const [mobileExpandedItem, setMobileExpandedItem] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Estados para resultados de búsqueda
+  const [herramientasEncontradas, setHerramientasEncontradas] = useState<ToolItem[]>([]);
+  const [carrerasEncontradas, setCarrerasEncontradas] = useState<DynamicItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Filtramos resultados de búsqueda dinámicamente
-  const resultadosBusqueda = MOCK_DATOS_BUSQUEDA.filter(item => 
-    item.titulo.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.subtitulo.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ============================================================================
+  // 3. MOTOR DE BÚSQUEDA PREDICTIVA (ESTÁTICO + SUPABASE)
+  // ============================================================================
+  useEffect(() => {
+    const query = searchQuery.trim();
+    
+    if (query.length < 2) {
+      setHerramientasEncontradas([]);
+      setCarrerasEncontradas([]);
+      setIsSearching(false);
+      return;
+    }
 
-  const herramientasEncontradas = resultadosBusqueda.filter(r => r.tipo === 'herramienta');
-  const carrerasEncontradas = resultadosBusqueda.filter(r => r.tipo === 'carrera');
+    // A. Filtrado Síncrono de Herramientas (Ignorando tildes de forma segura)
+    const removeAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const qClean = removeAccents(query);
+    
+    const hFiltradas = HERRAMIENTAS_ESTATICAS.filter(h => 
+      removeAccents(h.titulo).includes(qClean) || removeAccents(h.subtitulo).includes(qClean)
+    );
+    setHerramientasEncontradas(hFiltradas);
+
+    // B. Consulta Asíncrona a Supabase con Debounce (Carreras e Instituciones)
+    setIsSearching(true);
+    const timeoutId = setTimeout(async () => {
+      try {
+        const queryRobusta = query.replace(/[aeiouáéíóúAEIOUÁÉÍÓÚ]/g, '_');
+        
+        const [resCarreras, resInst] = await Promise.all([
+          supabase.from('carreras')
+            .select('codigo_carrera, nombre_carrera, instituciones(nombre)')
+            .ilike('nombre_carrera', `%${queryRobusta}%`)
+            .limit(4),
+          supabase.from('instituciones')
+            .select('codigo_institucion, nombre, tipo')
+            .ilike('nombre', `%${queryRobusta}%`)
+            .limit(2)
+        ]);
+
+        const results: DynamicItem[] = [];
+
+        // 1. Mapeamos Instituciones (Prioridad Arriba)
+        if (resInst.data) {
+          const instData = resInst.data as unknown as InstitucionResp[];
+          instData.forEach(inst => {
+            results.push({
+              id: `inst-${inst.codigo_institucion}`,
+              tipo: 'institucion',
+              titulo: inst.nombre,
+              subtitulo: inst.tipo || 'Educación Superior',
+              url: `/institucion/${inst.codigo_institucion}`,
+              icono: <Building2 className="w-5 h-5" />
+            });
+          });
+        }
+
+        // 2. Mapeamos Carreras
+        if (resCarreras.data) {
+          const carData = resCarreras.data as unknown as CarreraResp[];
+          carData.forEach(car => {
+            const instObj = Array.isArray(car.instituciones) ? car.instituciones[0] : car.instituciones;
+            results.push({
+              id: `car-${car.codigo_carrera}`,
+              tipo: 'carrera',
+              titulo: car.nombre_carrera,
+              subtitulo: instObj?.nombre || 'Institución no informada',
+              url: `/carrera/${car.codigo_carrera}`,
+              icono: <GraduationCap className="w-5 h-5" />
+            });
+          });
+        }
+
+        setCarrerasEncontradas(results);
+      } catch (error) {
+        console.error('Error en búsqueda en tiempo real:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/buscador/carreras?q=${encodeURIComponent(searchQuery.trim())}`;
+      window.location.href = `/herramientas/buscador?q=${encodeURIComponent(searchQuery.trim())}`;
       setSearchOpen(false);
       setSearchQuery("");
     }
@@ -162,7 +277,11 @@ export default function Header() {
             {/* Input Wrapper */}
             <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-4 z-50">
               <div className="relative flex-1 group">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 group-focus-within:text-[#6544FF] transition-colors" />
+                {isSearching ? (
+                   <Loader2 className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-[#6544FF] animate-spin transition-colors" />
+                ) : (
+                   <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 group-focus-within:text-[#6544FF] transition-colors" />
+                )}
                 <input
                   type="text"
                   value={searchQuery}
@@ -182,11 +301,11 @@ export default function Header() {
             </form>
 
             {/* Menú Flotante de Resultados (Aparece al escribir) */}
-            {searchQuery.trim().length > 0 && (
+            {searchQuery.trim().length > 1 && (
               <div className="mt-4 bg-white rounded-3xl border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col md:flex-row max-h-[60vh] overflow-y-auto">
+                <div className="flex flex-col md:flex-row max-h-[60vh] overflow-y-auto custom-scrollbar">
                   
-                  {/* SECCIÓN 1: HERRAMIENTAS (ESPECTACULAR) */}
+                  {/* SECCIÓN 1: HERRAMIENTAS */}
                   {(herramientasEncontradas.length > 0) && (
                     <div className="w-full md:w-1/3 bg-[#FAFAFA] p-6 border-b md:border-b-0 md:border-r border-gray-100">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
@@ -218,49 +337,44 @@ export default function Header() {
                   {/* SECCIÓN 2: CARRERAS E INSTITUCIONES */}
                   <div className="flex-1 p-6">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
-                      <GraduationCap className="w-3 h-3" /> Resultados de Carreras
+                      <GraduationCap className="w-3 h-3" /> Carreras e Instituciones
                     </h3>
                     
-                    {carrerasEncontradas.length > 0 ? (
+                    {!isSearching && carrerasEncontradas.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {carrerasEncontradas.map(carrera => (
+                        {carrerasEncontradas.map(item => (
                           <a 
-                            key={carrera.id} 
-                            href={carrera.url}
+                            key={item.id} 
+                            href={item.url}
                             className="group flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 border-2 border-transparent hover:border-gray-100 transition-all duration-300"
                           >
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:text-[#1A1528] group-hover:shadow-sm transition-all">
-                                {carrera.icono}
+                                {item.icono}
                               </div>
                               <div>
-                                <h4 className="font-bold text-[#1A1528] group-hover:text-[#6544FF] transition-colors">
-                                  {carrera.titulo}
+                                <h4 className="font-bold text-[#1A1528] group-hover:text-[#6544FF] transition-colors line-clamp-1">
+                                  {item.titulo}
                                 </h4>
-                                <p className="text-xs text-gray-500 font-medium">{carrera.subtitulo}</p>
+                                <p className="text-xs text-gray-500 font-medium line-clamp-1">{item.subtitulo}</p>
                               </div>
                             </div>
-                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#6544FF] opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#6544FF] opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all shrink-0" />
                           </a>
                         ))}
                       </div>
-                    ) : (
+                    ) : !isSearching && carrerasEncontradas.length === 0 ? (
                       <div className="text-center py-10">
-                        <p className="text-gray-400 font-medium text-sm">No encontramos carreras exactas. Presiona "Enter" para hacer una búsqueda completa.</p>
+                        <p className="text-gray-400 font-medium text-sm">No encontramos resultados exactos en el buscador rápido.</p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 flex flex-col items-center justify-center text-gray-400">
+                         <Loader2 className="w-6 h-6 animate-spin mb-2 text-[#6544FF]" />
+                         <span className="text-sm font-medium">Buscando en la base de datos...</span>
                       </div>
                     )}
                   </div>
 
-                </div>
-                
-                {/* Botón Explorar Todo inferior */}
-                <div className="bg-gray-50 p-4 border-t border-gray-100 text-center">
-                  <button 
-                    onClick={handleSearchSubmit}
-                    className="text-sm font-bold text-[#6544FF] hover:text-[#5233E6] flex items-center justify-center gap-2 w-full transition-colors"
-                  >
-                    Ver todos los resultados para "{searchQuery}" <ArrowRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             )}
@@ -268,7 +382,7 @@ export default function Header() {
         </div>
       )}
 
-      {/* Mobile Menu Dropdown (Mantiene tu diseño intacto) */}
+      {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-2xl max-h-[calc(100vh-5.5rem)] overflow-y-auto animate-in slide-in-from-top-4 fade-in duration-300 z-40">
           <div className="p-4 flex flex-col gap-2">

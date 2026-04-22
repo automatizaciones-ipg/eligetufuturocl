@@ -78,7 +78,7 @@ export default function CalculadoraNem() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white">
+    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white ">
       
       {/* =========================================================================
           1. HERO SECTION (BANNER) - EXACTAMENTE EL MISMO COLOR QUE EL BUSCADOR
