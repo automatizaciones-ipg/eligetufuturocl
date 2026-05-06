@@ -71,12 +71,20 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* LADO DERECHO - ARTE CSS */}
-          <div className="hidden -scale-x-100 lg:flex justify-center items-center h-full relative animate-in fade-in zoom-in-95 duration-1000 delay-500">
-            <div className="relative w-[500px] h-[500px] rotate-[-45deg]">
-              <div className="absolute top-0 left-12 w-32 h-80 bg-[#947BFF] rounded-full shadow-2xl animate-[pulse_4s_ease-in-out_infinite]"></div>
-              <div className="absolute top-24 left-48 w-32 h-80 bg-[#6544FF] rounded-full shadow-2xl animate-[pulse_5s_ease-in-out_infinite_reverse]"></div>
-              <div className="absolute top-48 left-84 w-32 h-80 bg-[#2B239A] rounded-full shadow-2xl animate-[pulse_6s_ease-in-out_infinite]"></div>
+          {/* LADO DERECHO - IMAGEN PROFESIONAL ADAPTABLE */}
+          <div className="hidden lg:flex justify-center items-center h-full relative animate-in fade-in zoom-in-95 duration-1000 delay-500 p-8">
+            {/* Contenedor relativo para manejar el ajuste exacto */}
+            <div className="relative w-full h-full max-w-[550px] max-h-[550px] flex items-center justify-center">
+              
+              {/* Decoración de fondo suave (Opcional, para coherencia con el diseño original) */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#6544FF]/10 to-[#947BFF]/5 rounded-full blur-3xl -z-10 animate-pulse-slow"></div>
+
+              {/* LA IMAGEN */}
+              <img 
+                src="/public/imagenes/imagen_portada.png"
+                alt="Ilustración profesional descubriendo el futuro ideal"
+                className="w-full h-full object-contain object-center drop-shadow-2xl"
+              />
             </div>
           </div>
 
