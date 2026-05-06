@@ -201,9 +201,9 @@ export default function Header() {
         {/* Logo */}
         <a href="/" className="flex items-center shrink-0 group py-2 outline-none focus-visible:ring-2 focus-visible:ring-[#6544FF] rounded-lg">
           <img 
-            src="/Logo.svg" 
+            src="/public/logos_web/logo_1.webp" 
             alt="Elige Tu Futuro" 
-            className="h-16 md:h-20 w-auto object-contain group-hover:scale-105 transition-transform duration-300 origin-left"
+            className="h-full md:h-full w-auto object-contain group-hover:scale-105 transition-transform duration-300 origin-left"
           />
         </a>
 
