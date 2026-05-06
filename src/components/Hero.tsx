@@ -10,40 +10,34 @@ export default function Hero() {
           {/* LADO IZQUIERDO - TEXTOS Y BOTONES */}
           <div className="flex flex-col items-start w-full max-w-2xl mx-auto lg:mx-0">
             
-            {/* Título Principal - Tamaños ajustados y alineación estricta */}
-            <h1 className="font-black italic text-[#1A1528] uppercase tracking-tight leading-[1.1] flex flex-col items-start w-full">
-              
-              <span className="text-4xl md:text-5xl lg:text-[4rem] animate-in fade-in slide-in-from-bottom-4 duration-700">
-                Descubre tu
-              </span>
-              
-              {/* Caja Futuro */}
-              <span className="text-4xl md:text-5xl lg:text-[3.8rem] bg-[#C1AFFF] text-[#1A1528] px-4 md:px-6 py-0 md:py-1 rounded-xl md:rounded-2xl mt-1 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 shadow-sm">
-                Futuro
-              </span>
-              
-              <span className="text-4xl md:text-5xl lg:text-[4rem] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 mt-1">
-                Aclara tus
-              </span>
-              
-              <span className="text-4xl md:text-5xl lg:text-[4rem] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-[250ms]">
-                Dudas
-              </span>
-              
-              {/* Línea ELIGE TU CARRERA (En línea en desktop, apilado en móvil si no cabe) */}
-              <div className="flex flex-wrap items-center gap-x-3 md:gap-x-4 mt-3 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 w-full">
-                <span className="text-4xl md:text-5xl lg:text-[4rem]">
-                  Elige tu
+            {/* Título Principal - Exactitud Figma */}
+            <div className="flex flex-col items-start w-full">
+              {/* Asumimos que Poppins es tu fuente global. Mantenemos el italic y mayúsculas */}
+              <h1 className="uppercase tracking-tighter flex flex-col items-start w-full space-y-2">
+                
+                {/* Línea 1: DECISIÓN ACTIVA (Figma: Poppins ExtraBold, 64px, #1E003E) */}
+                <span className="text-[#1E003E] font-extrabold italic text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[58px] leading-[1] lg:leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 drop-shadow-sm">
+                  DECISIÓN ACTIVA
                 </span>
-                <span className="text-4xl md:text-5xl lg:text-[3.8rem] bg-[#8B75FF] text-[#1A1528] px-4 md:px-6 py-0 md:py-1 rounded-xl md:rounded-2xl shadow-sm">
-                  Carrera
+                
+                {/* Línea 2: DESCUBRE TU FUTURO (Figma: Poppins ExtraBold, 64px, #8554E4) */}
+                <span className="text-[#8554E4] font-extrabold italic text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[58px] leading-[1] lg:leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 drop-shadow-sm">
+                  DESCUBRE TU FUTURO
                 </span>
-              </div>
-              
-              <span className="text-4xl md:text-5xl lg:text-[4rem] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500 mt-1 w-full max-w-[90%] md:max-w-full">
-                Calcula tu puntaje
-              </span>
-            </h1>
+                
+                {/* Línea 3: ELIGE TU CARRERA (Figma: Poppins Bold, 89px, #1E003E) 
+                    Notar el font-bold (en vez de extrabold) y el tamaño text-[89px] */}
+                <span className="text-[#1E003E] font-bold italic text-[3.25rem] sm:text-[4rem] md:text-[4.75rem] lg:text-[76px] leading-[0.95] lg:leading-[0.85] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 drop-shadow-sm mt-1 lg:-mt-1 pt-2">
+                  ELIGE TU CARRERA
+                </span>
+
+              </h1>
+
+              {/* Subtítulo Figma */}
+              <p className="text-[#1E003E]/80 text-lg md:text-xl lg:text-2xl font-medium mt-6 lg:mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500 max-w-2xl leading-relaxed">
+                Todo lo que necesites para elegir tu futuro con confianza
+              </p>
+            </div>
 
             {/* Accesos Directos (Cards inferiores) - Diseño limpio como en Figma */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-10 md:mt-14 w-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-[600ms]">
