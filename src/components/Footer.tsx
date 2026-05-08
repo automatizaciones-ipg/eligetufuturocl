@@ -13,7 +13,7 @@ export default function Footer() {
           <div className="flex flex-col items-start max-w-sm">
             {/* Aquí mandamos a llamar el icono.svg desde la carpeta public */}
             <img 
-              src="/public/logos_web/logo_principal_blanco.webp" 
+              src="/logos_web/logo_principal_blanco.webp" 
               alt="Elige Tu Futuro" 
               className="h-14 mb-6 hover:scale-105 transition-transform duration-300"
             />

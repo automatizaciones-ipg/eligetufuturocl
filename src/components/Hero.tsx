@@ -75,7 +75,7 @@ export default function Hero() {
 
               {/* LA IMAGEN */}
               <img 
-                src="/public/imagenes/imagen_portada.png"
+                src="/imagenes/imagen_portada.png"
                 alt="Ilustración profesional descubriendo el futuro ideal"
                 className="w-full h-full object-contain object-center drop-shadow-2xl"
               />
