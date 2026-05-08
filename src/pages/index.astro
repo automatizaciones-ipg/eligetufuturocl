@@ -3,12 +3,15 @@
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.tsx";
 import Hero from "../components/Hero.tsx";
+import CarrerasDestacadas from "../components/CarrerasDestacadas.tsx";
 import ToolsSection from "../components/ToolsSection.tsx"; // IMPORTA ESTO
 ---
 
 <Layout title="Elige Tu Futuro - Inicio">
   <main>
     <Hero client:load />
+
+    <CarrerasDestacadas client:visible />
 
     <ToolsSection client:visible />
   </main>
