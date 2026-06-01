@@ -70,6 +70,7 @@ export default function Hero() {
                 src="/imagenes/imagen_portada.png"
                 alt="Ilustración profesional descubriendo el futuro ideal"
                 className="w-full h-full object-contain object-center drop-shadow-xl lg:drop-shadow-2xl transition-transform duration-700 hover:scale-[1.03]"
+                
               />
             </div>
           </div>
