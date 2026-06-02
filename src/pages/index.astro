@@ -3,15 +3,34 @@
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.tsx";
 import Hero from "../components/Hero.tsx";
+import FeaturedEventBanner from "../components/FeaturedEventBanner.tsx"; // El nuevo banner responsivo estilo Figma
 import CarrerasDestacadas from "../components/CarrerasDestacadas.tsx";
-import ToolsSection from "../components/ToolsSection.tsx"; // IMPORTA ESTO
+import ToolsSection from "../components/ToolsSection.tsx";
+
+// FUTURA CONEXIÓN SUPABASE / API
+// Deja esta estructura fija. Cuando montes la base de datos, solo mapeas la respuesta aquí.
+const featuredEvent = {
+  id: "siad-2026",
+  isFeatured: true,
+  featuredLabel: "Evento Destacado",
+  mainTitle: "SALÓN DE ORIENTACIÓN",
+  subtitle: "y Alternativas Académicas",
+  badgeText: "SIAD 2026",
+  description: "La feria de alternativas académicas y orientación vocacional",
+  buttonText: "CONOCE SIAD 2026",
+  buttonUrl: "https://siad.cl/cl/",
+  imageUrl: "/imagenes/Banner_Img.webp",
+  imageAlt: "Estudiantes revisando orientación vocacional en su celular",
+};
 ---
 
 <Layout title="Elige Tu Futuro - Inicio">
-  <main>
+  <main class="bg-[#F4F5F9] overflow-x-hidden">
     <Hero client:load />
 
     <CarrerasDestacadas client:visible />
+
+    <FeaturedEventBanner event={featuredEvent} client:visible />
 
     <ToolsSection client:visible />
   </main>
