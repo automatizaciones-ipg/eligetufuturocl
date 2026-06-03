@@ -41,6 +41,7 @@ export default function Footer() {
               Información
             </h5>
             <ul className="space-y-4 text-sm text-gray-400">
+              <li><a href="/terminos-y-condiciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Términos y condiciones</a></li>
               <li><a href="/informacion/becas" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Becas y Gratuidad</a></li>
               <li><a href="/informacion/calendario" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Calendario PAES</a></li>
               <li><a href="/instituciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Instituciones</a></li>
@@ -55,33 +56,21 @@ export default function Footer() {
             </h5>
             <ul className="space-y-4 text-sm text-gray-400">
               <li>
-                <a href="/nosotros" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
+                <a href="/contacto" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
                   <Users className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
-                  <span>Sobre nosotros</span>
+                  <span>Contáctanos</span>
                 </a>
               </li>
               <li>
-                <a href="mailto:EligeTuFuturo@ipg.cl" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
+                <a href="mailto:cntact@eligetufuturo.cl" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
                   <Mail className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
-                  <span>EligeTuFuturo@ipg.cl</span>
+                  <span>contacto@eligetufuturo.cl</span>
                 </a>
               </li>
               <li>
-                <a href="tel:+569000000" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
-                  <Smartphone className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
-                  <span>+569 000 000</span>
-                </a>
-              </li>
-              <li>
-                <a href="#" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
-                  <AtSign className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
-                  <span>@EligeTuFuturo.cl</span>
-                </a>
-              </li>
-              <li>
-                <a href="#" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
+                <a href="https://www.instagram.com/eligetufuturo.cl" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
                   <Instagram className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
-                  <span>@EligeTuFuturo.cl</span>
+                  <span>EligeTuFuturo.cl</span>
                 </a>
               </li>
             </ul>
@@ -90,7 +79,7 @@ export default function Footer() {
 
         {/* Barra inferior */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-center text-xs text-gray-500">
-          <p>2026 EligeTuFuturo.cl - Hecho en Chile</p>
+          <p>2026 EligeTuFuturo.cl - By Luis Rvera - Nayely Soto</p>
         </div>
         
       </div>

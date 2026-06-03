@@ -5,6 +5,7 @@ import Header from "../components/Header.tsx";
 import Hero from "../components/Hero.tsx";
 import FeaturedEventBanner from "../components/FeaturedEventBanner.tsx"; // El nuevo banner responsivo estilo Figma
 import CarrerasDestacadas from "../components/CarrerasDestacadas.tsx";
+import NoticiasDestacadas from "../components/NoticiasDestacadas.tsx";
 import ToolsSection from "../components/ToolsSection.tsx";
 
 // FUTURA CONEXIÓN SUPABASE / API
@@ -33,5 +34,7 @@ const featuredEvent = {
     <FeaturedEventBanner event={featuredEvent} client:visible />
 
     <ToolsSection client:visible />
+
+    <NoticiasDestacadas client:visible />
   </main>
 </Layout>

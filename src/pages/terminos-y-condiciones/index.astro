@@ -1,0 +1,22 @@
+---
+// Importamos el componente React que guardaste en el Paso 1
+// Ajusta la ruta '../../components/' dependiendo de dónde esté tu archivo exacto.
+import TerminosYCondiciones from "../../components/TerminosYCondiciones";
+
+// IMPORTANTE: Si tienes un Layout global (donde está tu Navbar y Footer),
+// impórtalo aquí. Asumiré que tienes uno básico llamado Layout.astro
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Términos y Condiciones | Eligetufuturo">
+  <main>
+    {
+      /* Pro-Tip de Rendimiento: Como esta página es puro texto y no tiene interactividad 
+      (no hay useState, ni botones complejos), NO usamos 'client:load' ni 'client:visible'. 
+      Astro renderizará el React como HTML estático puro, haciendo la página 
+      EXTREMADAMENTE RÁPIDA y perfecta para el SEO. 
+    */
+    }
+    <TerminosYCondiciones />
+  </main>
+</Layout>
