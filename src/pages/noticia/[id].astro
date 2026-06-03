@@ -1,0 +1,16 @@
+---
+// src/pages/noticia/[id].astro
+import Layout from "../../layouts/Layout.astro"; // Ajusta esto según el nombre/ruta de tu layout principal
+import NoticiaSingle from "../../components/NoticiaSingle"; // Importamos tu componente React
+
+// Desactivamos el prerender estático para esta página, permitiendo que sea 100% dinámica
+// y pueda leer cualquier ID directamente desde la URL en tiempo real.
+export const prerender = false;
+
+// Capturamos el ID de la URL (/noticia/a81e8997-...)
+const { id } = Astro.params;
+---
+
+<Layout title="Lectura Premium | Explora Tu Futuro">
+  <NoticiaSingle noticiaId={id as string} client:only="react" />
+</Layout>

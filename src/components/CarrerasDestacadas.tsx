@@ -1,20 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
-  TrendingUp, 
   Briefcase, 
   DollarSign, 
   GraduationCap, 
   ArrowUpRight, 
   Star,
   ArrowRight,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
-// --- INTERFACES DE TYPESCRIPT (Tipado Estricto) ---
+// --- INTERFACES DE TYPESCRIPT ---
 interface InstitucionDB {
   nombre: string;
   tipo: string;
+  logo_url?: string;
 }
 
 interface CarreraDB {
@@ -24,6 +26,7 @@ interface CarreraDB {
   empleabilidad_1er_anio: number | null;
   ingreso_promedio_4to_anio: string | null;
   arancel_anual: number | null;
+  es_promocionada?: boolean; 
   instituciones: InstitucionDB | InstitucionDB[] | null;
 }
 
@@ -33,38 +36,124 @@ interface CarreraUI {
   carrera: string;
   institucion: string;
   tipoInst: string;
+  logoInst: string;
   empleabilidad: number;
   arancel: string;
   ingreso: string;
-  color: string;
+  es_promocionada: boolean; 
+  tema: {
+    borderHover: string;
+    textGradient: string;
+    textAccent: string;
+    bgBadge: string;
+    textBadge: string;
+    darkBox: string;
+    barGradient: string;
+    lightBg: string;
+  };
 }
 
-// Rescatamos exactamente los mismos colores de tu diseño original
-const PALETA_COLORES = [
-  "from-[#15803d] to-emerald-400",
-  "from-[#6544FF] to-[#947BFF]",
-  "from-blue-600 to-cyan-400",
-  "from-rose-500 to-pink-400"
-];
+// --- SISTEMA DE GRADIENTES PROFESIONALES POR ÁREA ---
+const obtenerTemaPorCarrera = (nombre: string) => {
+  const n = nombre.toLowerCase();
+  
+  if (n.includes('química') || n.includes('biología') || n.includes('ciencias') || n.includes('geología') || n.includes('física') || n.includes('agronomía')) {
+    return {
+      borderHover: 'hover:border-emerald-400/50 hover:shadow-[0_20px_50px_rgba(52,211,153,0.15)]',
+      textGradient: 'bg-gradient-to-r from-emerald-500 to-teal-400 text-transparent bg-clip-text',
+      textAccent: 'text-emerald-500',
+      bgBadge: 'bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100',
+      textBadge: 'text-emerald-700',
+      darkBox: 'bg-[#022C22]', 
+      barGradient: 'bg-gradient-to-r from-emerald-400 to-teal-400',
+      lightBg: 'bg-gradient-to-br from-emerald-50/80 to-teal-50/30'
+    };
+  }
+  
+  if (n.includes('medicina') || n.includes('enfermería') || n.includes('salud') || n.includes('obstetricia') || n.includes('odontología') || n.includes('kinesiología')) {
+    return {
+      borderHover: 'hover:border-rose-400/50 hover:shadow-[0_20px_50px_rgba(251,113,133,0.15)]',
+      textGradient: 'bg-gradient-to-r from-rose-500 to-purple-500 text-transparent bg-clip-text',
+      textAccent: 'text-rose-500',
+      bgBadge: 'bg-gradient-to-r from-rose-50 to-purple-50 border border-rose-100',
+      textBadge: 'text-rose-700',
+      darkBox: 'bg-[#2E0F1C]', 
+      barGradient: 'bg-gradient-to-r from-rose-400 to-purple-500',
+      lightBg: 'bg-gradient-to-br from-rose-50/80 to-purple-50/30'
+    };
+  }
+  
+  if (n.includes('ingeniería') || n.includes('computación') || n.includes('datos') || n.includes('civil') || n.includes('arquitectura') || n.includes('software')) {
+    return {
+      borderHover: 'hover:border-blue-400/50 hover:shadow-[0_20px_50px_rgba(96,165,250,0.15)]',
+      textGradient: 'bg-gradient-to-r from-blue-600 to-cyan-400 text-transparent bg-clip-text',
+      textAccent: 'text-blue-500',
+      bgBadge: 'bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100',
+      textBadge: 'text-blue-700',
+      darkBox: 'bg-[#0A1931]', 
+      barGradient: 'bg-gradient-to-r from-blue-500 to-cyan-400',
+      lightBg: 'bg-gradient-to-br from-blue-50/80 to-cyan-50/30'
+    };
+  }
+  
+  if (n.includes('comercial') || n.includes('administración') || n.includes('negocios') || n.includes('contabilidad') || n.includes('economía') || n.includes('finanzas')) {
+    return {
+      borderHover: 'hover:border-amber-400/50 hover:shadow-[0_20px_50px_rgba(251,191,36,0.15)]',
+      textGradient: 'bg-gradient-to-r from-amber-500 to-orange-500 text-transparent bg-clip-text',
+      textAccent: 'text-orange-500',
+      bgBadge: 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100',
+      textBadge: 'text-orange-700',
+      darkBox: 'bg-[#2A1700]', 
+      barGradient: 'bg-gradient-to-r from-amber-400 to-orange-500',
+      lightBg: 'bg-gradient-to-br from-amber-50/80 to-orange-50/30'
+    };
+  }
+
+  if (n.includes('derecho') || n.includes('psicología') || n.includes('periodismo') || n.includes('educación') || n.includes('pedagogía') || n.includes('letras')) {
+    return {
+      borderHover: 'hover:border-violet-400/50 hover:shadow-[0_20px_50px_rgba(167,139,250,0.15)]',
+      textGradient: 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-transparent bg-clip-text',
+      textAccent: 'text-violet-500',
+      bgBadge: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 border border-violet-100',
+      textBadge: 'text-violet-700',
+      darkBox: 'bg-[#1C0F2E]', 
+      barGradient: 'bg-gradient-to-r from-violet-500 to-fuchsia-500',
+      lightBg: 'bg-gradient-to-br from-violet-50/80 to-fuchsia-50/30'
+    };
+  }
+  
+  return {
+    borderHover: 'hover:border-[#6544FF]/40 hover:shadow-[0_20px_50px_rgba(101,68,255,0.15)]',
+    textGradient: 'bg-gradient-to-r from-[#6544FF] to-[#3B82F6] text-transparent bg-clip-text',
+    textAccent: 'text-[#6544FF]',
+    bgBadge: 'bg-gradient-to-r from-[#EEECFF] to-blue-50 border border-[#6544FF]/10',
+    textBadge: 'text-[#6544FF]',
+    darkBox: 'bg-[#0F0A21]',
+    barGradient: 'bg-gradient-to-r from-[#6544FF] to-[#3B82F6]',
+    lightBg: 'bg-gradient-to-br from-[#6544FF]/5 to-[#3B82F6]/5'
+  };
+};
 
 export default function CarrerasDestacadas() {
-  // --- ESTADOS ---
   const [carrerasBD, setCarrerasBD] = useState<CarreraUI[]>([]);
   const [cargando, setCargando] = useState(true);
   const [accediendoId, setAccediendoId] = useState<string | number | null>(null);
+  
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftPos, setScrollLeftPos] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [animarBarras, setAnimarBarras] = useState(false);
 
-  // --- LIMPIEZA AL VOLVER (BFCache) ---
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setAccediendoId(null);
-      }
+      if (event.persisted) setAccediendoId(null);
     };
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
-  // --- FETCH A SUPABASE (0% HARDCODEO) ---
   useEffect(() => {
     const fetchTopCarreras = async () => {
       setCargando(true);
@@ -78,42 +167,75 @@ export default function CarrerasDestacadas() {
             empleabilidad_1er_anio,
             ingreso_promedio_4to_anio,
             arancel_anual,
-            instituciones!inner (nombre, tipo)
+            instituciones!inner (nombre, tipo, logo_url)
           `)
-          // Filtramos solo las que tengan info real
           .not('empleabilidad_1er_anio', 'is', null)
           .not('ingreso_promedio_4to_anio', 'is', null)
-          // Ordenamos por empleabilidad para tener el TOP real
           .order('empleabilidad_1er_anio', { ascending: false })
-          .limit(4); // Solo las top 4 para esta sección de "Destacadas"
+          .limit(30);
 
         if (error) throw error;
 
         if (data) {
           const rawData = data as unknown as CarreraDB[];
-
-          const carrerasAdaptadas: CarreraUI[] = rawData.map((item, index) => {
+          
+          // 1. Mapeamos y extraemos la data pura de TODOS los registros primero
+          const todasAdaptadas = rawData.map((item) => {
             const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
-            
-            // Convertimos 0.985 a 98.5
+            const nombreInst = inst?.nombre || "No informada";
             const empleabilidadReal = item.empleabilidad_1er_anio 
               ? Number((item.empleabilidad_1er_anio * 100).toFixed(1)) 
               : 0;
-
+  
+            // LOGO POR DEFECTO DINÁMICO
+            const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(nombreInst)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+  
+            // LLAVE DESTRUCTORA: Elimina tildes, comas, puntos y espacios extras.
+            const llaveFiltro = item.nombre_carrera
+              .trim()
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9\s]/g, "")
+              .replace(/\s+/g, " ");
+  
             return {
-              id: item.id,
-              codigo_carrera: item.codigo_carrera,
-              carrera: item.nombre_carrera,
-              institucion: inst?.nombre || "No informada",
-              tipoInst: inst?.tipo || "Universidades",
-              empleabilidad: empleabilidadReal,
-              arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
-              ingreso: item.ingreso_promedio_4to_anio || "No informado",
-              color: PALETA_COLORES[index % PALETA_COLORES.length]
+              datosUI: {
+                id: item.id,
+                codigo_carrera: item.codigo_carrera,
+                carrera: item.nombre_carrera.trim(),
+                institucion: nombreInst,
+                tipoInst: inst?.tipo || "Universidades",
+                // Asigna logo_url, si es null o no existe usa el fallbackLogo
+                logoInst: inst?.logo_url || fallbackLogo,
+                empleabilidad: empleabilidadReal,
+                arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
+                ingreso: item.ingreso_promedio_4to_anio || "No informado",
+                es_promocionada: item.es_promocionada || false, 
+                tema: obtenerTemaPorCarrera(item.nombre_carrera)
+              },
+              llave: llaveFiltro
             };
           });
-
-          setCarrerasBD(carrerasAdaptadas);
+  
+          // 2. Filtro Infranqueable con Set (garantiza UNICIDAD ABSOLUTA por Carrera)
+          const filtroDefinitivo: CarreraUI[] = [];
+          const nombresYaAgregados = new Set<string>();
+  
+          for (const item of todasAdaptadas) {
+            if (!nombresYaAgregados.has(item.llave)) {
+              nombresYaAgregados.add(item.llave);
+              
+              filtroDefinitivo.push({
+                ...item.datosUI,
+                es_promocionada: item.datosUI.es_promocionada || filtroDefinitivo.length === 0
+              });
+            }
+            if (filtroDefinitivo.length >= 15) break;
+          }
+  
+          setCarrerasBD(filtroDefinitivo);
+          setTimeout(() => setAnimarBarras(true), 100);
         }
       } catch (err) {
         console.error("Error cargando carreras destacadas:", err);
@@ -121,205 +243,309 @@ export default function CarrerasDestacadas() {
         setCargando(false);
       }
     };
-
     fetchTopCarreras();
   }, []);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!sliderRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - sliderRef.current.offsetLeft);
+    setScrollLeftPos(sliderRef.current.scrollLeft);
+  };
+
+  const handleMouseLeaveOrUp = () => setIsDragging(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !sliderRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - sliderRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    sliderRef.current.scrollLeft = scrollLeftPos - walk;
+  };
+
+  const handleScrollEvent = () => {
+    if (!sliderRef.current) return;
+    const contenedor = sliderRef.current;
+    const primeraTarjeta = contenedor.firstElementChild as HTMLElement;
+    if (primeraTarjeta) {
+      const anchoDesplazamiento = primeraTarjeta.offsetWidth + 24; 
+      const index = Math.round(contenedor.scrollLeft / anchoDesplazamiento);
+      setActiveIndex(index);
+    }
+  };
+
+  const handleNavegacion = (direction: "left" | "right") => {
+    if (sliderRef.current) {
+      const contenedor = sliderRef.current;
+      const primeraTarjeta = contenedor.firstElementChild as HTMLElement;
+      if (primeraTarjeta) {
+        const anchoDesplazamiento = primeraTarjeta.offsetWidth + 24;
+        const multiplicador = direction === "left" ? -anchoDesplazamiento : anchoDesplazamiento;
+        contenedor.scrollBy({ left: multiplicador, behavior: "smooth" });
+      }
+    }
+  };
+
+  const scrollToDot = (index: number) => {
+    if (sliderRef.current) {
+      const primeraTarjeta = sliderRef.current.firstElementChild as HTMLElement;
+      if (primeraTarjeta) {
+        const anchoDesplazamiento = primeraTarjeta.offsetWidth + 24;
+        sliderRef.current.scrollTo({ left: index * anchoDesplazamiento, behavior: "smooth" });
+      }
+    }
+  };
+
   return (
-    // CONTENEDOR RAÍZ CON EL FONDO CLARO GLOBAL
-    <section className="w-full bg-[#F4F5F9] pb-20">
+    <section className="w-full bg-[#F4F5F9] pb-24 overflow-hidden tracking-tight">
       
-      {/* =========================================================================
-          1. HERO BANNER - EXACTAMENTE IGUAL A HERRAMIENTAS
-      ========================================================================= */}
-      <div className="relative w-full bg-[#0A0518] pt-20 pb-40 px-6 overflow-hidden shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20 border-b border-white/5">
-        
-        {/* Fondo Animado Mesh Gradient Brutal */}
+      {/* 1. HERO BANNER */}
+      <div className="relative w-full bg-[#0A0518] pt-24 pb-48 px-6 overflow-hidden z-20 border-b border-white/5">
         <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#15803d]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#15803d]/15 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
         </div>
 
-        {/* Textos del Banner */}
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center space-y-4">
-          
-          {/* Badge superior */}
-          <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-emerald-300 font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md animate-fade-in-up">
-            <Star className="w-4 h-4" /> Top Nacional
+          <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-emerald-300 font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md">
+            <Star className="w-4 h-4 fill-emerald-300/20" /> Top Nacional
           </div>
-
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h2 className="font-black uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-none">
             Carreras <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-[#3B82F6] to-[#6544FF]">Destacadas</span>
           </h2>
-          
-          <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed" style={{ animationDelay: '0.2s' }}>
-            Descubre las opciones académicas con la mayor tasa de inserción laboral y proyección de sueldos en Chile.
+          <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
+            Explora las opciones académicas con los índices de inserción laboral y proyecciones salariales más potentes de Chile.
           </p>
         </div>
       </div>
 
-      {/* =========================================================================
-          2. TARJETAS DE CARRERAS - SUPERPUESTAS AL BANNER
-      ========================================================================= */}
-      <div className="w-full max-w-6xl mx-auto px-4 -mt-24 relative z-30">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-          
-          {/* LOADER MIENTRAS CONSULTA A SUPABASE */}
-          {cargando ? (
-            <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] shadow-xl border border-gray-100">
-              <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" />
-              <p className="font-bold text-gray-500">Consultando datos oficiales en vivo...</p>
-            </div>
-          ) : (
-            carrerasBD.map((carrera, i) => (
-              <div 
-                key={carrera.id}
-                className="group bg-white rounded-[2rem] p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)] border-2 border-transparent hover:border-[#6544FF]/30 hover:shadow-[0_20px_50px_rgba(101,68,255,0.12)] transition-all duration-300 flex flex-col animate-in slide-in-from-bottom-8 fade-in fill-mode-both hover:-translate-y-1"
-                style={{ animationDelay: `${(i % 10) * 100}ms` }}
-              >
-                
-                {/* Cabecera de la Tarjeta */}
-                <div className="flex justify-between items-start mb-6">
-                  <div className="pr-4">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-gradient-to-r ${carrera.color} text-white bg-opacity-10 mb-3 inline-block shadow-sm`}>
-                      {carrera.tipoInst}
-                    </span>
-                    <h3 className="font-black text-2xl text-[#1A1528] leading-tight group-hover:text-[#6544FF] transition-colors mb-2">
+      {/* 2. SLIDER DE CARRERAS */}
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 -mt-32 relative z-30">
+        
+        {!cargando && carrerasBD.length > 0 && (
+          <div className="absolute -top-16 right-8 z-40 flex items-center gap-2.5">
+            <button 
+              onClick={() => handleNavegacion("left")}
+              className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white hover:text-[#0A0518] border border-white/10 flex items-center justify-center transition-all duration-300 shadow-xl backdrop-blur-md active:scale-95"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={() => handleNavegacion("right")}
+              className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white hover:text-[#0A0518] border border-white/10 flex items-center justify-center transition-all duration-300 shadow-xl backdrop-blur-md active:scale-95"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+        )}
+
+        {cargando ? (
+          <div className="w-full flex flex-col items-center justify-center py-28 bg-white rounded-[2.5rem] shadow-xl border border-gray-100">
+            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" />
+            <p className="font-bold text-gray-500">Cargando carreras destacadas...</p>
+          </div>
+        ) : (
+          <>
+            <div 
+              ref={sliderRef}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeaveOrUp}
+              onMouseUp={handleMouseLeaveOrUp}
+              onMouseMove={handleMouseMove}
+              onScroll={handleScrollEvent}
+              className={`flex w-full overflow-x-auto gap-6 pb-6 pt-2 px-2 scrollbar-none ${
+                isDragging ? 'cursor-grabbing select-none' : 'cursor-grab snap-x snap-mandatory scroll-smooth'
+              }`}
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {carrerasBD.map((carrera, i) => (
+                <div 
+                  key={carrera.id}
+                  className={`w-[88vw] sm:w-[420px] md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-[2.5rem] p-6 md:p-7 border border-gray-100/80 shadow-[0_10px_35px_rgba(0,0,0,0.03)] flex flex-col transition-all duration-300 ${carrera.tema.borderHover} hover:-translate-y-1.5 group ${isDragging ? 'pointer-events-none' : ''}`}
+                  style={{ animation: `fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 80}ms both` }}
+                >
+                  
+                  {/* Cabecera: Badges e Icono General */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full ${carrera.tema.bgBadge} ${carrera.tema.textBadge} shadow-sm`}>
+                        {carrera.tipoInst}
+                      </span>
+                      {carrera.es_promocionada && (
+                        <span className="bg-gradient-to-r from-[#1A1528] to-[#2D2442] text-[#FACC15] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#FACC15]/20">
+                          TOP <Star className="w-3 h-3 fill-[#FACC15]" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Títulos y Bloque Imponente de Institución */}
+                  <div className="mb-6">
+                    <h3 className={`font-black text-xl md:text-2xl leading-tight mb-4 uppercase tracking-tight line-clamp-2 min-h-[3.5rem] ${carrera.tema.textGradient}`} title={carrera.carrera}>
                       {carrera.carrera}
                     </h3>
-                    <p className="text-sm font-semibold text-gray-500 flex items-center gap-1.5">
-                      {carrera.institucion}
-                    </p>
-                  </div>
-                  
-                  {/* Badge TOP Animado */}
-                  <div className="flex items-center gap-3">
-                    <span className="hidden sm:flex items-center gap-1 bg-[#1A1528] text-emerald-400 text-[10px] font-black px-3 py-1.5 rounded-full shadow-md uppercase tracking-widest animate-pulse">
-                      TOP <TrendingUp className="w-3 h-3" />
-                    </span>
-                    <div className="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-[#6544FF]/5 transition-all">
-                      <GraduationCap className="w-6 h-6 text-[#1A1528] group-hover:text-[#6544FF]" />
+                    
+                    <div className="flex items-center gap-3.5 bg-gray-50/70 rounded-2xl p-2.5 border border-gray-100 group/inst transition-all hover:bg-white hover:shadow-md hover:border-gray-200">
+                      <div className="relative shrink-0">
+                        <div className={`absolute inset-0 ${carrera.tema.barGradient} rounded-xl blur-md opacity-0 group-hover/inst:opacity-30 transition-opacity duration-500`}></div>
+                        
+                        <div className="relative w-14 h-14 bg-white rounded-xl p-1.5 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover/inst:scale-[1.03]">
+                          {/* 🔥 AQUÍ OCURRE LA MAGIA DEL LOGO POR DEFECTO
+                            Si el servidor de la URL responde con error 404 (imagen borrada o enlace roto), 
+                            el evento 'onError' cambia la URL inmediatamente a la imagen de UI-Avatars.
+                          */}
+                          <img 
+                            src={carrera.logoInst} 
+                            alt={`Logo de ${carrera.institucion}`}
+                            className="w-full h-full object-contain rounded-lg transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(carrera.institucion)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col justify-center overflow-hidden pr-2">
+                        <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">
+                          Impartido por
+                        </span>
+                        <p className="text-[13px] md:text-sm font-bold tracking-tight text-[#1A1528] uppercase truncate" title={carrera.institucion}>
+                          {carrera.institucion}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Barra de Empleabilidad */}
-                <div className="mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100 group-hover:bg-white transition-colors">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-sm font-bold text-gray-500 flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4" /> Empleabilidad (1er año)
-                    </span>
-                    <span className="font-black text-2xl text-[#1A1528]">{carrera.empleabilidad}%</span>
-                  </div>
-                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full bg-gradient-to-r ${carrera.color} relative transition-all duration-1000 ease-out`}
-                      style={{ width: `${carrera.empleabilidad}%` }}
-                    >
-                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-white/20 animate-pulse"></div>
+                  {/* Sección Empleabilidad */}
+                  <div className={`rounded-2xl p-4 mb-4 border border-white/40 flex flex-col gap-3 ${carrera.tema.lightBg}`}>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white rounded-xl shadow-sm border border-white/50">
+                          <Briefcase className={`w-4 h-4 ${carrera.tema.textAccent}`} />
+                        </div>
+                        <span className="text-xs font-bold text-gray-600 leading-tight">
+                          Empleabilidad<br/>al 1er Año
+                        </span>
+                      </div>
+                      <span className={`font-black text-2xl tracking-tighter ${carrera.tema.textGradient}`}>
+                        {carrera.empleabilidad}%
+                      </span>
+                    </div>
+                    
+                    <div className="w-full bg-white/70 rounded-full h-2.5 overflow-hidden border border-white/50 shadow-inner">
+                      <div 
+                        className={`h-full rounded-full ${carrera.tema.barGradient} transition-all duration-1000 ease-out`}
+                        style={{ width: animarBarras ? `${carrera.empleabilidad}%` : '0%' }}
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Stats Financieros */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white border border-gray-100 p-4 rounded-2xl relative overflow-hidden group-hover:border-[#6544FF]/20 transition-colors flex flex-col justify-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Arancel Anual</p>
-                    <p className="font-black text-lg md:text-xl text-[#1A1528] flex items-center">
-                      {carrera.arancel}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-[#1A1528] to-[#2D2442] p-4 rounded-2xl relative overflow-hidden flex flex-col justify-center group-hover:shadow-lg transition-shadow">
-                    <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none group-hover:scale-110 transition-transform">
-                      <DollarSign className="w-20 h-20 text-white" />
+                  {/* Módulo Financiero */}
+                  <div className="grid grid-cols-5 gap-3 mb-6 pointer-events-none select-none">
+                    <div className="col-span-2 bg-white rounded-2xl p-3.5 border border-gray-200 flex flex-col justify-center">
+                      <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">
+                        Arancel Anual
+                      </span>
+                      <span className="font-black text-[#1A1528] text-base truncate">
+                        {carrera.arancel}
+                      </span>
                     </div>
-                    <p className="text-[10px] font-bold text-[#C1AFFF] uppercase tracking-wider mb-1 relative z-10">Ingreso (4to Año)</p>
-                    <p className="font-black text-sm text-white relative z-10 leading-tight">
-                      {carrera.ingreso}
-                    </p>
-                  </div>
-                </div>
 
-                {/* =========================================================================
-                    BOTÓN DE NAVEGACIÓN (CON URL REAL A ASTRO Y CARGA)
-                ========================================================================= */}
-                <div className="mt-auto pt-6 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                    Fuente: SIES
-                  </span>
-                  
-                  <a 
-                    href={`/carrera/${carrera.codigo_carrera}`}
-                    onClick={() => setAccediendoId(carrera.codigo_carrera)}
-                    className={`flex items-center gap-1.5 text-sm font-black text-[#6544FF] uppercase tracking-wider transition-all bg-[#6544FF]/5 px-4 py-2 rounded-xl 
-                      ${accediendoId === carrera.codigo_carrera 
-                        ? 'opacity-80 cursor-wait pointer-events-none' 
-                        : 'hover:gap-2 hover:bg-[#6544FF]/10'
+                    <div className={`col-span-3 ${carrera.tema.darkBox} rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-center shadow-inner`}>
+                      <div className="absolute -right-3 -bottom-4 opacity-[0.07]">
+                        <DollarSign className="w-20 h-20 text-white" />
+                      </div>
+                      <span className="text-[9px] font-extrabold text-white/60 uppercase tracking-wider mb-1 relative z-10">
+                        Sueldo Promedio
+                      </span>
+                      <span className="font-black text-white text-xs md:text-[11px] leading-tight tracking-tight relative z-10 block pr-2">
+                        {carrera.ingreso}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-auto pt-4 flex justify-between items-center border-t border-gray-100 justify-center">
+                    
+                    <a 
+                      href={`/carrera/${carrera.codigo_carrera}`}
+                      onClick={(e) => {
+                        if (isDragging) e.preventDefault();
+                        else setAccediendoId(carrera.codigo_carrera);
+                      }}
+                      className={`inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest transition-all px-4 py-2.5 rounded-xl pointer-events-auto ${
+                        accediendoId === carrera.codigo_carrera 
+                          ? 'bg-gray-100 text-gray-400 cursor-wait' 
+                          : `${carrera.tema.bgBadge} ${carrera.tema.textAccent} hover:opacity-85 active:scale-95`
                       }`}
-                  >
-                    {accediendoId === carrera.codigo_carrera ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" /> Accediendo
-                      </>
-                    ) : (
-                      <>
-                        Ver carrera <ArrowUpRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </a>
+                    >
+                      {accediendoId === carrera.codigo_carrera ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> ...</>
+                      ) : (
+                        <>Ver detalles <ArrowUpRight className="w-3.5 h-3.5" /></>
+                      )}
+                    </a>
+                  </div>
+
                 </div>
+              ))}
+            </div>
 
-              </div>
-            ))
-          )}
-        </div>
+            {/* Paginación */}
+            <div className="flex justify-center items-center gap-2 mt-4 mb-8">
+              {carrerasBD.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => scrollToDot(index)}
+                  className={`transition-all duration-300 rounded-full ${
+                    activeIndex === index 
+                      ? 'w-8 h-2.5 bg-[#6544FF]' 
+                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  aria-label={`Ir a tarjeta ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
-        {/* =========================================================================
-            3. BOTÓN ESPECTACULAR PARA VER TODO EL MERCADO LABORAL
-        ========================================================================= */}
-        <div className="mt-16 flex justify-center animate-in fade-in slide-in-from-bottom-8 delay-500">
+        {/* 3. BOTÓN EXTRA */}
+        <div className="mt-4 flex justify-center animate-in fade-in slide-in-from-bottom-6">
           <a 
             href="/herramientas/mercado-laboral"
-            className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#1A1528] text-white font-black italic uppercase tracking-wider rounded-full overflow-hidden shadow-[0_10px_40px_rgba(26,21,40,0.3)] hover:shadow-[0_15px_50px_rgba(101,68,255,0.4)] transition-all duration-300 hover:-translate-y-1"
+            className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#1A1528] text-white font-black italic uppercase tracking-wider rounded-full overflow-hidden shadow-[0_10px_40px_rgba(26,21,40,0.25)] hover:shadow-[0_15px_45px_rgba(101,68,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
           >
-            {/* Efecto de Brillo de Fondo */}
             <div className="absolute inset-0 bg-gradient-to-r from-[#6544FF] via-[#D946EF] to-[#3B82F6] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            
-            <span className="relative z-10 text-lg md:text-xl flex items-center gap-2">
-              Ver Todo el Mercado Laboral 
+            <span className="relative z-10 text-sm md:text-base flex items-center gap-2">
+              Explorar Mercado Laboral 
             </span>
-            <div className="relative z-10 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
-              <ArrowRight className="w-5 h-5 text-white" />
+            <div className="relative z-10 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
+              <ArrowRight className="w-4 h-4 text-white" />
             </div>
           </a>
         </div>
 
       </div>
 
-      {/* CSS CUSTOM ANIMACIONES */}
       <style dangerouslySetInnerHTML={{__html: `
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(40px, -60px) scale(1.1); }
-          66% { transform: translate(-30px, 30px) scale(0.9); }
+          33% { transform: translate(30px, -40px) scale(1.08); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
           100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob {
-          animation: blob 12s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+          animation: blob 14s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
         }
         .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
 
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(35px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}} />
     </section>

@@ -6,65 +6,58 @@ import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
 
 // ============================================================================
-// 1. INTERFACES ESTRICTAS
-// ============================================================================
-export interface CarreraDB {
-  codigo_carrera: number;
-  nombre_carrera: string;
-  nivel_carrera: string;
-  duracion_semestres: number;
-  arancel_anual: number;
-  instituciones: {
-    nombre: string;
-    tipo: string;
-  };
-  // Agrega aquí otros campos que uses en CarreraDetalle
-}
-
-interface Props {
-  carrera: CarreraDB;
-}
-
-// ============================================================================
-// 2. GENERACIÓN DE RUTAS (SSG OPTIMIZADO)
+// 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
 // ============================================================================
 export const getStaticPaths = (async () => {
-  let allCarreras: CarreraDB[] = [];
+  let allCodes: any[] = [];
   let hasMore = true;
   let page = 0;
   const limit = 1000;
 
+  // Solo pedimos la columna "codigo_carrera". Esto hace que la consulta sea
+  // 100 veces más ligera, evitando que tu servidor colapse.
   while (hasMore) {
     const { data, error } = await supabase
       .from("carreras")
-      .select(
-        `
-        *,
-        instituciones (nombre, tipo)
-      `,
-      )
+      .select("codigo_carrera")
       .range(page * limit, (page + 1) * limit - 1);
 
-    if (error) {
-      console.error("Error en Supabase:", error.message);
-      break;
-    }
-
-    if (data && data.length > 0) {
-      allCarreras = [...allCarreras, ...(data as CarreraDB[])];
-      page++;
-    } else {
+    if (error || !data || data.length === 0) {
       hasMore = false;
+    } else {
+      allCodes = [...allCodes, ...data];
+      page++;
     }
   }
 
-  return allCarreras.map((carrera) => ({
+  // Retornamos SOLO el param de la URL, sin pasar data pesada por props
+  return allCodes.map((carrera) => ({
     params: { id: carrera.codigo_carrera.toString() },
-    props: { carrera },
   }));
 }) satisfies GetStaticPaths;
 
-const { carrera } = Astro.props as Props;
+// ============================================================================
+// 2. OBTENEMOS EL ID DE LA URL Y BUSCAMOS SU DATA ESPECÍFICA
+// ============================================================================
+const { id } = Astro.params;
+
+// Traemos los detalles ÚNICAMENTE de la carrera a la que el usuario hizo clic
+const { data: carrera, error } = await supabase
+  .from("carreras")
+  .select(
+    `
+    *,
+    instituciones (nombre, tipo)
+  `,
+  )
+  .eq("codigo_carrera", id)
+  .single(); // .single() hace que traiga un objeto, no un array
+
+// Si por alguna razón la carrera no existe, ahí sí tiramos un 404 real
+if (error || !carrera) {
+  return Astro.redirect("/404");
+}
+
 const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | Elige Tu Futuro`;
 ---
 
@@ -76,7 +69,6 @@ const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | El
 
 <style>
   main {
-    /* Evita el salto visual (CLS) al cargar */
     contain: content;
   }
 </style>
