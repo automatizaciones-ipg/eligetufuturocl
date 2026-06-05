@@ -36,7 +36,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /public_html/
+          server-dir: domains/eligetufuturo.cl/public_html/
           # Protección extrema: Esto evita subir archivos innecesarios que rompen el servidor
           exclude: |
             **/.git*
