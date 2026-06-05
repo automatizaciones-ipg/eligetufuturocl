@@ -1,8 +1,8 @@
 ---
 // src/layouts/Layout.astro
-import { ViewTransitions } from "astro:transitions";
+import { ClientRouter } from "astro:transitions";
 import Header from "../components/Header.tsx";
-import Footer from "../components/Footer.tsx"; // <-- 1. Importamos el Footer
+import Footer from "../components/Footer.tsx";
 import "../styles/global.css";
 
 interface Props {
@@ -20,7 +20,7 @@ const { title } = Astro.props;
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
-    <ViewTransitions />
+    <ClientRouter />
   </head>
   <body
     class="min-h-screen bg-base-100 text-base-content antialiased flex flex-col overflow-x-hidden"

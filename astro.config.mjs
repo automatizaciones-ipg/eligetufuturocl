@@ -2,20 +2,21 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
-import node from '@astrojs/node'; // 1. Importamos el nuevo adaptador de Node
+import node from '@astrojs/node';
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [react()],
 
   vite: {
+    // @ts-ignore: Ignoramos el conflicto de tipos entre Vite 6 y Vite 7
     plugins: [tailwindcss()]
   },
 
-  // 2. Le decimos a Astro que construya un servidor dinámico (SSR)
+  // Le decimos a Astro que construya un servidor dinámico (SSR)
   output: 'server', 
 
-  // 3. Configuramos el adaptador en modo standalone para Hostinger
+  // Configuramos el adaptador en modo standalone para Hostinger
   adapter: node({
     mode: 'standalone' 
   })
