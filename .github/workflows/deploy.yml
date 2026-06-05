@@ -1,0 +1,49 @@
+name: Deploy Astro App a Hostinger
+
+on:
+  push:
+    branches:
+      - main # Si tu rama principal se llama master, cambia 'main' por 'master'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Descargar el código del repositorio
+        uses: actions/checkout@v4
+
+      - name: 2. Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # Se alinea con la versión actual de pnpm
+
+      - name: 3. Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: 4. Instalar dependencias con pnpm
+        run: pnpm install --frozen-lockfile
+
+      - name: 5. Compilar la aplicación Astro
+        run: pnpm run build
+
+      - name: 6. Subir archivos a Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /public_html/
+          # Protección extrema: Esto evita subir archivos innecesarios que rompen el servidor
+          exclude: |
+            **/.git*
+            **/.git*/**
+            node_modules/**
+            src/**
+            public/**
+            .env
+            .github/**
+            README.md
