@@ -240,6 +240,21 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                 <DataPoint label="Jornada" value={carrera.jornada || "No informada"} />
               </div>
 
+              {/* INYECTOR DE DESCRIPCIÓN RECIÉN AGREGADO (ANTES DEL MAPA) */}
+              {carrera.descripcion && (
+                <div className="mb-8 p-6 bg-[#7C3AED]/5 rounded-3xl border border-[#7C3AED]/10 relative overflow-hidden group/desc">
+                  <div className="absolute -top-6 -right-6 p-4 opacity-[0.04] text-[#7C3AED] transition-transform duration-700 group-hover/desc:scale-125">
+                    <Sparkles className="w-32 h-32" />
+                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#7C3AED] mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 animate-pulse" /> Descripción del Programa
+                  </h4>
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed relative z-10 font-medium whitespace-pre-line">
+                    {carrera.descripcion}
+                  </p>
+                </div>
+              )}
+
               {/* Mapa */}
               <div className="w-full h-72 bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 relative shadow-inner group">
                  <iframe
@@ -454,11 +469,10 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
 // =========================================================================
 function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any) {
   
-  // Lógica para textos muy largos (Como el de Ingreso que dice "De $2 millones...")
   const valueLength = String(value).length;
   const textSizeClass = valueLength > 20 
-    ? 'text-[1.1rem] md:text-[1.2rem] leading-snug' // Texto adaptativo para frases largas
-    : 'text-2xl md:text-3xl'; // Texto gigante para números cortos (Ej. 98.2%)
+    ? 'text-[1.1rem] md:text-[1.2rem] leading-snug' 
+    : 'text-2xl md:text-3xl'; 
 
   return (
     <div 
@@ -469,18 +483,15 @@ function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any)
         }`} 
       style={{ animationDelay: delay, animationFillMode: 'both' }}
     >
-      {/* Fondo Icono Gigante Transparente */}
       <div className={`absolute -right-4 -bottom-4 pointer-events-none transition-transform duration-700 ease-out group-hover:scale-110 
         ${isDark ? 'opacity-10 text-white' : 'opacity-[0.03] text-[#1A1528]'}`}>
         {bgIcon}
       </div>
 
-      {/* Icono pequeño superior */}
       <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center mb-4 relative z-10 shadow-inner group-hover:scale-110 transition-transform duration-300`}>
         {React.cloneElement(icon, { className: `w-6 h-6 ${color}` })}
       </div>
 
-      {/* Textos */}
       <div className="relative z-10">
         <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 
           ${isDark ? 'text-[#C1AFFF]' : 'text-gray-400'}`}

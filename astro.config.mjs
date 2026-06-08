@@ -10,7 +10,22 @@ export default defineConfig({
 
   vite: {
     // @ts-ignore: Ignoramos el conflicto de tipos entre Vite 6 y Vite 7
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    
+    // Solución de optimización para React 19 + Vite 6
+    optimizeDeps: {
+      include: [
+        'react',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'react-dom',
+        'react-dom/client'
+      ],
+    },
+    resolve: {
+      // Evita que pnpm resuelva duplicados o versiones alternas de React
+      dedupe: ['react', 'react-dom']
+    }
   },
 
   // Le decimos a Astro que construya un servidor dinámico (SSR)
