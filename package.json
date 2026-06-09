@@ -27,8 +27,8 @@
     "tailwindcss-animate": "^1.0.7"
   },
 
-  "pnpm": {
-  "allowedBuildDependencies": [
+ "pnpm": {
+  "onlyBuiltDependencies": [
     "esbuild",
     "sharp"
   ]
