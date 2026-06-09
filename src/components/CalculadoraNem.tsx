@@ -66,15 +66,14 @@ export default function CalculadoraNem() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white">
+    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white pb-20">
       
       {/* =========================================================================
-          HERO SECTION - Aislado, nunca interfiere con el contenido inferior
+          HERO SECTION - IDÉNTICO A CARRERADETALLE
       ========================================================================= */}
-      <header className="relative w-full bg-[#0A0518] text-white pt-20 pb-40 px-6 overflow-hidden border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)]">
+      <header className="relative w-full bg-[#0A0518] text-white pt-20 pb-40 px-6 overflow-hidden border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20">
         
-        {/* Fondo animado - Absoluto, no afecta el flujo */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none" aria-hidden="true">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
@@ -97,10 +96,10 @@ export default function CalculadoraNem() {
             <span className="text-xs font-bold text-white/90 uppercase tracking-widest">Herramienta Oficial</span>
           </div>
 
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             Calcula tu <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">NEM y Ranking</span>
-          </h2>
+          </h1>
           
           <p className="text-gray-300 max-w-2xl text-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             Ingresa tus promedios de enseñanza media para simular tus puntajes y proyectar tus opciones universitarias con precisión.
@@ -109,20 +108,18 @@ export default function CalculadoraNem() {
       </header>
 
       {/* =========================================================================
-          CONTENIDO PRINCIPAL - Flujo normal, margen negativo controlado
-          El pb-24 garantiza espacio SIEMPRE antes del footer
+          CONTENIDO - MISMA ARQUITECTURA QUE CARRERADETALLE
+          -mt-24 + relative z-30 = flota sobre el hero SIN afectar footer
       ========================================================================= */}
-      <main className="w-full max-w-6xl mx-auto px-4 -mt-24 pb-24">
+      <div className="max-w-6xl mx-auto px-4 -mt-24 relative z-30">
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* ================================================================
-              COLUMNA IZQUIERDA - FORMULARIO (7/12)
-          ================================================================ */}
+          {/* COLUMNA IZQUIERDA - FORMULARIO */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* Tarjeta: Notas */}
-            <section className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+            {/* Notas */}
+            <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 rounded-xl bg-[#6544FF]/10 flex items-center justify-center shrink-0">
                   <BookOpen className="w-6 h-6 text-[#6544FF]" />
@@ -153,14 +150,14 @@ export default function CalculadoraNem() {
                   </div>
                 ))}
               </div>
-            </section>
+            </div>
 
-            {/* Tarjeta: Ranking Avanzado - CRECE HACIA ABAJO naturalmente */}
-            <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            {/* Ranking Avanzado */}
+            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
               <button 
                 onClick={() => setAvanzado(!avanzado)}
-                className="w-full p-6 flex items-center justify-between bg-white hover:bg-[#fafafa] transition-colors cursor-pointer"
                 aria-expanded={avanzado}
+                className="w-full p-6 flex items-center justify-between bg-white hover:bg-[#fafafa] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <Award className={`w-5 h-5 transition-colors duration-300 ${avanzado ? 'text-[#6544FF]' : 'text-gray-400'}`} />
@@ -196,17 +193,13 @@ export default function CalculadoraNem() {
                   </div>
                 </div>
               )}
-            </section>
+            </div>
           </div>
 
-          {/* ================================================================
-              COLUMNA DERECHA - RESULTADOS (5/12)
-              Fluye naturalmente, SIN sticky, SIN position absolute
-          ================================================================ */}
-          <aside className="lg:col-span-5">
+          {/* COLUMNA DERECHA - RESULTADOS */}
+          <div className="lg:col-span-5">
             <div className="bg-[#130E24] rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
               
-              {/* Fondo decorativo - Absoluto dentro de su contenedor */}
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#6544FF] rounded-full blur-3xl opacity-20 pointer-events-none" aria-hidden="true"></div>
               
               <h3 className="relative text-white font-bold text-xl mb-8 flex items-center gap-2">
@@ -216,7 +209,6 @@ export default function CalculadoraNem() {
 
               <div className="relative space-y-8">
                 
-                {/* Promedio General */}
                 <div className="border-b border-white/10 pb-4">
                   <p className="text-gray-400 text-sm font-medium mb-1">Promedio de Media</p>
                   <div className="text-5xl font-black text-white tracking-tighter">
@@ -224,7 +216,6 @@ export default function CalculadoraNem() {
                   </div>
                 </div>
 
-                {/* Puntajes NEM y Ranking */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
                     <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Puntaje NEM</p>
@@ -242,7 +233,6 @@ export default function CalculadoraNem() {
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="bg-[#6544FF]/10 rounded-xl p-4 flex gap-3 items-start border border-[#6544FF]/20">
                   <Info className="w-5 h-5 text-[#947BFF] shrink-0 mt-0.5" />
                   <p className="text-xs text-gray-300 leading-relaxed">
@@ -252,14 +242,11 @@ export default function CalculadoraNem() {
 
               </div>
             </div>
-          </aside>
+          </div>
 
         </div>
-      </main>
+      </div>
 
-      {/* =========================================================================
-          CSS ANIMACIONES - Solo lo necesario, sin efectos secundarios
-      ========================================================================= */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }

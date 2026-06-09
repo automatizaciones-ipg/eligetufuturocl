@@ -75,7 +75,7 @@ export default function ToolsSection() {
       ========================================================================= */}
       <div className="relative w-full bg-[#0A0518] pt-20 pb-40 px-6 overflow-hidden shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20 border-b border-white/5">
         
-        {/* Fondo Animado Mesh Gradient Brutal */}
+        {/* Fondo Animado Mesh Gradient */}
         <div className="absolute inset-0 overflow-hidden z-0 ">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob pointer-events-none"></div>
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000 pointer-events-none"></div>
