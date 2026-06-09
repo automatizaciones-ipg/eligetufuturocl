@@ -25,12 +25,5 @@
     "resend": "^6.10.0",
     "tailwindcss": "^4.2.1",
     "tailwindcss-animate": "^1.0.7"
-  },
-
- "pnpm": {
-  "onlyBuiltDependencies": [
-    "esbuild",
-    "sharp"
-  ]
-}
+  }
 }
