@@ -22,7 +22,8 @@ interface SupabaseCarreraJoin {
   instituciones: {
     nombre: string;
     tipo: string;
-  } | { nombre: string; tipo: string }[] | null;
+    logo_url?: string;
+  } | { nombre: string; tipo: string; logo_url?: string }[] | null;
 }
 
 export interface CarreraUI {
@@ -35,7 +36,7 @@ export interface CarreraUI {
   puntaje: string;
   duracion: string;
   color: string;
-  logoArchivo: string;
+  logoUrl: string;
 }
 
 // ============================================================================
@@ -82,11 +83,6 @@ const generarSiglaInstitucion = (nombre: string): string => {
   return nombre.substring(0, 3).toUpperCase();
 };
 
-const normalizarNombreLogo = (nombre: string): string => {
-  if (!nombre) return 'default-logo.png';
-  return nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") + '.png';
-};
-
 const quitarAcentos = (str: string): string => {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
@@ -94,9 +90,43 @@ const quitarAcentos = (str: string): string => {
 const formatearTitulo = (texto: string): string => {
   if (!texto) return "";
   const conectores = ['de', 'en', 'el', 'la', 'los', 'las', 'y', 'del', 'a', 'por', 'con', 'para'];
+  
+  const mapaTildes: Record<string, string> = {
+    'actuacion': 'actuación', 'administracion': 'administración', 'ingenieria': 'ingeniería',
+    'tecnico': 'técnico', 'tecnologia': 'tecnología', 'computacion': 'computación',
+    'informatica': 'informática', 'psicologia': 'psicología', 'pedagogia': 'pedagogía',
+    'educacion': 'educación', 'kinesiologia': 'kinesiología', 'odontologia': 'odontología',
+    'fonoaudiologia': 'fonoaudiología', 'nutricion': 'nutrición', 'biologia': 'biología',
+    'quimica': 'química', 'fisica': 'física', 'geologia': 'geología', 'agronomia': 'agronomía',
+    'electronica': 'electrónica', 'electrica': 'eléctrica', 'mecanica': 'mecánica',
+    'automatizacion': 'automatización', 'gestion': 'gestión', 'publico': 'público',
+    'publicas': 'públicas', 'juridica': 'jurídica', 'politica': 'política',
+    'politicas': 'políticas', 'antropologia': 'antropología', 'arqueologia': 'arqueología',
+    'sociologia': 'sociología', 'filosofia': 'filosofía', 'teologia': 'teología',
+    'musica': 'música', 'animacion': 'animación', 'gastronomia': 'gastronomía',
+    'estetica': 'estética', 'cosmetologia': 'cosmetología', 'logistica': 'logística',
+    'prevencion': 'prevención', 'construccion': 'construcción', 'comunicacion': 'comunicación',
+    'diseno': 'diseño', 'parvulo': 'párvulo', 'bilingue': 'bilingüe', 'ingles': 'inglés',
+    'enfermeria': 'enfermería', 'audicion': 'audición', 'optometria': 'optometría',
+    'clinico': 'clínico', 'radiologia': 'radiología', 'odontologico': 'odontológico',
+    'medico': 'médico', 'bioquimica': 'bioquímica', 'biotecnologia': 'biotecnología',
+    'estadistica': 'estadística', 'matematica': 'matemática', 'astronomia': 'astronomía',
+    'geofisica': 'geofísica', 'geografia': 'geografía', 'linguistica': 'lingüística',
+    'basica': 'básica', 'plasticas': 'plásticas', 'coreografia': 'coreografía', 
+    'grafico': 'gráfico', 'geomatica': 'geomática', 'topografia': 'topografía', 
+    'hoteleria': 'hotelería', 'television': 'televisión', 'fotografia': 'fotografía', 
+    'religion': 'religión', 'traduccion': 'traducción', 'interpretacion': 'interpretación', 
+    'fraces': 'francés', 'aleman': 'alemán', 'orientacion': 'orientación'
+  };
+
   return texto.toLowerCase().split(' ').map((palabra, index) => {
-    if (index > 0 && conectores.includes(palabra)) return palabra;
-    return palabra.charAt(0).toUpperCase() + palabra.slice(1);
+    const palabraLimpia = palabra.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+    const palabraCorregida = mapaTildes[palabraLimpia] 
+      ? palabra.replace(palabraLimpia, mapaTildes[palabraLimpia]) 
+      : palabra;
+
+    if (index > 0 && conectores.includes(palabraCorregida)) return palabraCorregida;
+    return palabraCorregida.charAt(0).toUpperCase() + palabraCorregida.slice(1);
   }).join(' ');
 };
 
@@ -176,7 +206,7 @@ export default function BuscadorCarreras() {
           region,
           duracion_semestres,
           arancel_anual,
-          instituciones!inner (nombre, tipo)
+          instituciones!inner (nombre, tipo, logo_url)
         `, { count: 'exact' });
 
       // 1. Filtro Texto
@@ -230,6 +260,7 @@ export default function BuscadorCarreras() {
         const resultadosAdaptados: CarreraUI[] = bdData.map((item, index) => {
           const instObj = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
           const instNombre = instObj?.nombre || "Institución Desconocida";
+          const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
           
           return {
             id: item.codigo_carrera,
@@ -241,7 +272,7 @@ export default function BuscadorCarreras() {
             puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "Arancel no informado",
             duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "Duración no informada",
             color: PALETA_COLORES[index % PALETA_COLORES.length],
-            logoArchivo: normalizarNombreLogo(instNombre)
+            logoUrl: instObj?.logo_url || fallbackLogo
           };
         });
         setCarreras(resultadosAdaptados);
@@ -287,58 +318,89 @@ export default function BuscadorCarreras() {
     return paginas;
   };
 
+  // --- DATOS ESTRUCTURADOS SEO ---
+  const jsonLdData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "numberOfItems": carreras.length,
+    "itemListElement": carreras.map((carrera, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Course",
+        "name": carrera.nombre,
+        "description": `Carrera de ${carrera.nombre} impartida por ${carrera.institucion} en ${carrera.region}. Duración: ${carrera.duracion}. Arancel: ${carrera.puntaje}.`,
+        "provider": {
+          "@type": "EducationalOrganization",
+          "name": carrera.institucion,
+          "logo": carrera.logoUrl
+        }
+      }
+    }))
+  };
+
   return (
-    <div className="w-full bg-[#F4F5F9] min-h-screen pb-20 selection:bg-[#7C3AED] selection:text-white overflow-hidden">
+    <main className="w-full bg-[#F4F5F9] min-h-screen pb-20 selection:bg-[#7C3AED] selection:text-white overflow-hidden">
       
+      {/* INYECCIÓN JSON-LD SEO */}
+      {carreras.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+        />
+      )}
+
       {/* =========================================================================
           1. HERO SECTION (BANNER UNIFICADO IDENTICO A INSTITUCIONES)
       ========================================================================= */}
-      <div className="relative w-full bg-[#0A0518] text-white pt-20 pb-32 px-6 overflow-visible border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20">
-        <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
+      <header className="relative w-full bg-[#0A0518] text-white pt-20 pb-32 px-6 overflow-visible border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20">
+        <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none" aria-hidden="true">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
           <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         </div>
 
-        <div className="container mx-auto relative z-10 max-w-7xl">
+        <nav className="container mx-auto relative z-10 max-w-7xl" aria-label="Navegación superior">
           <button 
             onClick={() => window.history.back()} 
+            aria-label="Volver a la página anterior"
             className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-10 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer animate-fade-in-up"
           >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" />
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
             Volver
           </button>
-        </div>
+        </nav>
 
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center space-y-4">
           <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-[#D8B4FE] font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md animate-fade-in-up">
-            <GraduationCap className="w-4 h-4" /> Oferta Académica Nacional
+            <GraduationCap className="w-4 h-4" aria-hidden="true" /> Oferta Académica Nacional
           </div>
 
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             Encuentra tu <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Carrera Ideal</span>
-          </h2>
+          </h1>
 
           <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed mb-6" style={{ animationDelay: '0.2s' }}>
             Busca y compara miles de carreras, filtra por arancel, sede o tipo de institución para tomar la mejor decisión.
           </p>
         </div>
-      </div>
+      </header>
 
       {/* =========================================================================
           2. ÁREA DE CONTENIDO (Buscador, Filtros y Lista)
       ========================================================================= */}
-      <div className="w-full max-w-7xl mx-auto px-4 relative z-30 -mt-12">
+      <section className="w-full max-w-7xl mx-auto px-4 relative z-30 -mt-12" aria-label="Sección de búsqueda y resultados">
         
         {/* BUSCADOR PREMIUM FLOTANTE */}
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-3 shadow-2xl shadow-indigo-900/10 border border-white mb-10 flex flex-col md:flex-row items-center gap-3 animate-in fade-in slide-in-from-bottom-8">
+        <search className="bg-white/90 backdrop-blur-xl rounded-[2rem] p-3 shadow-2xl shadow-indigo-900/10 border border-white mb-10 flex flex-col md:flex-row items-center gap-3 animate-in fade-in slide-in-from-bottom-8">
           <div className="flex-1 w-full relative flex items-center group">
-            <Search className="absolute left-6 w-5 h-5 text-gray-400 group-focus-within:text-[#6544FF] transition-colors" />
+            <Search className="absolute left-6 w-5 h-5 text-gray-400 group-focus-within:text-[#6544FF] transition-colors" aria-hidden="true" />
             <input 
-              type="text" 
+              type="search" 
               placeholder="Ej: Enfermería, Computación, Derecho..."
+              aria-label="Buscar por nombre de carrera"
               value={busqueda}
               onChange={(e) => { setBusqueda(e.target.value); setPaginaActual(1); }}
               className="w-full pl-14 pr-12 py-4 rounded-[1.5rem] bg-gray-50/50 hover:bg-gray-50 border-2 border-transparent focus:border-[#6544FF]/30 focus:bg-white focus:ring-4 focus:ring-[#6544FF]/10 outline-none transition-all font-semibold text-gray-700 placeholder:text-gray-400 text-base md:text-lg"
@@ -346,41 +408,45 @@ export default function BuscadorCarreras() {
             {busqueda && (
               <button 
                 onClick={() => { setBusqueda(""); setPaginaActual(1); }}
+                aria-label="Limpiar búsqueda"
+                title="Limpiar búsqueda"
                 className="absolute right-5 text-gray-400 hover:text-rose-500 transition-colors p-1.5 bg-white hover:bg-rose-50 rounded-full shadow-sm border border-gray-100"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
           </div>
-          <div className="hidden md:flex items-center px-8 border-l-2 border-gray-100 shrink-0 h-10">
+          <div className="hidden md:flex items-center px-8 border-l-2 border-gray-100 shrink-0 h-10" aria-live="polite">
             <p className="text-sm font-bold text-gray-400 tracking-wider uppercase flex items-center gap-2">
               <span className="text-[#1A1528] text-2xl">{totalResultados}</span> resultados
             </p>
           </div>
-        </div>
+        </search>
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           
           {/* SIDEBAR: PANEL DE CONTROL COMPLETO */}
-          <div className="w-full lg:w-80 shrink-0 relative lg:sticky lg:top-24 z-30 animate-in fade-in slide-in-from-bottom-8 delay-150">
+          <aside className="w-full lg:w-80 shrink-0 relative lg:sticky lg:top-24 z-30 animate-in fade-in slide-in-from-bottom-8 delay-150" aria-label="Filtros de búsqueda">
             <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80">
-              <h3 className="font-black text-lg text-[#1A1528] uppercase tracking-wider mb-6 flex items-center gap-2 pb-4 border-b border-gray-100">
-                <SlidersHorizontal className="w-5 h-5 text-[#6544FF]" /> Filtros
-              </h3>
+              <h2 className="font-black text-lg text-[#1A1528] uppercase tracking-wider mb-6 flex items-center gap-2 pb-4 border-b border-gray-100">
+                <SlidersHorizontal className="w-5 h-5 text-[#6544FF]" aria-hidden="true" /> Filtros
+              </h2>
 
               {/* FILTRO 1: TIPO DE INSTITUCIÓN (SELECTOR HORIZONTAL) */}
-              <div className="relative mb-6 mt-2">
-                <span className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Tipo de Institución</span>
-                <div className="flex items-center bg-gray-100/80 p-1.5 rounded-2xl w-full border border-gray-200/50">
+              <fieldset className="relative mb-6 mt-2">
+                <legend className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Tipo de Institución</legend>
+                <div className="flex items-center bg-gray-100/80 p-1.5 rounded-2xl w-full border border-gray-200/50" role="group" aria-label="Filtrar por tipo de institución">
                   {[
                     { id: "Todos", label: "Todos" },
-                    { id: "U", label: "U" },
-                    { id: "IP", label: "IP" },
-                    { id: "CFT", label: "CFT" }
+                    { id: "U", label: "U", title: "Universidades" },
+                    { id: "IP", label: "IP", title: "Institutos Profesionales" },
+                    { id: "CFT", label: "CFT", title: "Centros de Formación Técnica" }
                   ].map((opc) => (
                     <button
                       key={opc.id}
                       onClick={() => { setTipoFiltro(opc.id); setPaginaActual(1); }}
+                      aria-pressed={tipoFiltro === opc.id}
+                      title={opc.title || opc.label}
                       className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-300 ${
                         tipoFiltro === opc.id
                           ? 'bg-white text-[#6544FF] shadow-sm ring-1 ring-black/5'
@@ -391,36 +457,50 @@ export default function BuscadorCarreras() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {/* FILTRO 2: UBICACIÓN */}
               <div className="relative mb-6">
-                <span className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Sede / Región</span>
-                <button onClick={() => setDropdownRegionAbierto(!dropdownRegionAbierto)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownRegionAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}>
+                <span id="region-filter-label" className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Sede / Región</span>
+                <button 
+                  onClick={() => setDropdownRegionAbierto(!dropdownRegionAbierto)}
+                  aria-haspopup="listbox"
+                  aria-expanded={dropdownRegionAbierto}
+                  aria-labelledby="region-filter-label"
+                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownRegionAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}
+                >
                   <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <MapPin className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" />
+                    <MapPin className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" aria-hidden="true" />
                     <span className="font-semibold text-sm text-[#1A1528] text-left whitespace-nowrap overflow-hidden text-ellipsis">
                       {formatRegionLabel(regionFiltro)}
                     </span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownRegionAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownRegionAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} aria-hidden="true" />
                 </button>
                 
                 {dropdownRegionAbierto && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setDropdownRegionAbierto(false)}></div>
-                    <div className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
-                      <button onClick={() => { setRegionFiltro("todas"); setPaginaActual(1); setDropdownRegionAbierto(false); }} 
-                        className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${regionFiltro === "todas" ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}>
+                    <div className="fixed inset-0 z-40" onClick={() => setDropdownRegionAbierto(false)} aria-hidden="true"></div>
+                    <div role="listbox" aria-labelledby="region-filter-label" className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
+                      <button 
+                        role="option" 
+                        aria-selected={regionFiltro === "todas"}
+                        onClick={() => { setRegionFiltro("todas"); setPaginaActual(1); setDropdownRegionAbierto(false); }} 
+                        className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${regionFiltro === "todas" ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
+                      >
                         <span className="whitespace-normal break-words leading-tight">Todas las Regiones</span>
-                        {regionFiltro === "todas" && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
+                        {regionFiltro === "todas" && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />}
                       </button>
                       {listaRegiones.map((reg) => (
-                        <button key={reg} onClick={() => { setRegionFiltro(reg); setPaginaActual(1); setDropdownRegionAbierto(false); }} 
-                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${regionFiltro === reg ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}>
+                        <button 
+                          key={reg} 
+                          role="option" 
+                          aria-selected={regionFiltro === reg}
+                          onClick={() => { setRegionFiltro(reg); setPaginaActual(1); setDropdownRegionAbierto(false); }} 
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${regionFiltro === reg ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
+                        >
                           <span className="whitespace-normal break-words leading-tight">{formatRegionLabel(reg)}</span>
-                          {regionFiltro === reg && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
+                          {regionFiltro === reg && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />}
                         </button>
                       ))}
                     </div>
@@ -430,32 +510,46 @@ export default function BuscadorCarreras() {
 
               {/* FILTRO 3: INSTITUCIÓN ESPECÍFICA */}
               <div className="relative mb-6">
-                <span className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Filtrar Institución</span>
-                <button onClick={() => setDropdownInstitucionAbierto(!dropdownInstitucionAbierto)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownInstitucionAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}>
+                <span id="inst-filter-label" className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Filtrar Institución</span>
+                <button 
+                  onClick={() => setDropdownInstitucionAbierto(!dropdownInstitucionAbierto)}
+                  aria-haspopup="listbox"
+                  aria-expanded={dropdownInstitucionAbierto}
+                  aria-labelledby="inst-filter-label"
+                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownInstitucionAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}
+                >
                   <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <Building className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" />
+                    <Building className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" aria-hidden="true" />
                     <span className="font-semibold text-sm text-[#1A1528] text-left whitespace-nowrap overflow-hidden text-ellipsis">
                       {institucionFiltro === "todas" ? "Todas las Instituciones" : formatearTitulo(institucionFiltro)}
                     </span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownInstitucionAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownInstitucionAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} aria-hidden="true" />
                 </button>
                 
                 {dropdownInstitucionAbierto && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setDropdownInstitucionAbierto(false)}></div>
-                    <div className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
-                      <button onClick={() => { setInstitucionFiltro("todas"); setPaginaActual(1); setDropdownInstitucionAbierto(false); }} 
-                        className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${institucionFiltro === "todas" ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}>
+                    <div className="fixed inset-0 z-40" onClick={() => setDropdownInstitucionAbierto(false)} aria-hidden="true"></div>
+                    <div role="listbox" aria-labelledby="inst-filter-label" className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
+                      <button 
+                        role="option"
+                        aria-selected={institucionFiltro === "todas"}
+                        onClick={() => { setInstitucionFiltro("todas"); setPaginaActual(1); setDropdownInstitucionAbierto(false); }} 
+                        className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${institucionFiltro === "todas" ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
+                      >
                         <span className="whitespace-normal break-words leading-tight">Todas las Instituciones</span>
-                        {institucionFiltro === "todas" && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
+                        {institucionFiltro === "todas" && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />}
                       </button>
                       {listaInstituciones.map((inst, idx) => (
-                        <button key={idx} onClick={() => { setInstitucionFiltro(inst.nombre); setPaginaActual(1); setDropdownInstitucionAbierto(false); }} 
-                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${institucionFiltro === inst.nombre ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}>
+                        <button 
+                          key={idx} 
+                          role="option"
+                          aria-selected={institucionFiltro === inst.nombre}
+                          onClick={() => { setInstitucionFiltro(inst.nombre); setPaginaActual(1); setDropdownInstitucionAbierto(false); }} 
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${institucionFiltro === inst.nombre ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
+                        >
                           <span className="whitespace-normal break-words leading-tight pr-2">{formatearTitulo(inst.nombre)}</span>
-                          {institucionFiltro === inst.nombre && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
+                          {institucionFiltro === inst.nombre && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />}
                         </button>
                       ))}
                     </div>
@@ -465,27 +559,37 @@ export default function BuscadorCarreras() {
 
               {/* FILTRO 4: ORDENAR Y PRECIO */}
               <div className="relative mb-4">
-                <span className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Ordenar y Precio</span>
-                <button onClick={() => setDropdownOrdenAbierto(!dropdownOrdenAbierto)}
-                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownOrdenAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}>
+                <span id="order-filter-label" className="block font-bold text-[11px] text-gray-400 uppercase tracking-wider mb-3">Ordenar y Precio</span>
+                <button 
+                  onClick={() => setDropdownOrdenAbierto(!dropdownOrdenAbierto)}
+                  aria-haspopup="listbox"
+                  aria-expanded={dropdownOrdenAbierto}
+                  aria-labelledby="order-filter-label"
+                  className={`w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-white border text-left rounded-2xl transition-all duration-300 outline-none gap-2 ${dropdownOrdenAbierto ? 'border-[#6544FF]/50 ring-4 ring-[#6544FF]/10 bg-white' : 'border-gray-200 hover:border-gray-300'}`}
+                >
                   <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <Calculator className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" />
+                    <Calculator className="w-4 h-4 text-[#6544FF]/70 shrink-0 mt-0.5" aria-hidden="true" />
                     <span className="font-semibold text-sm text-[#1A1528] text-left whitespace-nowrap overflow-hidden text-ellipsis">
                       {OPCIONES_ORDEN.find(o => o.id === orden)?.label}
                     </span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownOrdenAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-300 ${dropdownOrdenAbierto ? 'rotate-180 text-[#6544FF]' : ''}`} aria-hidden="true" />
                 </button>
                 
                 {dropdownOrdenAbierto && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setDropdownOrdenAbierto(false)}></div>
-                    <div className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
+                    <div className="fixed inset-0 z-40" onClick={() => setDropdownOrdenAbierto(false)} aria-hidden="true"></div>
+                    <div role="listbox" aria-labelledby="order-filter-label" className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
                       {OPCIONES_ORDEN.map((opc) => (
-                        <button key={opc.id} onClick={() => { setOrden(opc.id); setPaginaActual(1); setDropdownOrdenAbierto(false); }} 
-                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${orden === opc.id ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}>
+                        <button 
+                          key={opc.id} 
+                          role="option"
+                          aria-selected={orden === opc.id}
+                          onClick={() => { setOrden(opc.id); setPaginaActual(1); setDropdownOrdenAbierto(false); }} 
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-start justify-between gap-2 transition-colors ${orden === opc.id ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
+                        >
                           <span className="whitespace-normal break-words leading-tight">{opc.label}</span>
-                          {orden === opc.id && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
+                          {orden === opc.id && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />}
                         </button>
                       ))}
                     </div>
@@ -494,130 +598,188 @@ export default function BuscadorCarreras() {
               </div>
 
             </div>
-          </div>
+          </aside>
 
           {/* LISTA DE CARRERAS (BENTO CARDS GEMELAS A INSTITUCIONES) */}
-          <div className="flex-1 w-full space-y-6">
+          <div className="flex-1 w-full space-y-6" aria-live="polite">
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-2 animate-in fade-in gap-4 relative z-20">
               <p className="font-bold text-gray-500 text-xl flex items-center gap-2">
-                {cargando ? <><Loader2 className="w-6 h-6 animate-spin text-[#6544FF]" /> Buscando...</> : <>Mostrando <span className="text-[#6544FF]">{carreras.length}</span> de <span className="text-[#6544FF]">{totalResultados}</span> carreras</>}
+                {cargando ? <><Loader2 className="w-6 h-6 animate-spin text-[#6544FF]" aria-hidden="true" /> Buscando...</> : <>Mostrando <span className="text-[#6544FF]">{carreras.length}</span> de <span className="text-[#6544FF]">{totalResultados}</span> carreras</>}
               </p>
             </div>
 
-            {!cargando && carreras.map((carrera, i) => (
-              <a 
-                key={`${carrera.id}-${paginaActual}`}
-                href={`/carrera/${carrera.id}`}
-                onClick={(e) => handleNavegarACarrera(e, carrera.id)}
-                className={`group relative block bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-sm border-2 overflow-hidden transition-all duration-500 ease-out
-                  ${navegandoA === carrera.id 
-                    ? 'border-[#6544FF] scale-[0.98] opacity-90 shadow-inner z-50' 
-                    : 'border-transparent hover:border-[#6544FF]/30 hover:-translate-y-2'
-                  }`}
-                style={{ animationDelay: `${(i % 10) * 50}ms` }}
-              >
-                
-                {/* --- CAPA DE ANIMACIÓN DE CARGA (Al hacer click) --- */}
-                {navegandoA === carrera.id && (
-                  <div className="absolute inset-0 bg-white/70 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
-                    <div className="relative mb-3">
-                      <div className="absolute inset-0 bg-[#6544FF] blur-xl opacity-40 rounded-full animate-pulse"></div>
-                      <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin relative z-10" />
-                    </div>
-                    <span className="font-black text-xl text-[#1A1528] tracking-tight animate-pulse bg-white/50 px-4 py-1 rounded-full">
-                      Accediendo...
-                    </span>
-                  </div>
-                )}
+            {!cargando && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {carreras.map((carrera, i) => (
+                  <article key={`${carrera.id}-${paginaActual}`}>
+                    <a 
+                      href={`/carrera/${carrera.id}`}
+                      onClick={(e) => handleNavegarACarrera(e, carrera.id)}
+                      aria-label={`Ver detalles de la carrera ${carrera.nombre} impartida por ${carrera.institucion}`}
+                      title={`Ver detalles de ${carrera.nombre}`}
+                      className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full cursor-pointer
+                        ${navegandoA === carrera.id 
+                          ? 'scale-[0.98] opacity-90 z-50' 
+                          : 'hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)]'
+                        }`}
+                      style={{ animationDelay: `${(i % 10) * 50}ms` }}
+                    >
+                      
+                      {/* --- BORDE CON GRADIENTE SUTIL (visible solo en hover) --- */}
+                      <div className={`absolute inset-0 rounded-[2.5rem] bg-gradient-to-br ${carrera.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`} aria-hidden="true"></div>
 
-                {/* FX Luces Fondo */}
-                <div className={`absolute -right-20 -top-40 w-[30rem] h-[30rem] bg-gradient-to-br ${carrera.color} rounded-full opacity-0 blur-[100px] group-hover:opacity-10 transition-opacity duration-700 pointer-events-none`}></div>
+                      {/* --- CONTENIDO INTERNO DE LA CARD --- */}
+                      <div className="relative flex flex-col bg-white rounded-[2.4rem] p-6 h-full z-10">
+                        
+                        {/* --- CAPA DE ANIMACIÓN DE CARGA --- */}
+                        {navegandoA === carrera.id && (
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300 rounded-[2.3rem]">
+                            <div className="relative mb-3">
+                              <div className="absolute inset-0 bg-[#6544FF] blur-xl opacity-40 rounded-full animate-pulse" aria-hidden="true"></div>
+                              <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin relative z-10" aria-hidden="true" />
+                            </div>
+                            <span className="font-bold text-lg text-[#1A1528] tracking-tight animate-pulse">
+                              Accediendo...
+                            </span>
+                          </div>
+                        )}
 
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-                  
-                  {/* CONTENEDOR DE LOGO (Gemelo al de Instituciones) */}
-                  <div className="relative w-24 h-24 md:w-28 md:h-28 shrink-0">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${carrera.color} rounded-[2rem] blur-xl opacity-0 group-hover:opacity-30 transition-all duration-500 group-hover:scale-110`}></div>
-                    <div className="relative w-full h-full bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 flex items-center justify-center overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] z-10">
-                      {erroresLogos.includes(carrera.id) ? (
-                        <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${carrera.color} group-hover:scale-105 transition-transform duration-500`}>
-                          <span className="text-white font-black text-2xl md:text-3xl tracking-tighter drop-shadow-md">
-                            {carrera.sigla}
-                          </span>
+                        {/* FX Luces Fondo sutiles */}
+                        <div className={`absolute -right-20 -top-40 w-[25rem] h-[25rem] bg-gradient-to-br ${carrera.color} rounded-full opacity-[0.04] blur-[100px] group-hover:opacity-[0.08] transition-opacity duration-700 pointer-events-none`} aria-hidden="true"></div>
+
+                        {/* ============================================
+                            1. FILA SUPERIOR: LOGO + BADGES
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-4 mb-5">
+                          {/* Logo institucional */}
+                          <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-gray-100 shrink-0 group-hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] group-hover:-translate-y-0.5 transition-all duration-500">
+                            {erroresLogos.includes(carrera.id) ? (
+                              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${carrera.color}`}>
+                                <span className="text-white font-black text-base tracking-tighter">
+                                  {carrera.sigla}
+                                </span>
+                              </div>
+                            ) : (
+                              <img 
+                                src={carrera.logoUrl} 
+                                alt={`Logotipo de ${carrera.institucion}`} 
+                                loading="lazy"
+                                className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500 ease-out" 
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.onerror = null;
+                                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(carrera.institucion)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+                                  handleLogoError(carrera.id);
+                                }} 
+                              />
+                            )}
+                          </div>
+
+                          {/* Badges: Tipo + Región */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Badge Tipo con color del gradiente de la card */}
+                            <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r ${carrera.color} text-white shadow-sm`}>
+                              {carrera.tipoInst}
+                            </span>
+                            <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-bold flex items-center gap-1.5">
+                              <MapPin className="w-3 h-3" aria-hidden="true" /> 
+                              {carrera.region}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <img 
-                          src={`/logos/${carrera.logoArchivo}`} 
-                          alt={carrera.institucion} 
-                          className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" 
-                          onError={() => handleLogoError(carrera.id)} 
-                        />
-                      )}
-                    </div>
-                  </div>
 
-                  {/* INFO CENTRAL */}
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-wrap items-center gap-3 mb-4">
-                      <span className="px-4 py-1.5 rounded-xl bg-[#6544FF]/10 text-[#6544FF] text-xs font-black uppercase tracking-widest">{carrera.tipoInst}</span>
-                      <span className="px-4 py-1.5 rounded-xl bg-slate-100/80 text-slate-500 text-xs font-bold uppercase flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {carrera.region}</span>
-                    </div>
-                    
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6 group-hover:text-[#6544FF] transition-colors line-clamp-2">
-                      {carrera.nombre}
-                    </h3>
-                    
-                    <div className="flex flex-wrap gap-3">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-sm font-semibold text-slate-600">
-                        <Building className="w-4 h-4 text-[#6544FF]/60" /> <span className="truncate max-w-[200px]">{carrera.institucion}</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-sm font-bold text-slate-800">
-                        <Calculator className="w-4 h-4 text-emerald-500" /> {carrera.puntaje}
-                      </div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-sm font-semibold text-slate-600">
-                        <Clock className="w-4 h-4 text-amber-500" /> {carrera.duracion}
-                      </div>
-                    </div>
-                  </div>
+                        {/* ============================================
+                            2. NOMBRE DE LA CARRERA
+                        ============================================ */}
+                        <div className="relative z-10 mb-4">
+                          <h3 className="text-lg font-bold text-[#1A1528] tracking-normal group-hover:text-[#6544FF] transition-colors duration-300 line-clamp-2 leading-relaxed">
+                            {carrera.nombre}
+                          </h3>
+                        </div>
 
-                  {/* CHEVRON BOTÓN (Animado) */}
-                  <div className="w-full md:w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center group-hover:bg-[#6544FF] group-hover:text-white transition-all shrink-0">
-                    <ChevronRight className="w-6 h-6 transform group-hover:translate-x-1 transition-transform" />
-                  </div>
+                        {/* ============================================
+                            3. INSTITUCIÓN
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-2 mb-5 text-sm text-slate-500">
+                          <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                          <span className="font-medium truncate">{carrera.institucion}</span>
+                        </div>
 
-                </div>
-              </a>
-            ))}
+                        {/* ============================================
+                            4. MÉTRICAS: ARANCEL + DURACIÓN
+                        ============================================ */}
+                        <div className="relative z-10 grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-gray-100">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                              <Calculator className="w-3 h-3" aria-hidden="true" /> Arancel
+                            </span>
+                            <span className="text-sm font-bold text-slate-800 truncate">
+                              {carrera.puntaje}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                              <Clock className="w-3 h-3" aria-hidden="true" /> Duración
+                            </span>
+                            <span className="text-sm font-bold text-slate-800 truncate">
+                              {carrera.duracion}
+                            </span>
+                          </div>
+                        </div>
+
+                      </div>
+                    </a>
+                  </article>
+                ))}
+              </div>
+            )}
 
             {/* PAGINACIÓN EXACTAMENTE IGUAL AL DE INSTITUCIONES */}
             {!cargando && totalPaginas > 1 && (
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-10 mb-8 animate-in fade-in duration-500">
-                <button onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo({ top: 400, behavior: 'smooth' }); }} disabled={paginaActual === 1} className="w-10 h-10 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all">
-                  <ChevronLeft className="w-5 h-5" />
+              <nav aria-label="Paginación de resultados" className="flex flex-wrap items-center justify-center gap-2 mt-10 mb-8 animate-in fade-in duration-500">
+                <button 
+                  onClick={() => { setPaginaActual(p => Math.max(1, p - 1)); window.scrollTo({ top: 400, behavior: 'smooth' }); }} 
+                  disabled={paginaActual === 1} 
+                  aria-label="Página anterior"
+                  className="w-10 h-10 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all"
+                >
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                 </button>
                 {generarArregloPaginacion().map((pagina, index) => (
                   <button
                     key={index}
                     onClick={() => { if (typeof pagina === 'number') { setPaginaActual(pagina); window.scrollTo({ top: 400, behavior: 'smooth' }); } }}
+                    aria-label={typeof pagina === 'number' ? `Ir a la página ${pagina}` : 'Puntos suspensivos'}
+                    aria-current={pagina === paginaActual ? "page" : undefined}
+                    disabled={pagina === '...'}
                     className={`w-10 h-10 rounded-2xl font-black text-sm transition-all ${pagina === paginaActual ? 'bg-[#6544FF] text-white scale-105 border-transparent shadow-md' : pagina === '...' ? 'bg-transparent border-none text-gray-400 cursor-default' : 'bg-white border-2 border-gray-200 text-slate-600 hover:border-[#6544FF]/50 hover:text-[#6544FF]'}`}
                   >
                     {pagina}
                   </button>
                 ))}
-                <button onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo({ top: 400, behavior: 'smooth' }); }} disabled={paginaActual === totalPaginas} className="w-10 h-10 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all">
-                  <ChevronRight className="w-5 h-5" />
+                <button 
+                  onClick={() => { setPaginaActual(p => Math.min(totalPaginas, p + 1)); window.scrollTo({ top: 400, behavior: 'smooth' }); }} 
+                  disabled={paginaActual === totalPaginas} 
+                  aria-label="Página siguiente"
+                  className="w-10 h-10 rounded-2xl border-2 border-gray-200 text-[#1A1528] flex items-center justify-center disabled:opacity-30 hover:bg-[#6544FF]/10 hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-all"
+                >
+                  <ChevronRight className="w-5 h-5" aria-hidden="true" />
                 </button>
-              </div>
+              </nav>
             )}
 
             {/* FALLBACK NO ENCONTRADO - IDENTICO A INSTITUCIONES */}
             {!cargando && carreras.length === 0 && (
-              <div className="text-center py-20 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-dashed border-gray-300 shadow-sm animate-in fade-in duration-500">
-                <Globe className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <div className="text-center py-20 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-dashed border-gray-300 shadow-sm animate-in fade-in duration-500" role="alert">
+                <Globe className="w-16 h-16 text-gray-300 mx-auto mb-4" aria-hidden="true" />
                 <h3 className="font-black text-2xl text-slate-700 mb-2">No encontramos carreras</h3>
                 <p className="text-slate-500 text-sm font-medium">No hay resultados para tu búsqueda. Prueba con otros filtros.</p>
-                <button onClick={() => { setTipoFiltro("Todos"); setRegionFiltro("todas"); setInstitucionFiltro("todas"); setBusqueda(""); }} className="mt-6 px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors">
+                <button 
+                  onClick={() => { setTipoFiltro("Todos"); setRegionFiltro("todas"); setInstitucionFiltro("todas"); setBusqueda(""); }} 
+                  aria-label="Restablecer todos los filtros de búsqueda"
+                  className="mt-6 px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
+                >
                   Limpiar Filtros
                 </button>
               </div>
@@ -625,7 +787,7 @@ export default function BuscadorCarreras() {
           </div>
 
         </div>
-      </div>
+      </section>
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes blob {
@@ -651,6 +813,6 @@ export default function BuscadorCarreras() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
       `}} />
-    </div>
+    </main>
   );
 }

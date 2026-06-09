@@ -1,4 +1,6 @@
 // src/components/DirectorioInstituciones.tsx
+'use client';
+
 import { useState, useEffect } from "react";
 import { 
   Building2, Map, Award, CheckCircle2, ChevronRight, 
@@ -77,6 +79,19 @@ export default function DirectorioInstituciones() {
   // Estado para UX de Navegación y Logos
   const [erroresLogos, setErroresLogos] = useState<number[]>([]);
   const [navegandoA, setNavegandoA] = useState<number | null>(null);
+
+  // ==========================================================================
+  // BUG FIX: Restaurar estado al volver atrás (evita "Accediendo..." pegado)
+  // ==========================================================================
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setNavegandoA(null);
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   // --- FETCH DE SUPABASE ---
   useEffect(() => {
@@ -204,7 +219,7 @@ export default function DirectorioInstituciones() {
     setNavegandoA(id);
     setTimeout(() => {
       window.location.href = `/institucion/${id}`;
-    }, 400); // 400ms para que la animación se vea perfecta antes de saltar de página
+    }, 400);
   };
 
   // --- PAGINACIÓN ---
@@ -434,7 +449,9 @@ export default function DirectorioInstituciones() {
             </div>
           </div>
 
-          {/* LISTA DE INSTITUCIONES (CON DISEÑO IDÉNTICO AL EJEMPLO) */}
+          {/* ================================================================
+              LISTA DE INSTITUCIONES - CARDS ESTILO VENTO (GRID 3 COLUMNAS)
+          ================================================================ */}
           <div className="flex-1 w-full space-y-6">
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-2 animate-in fade-in gap-4 relative z-20">
@@ -443,90 +460,115 @@ export default function DirectorioInstituciones() {
               </p>
             </div>
 
-            {!cargando && institucionesPaginadas.map((inst, i) => (
-              <a 
-                key={`${inst.codigo_institucion}-${paginaActual}`}
-                href={`/institucion/${inst.codigo_institucion}`}
-                onClick={(e) => handleNavegar(e, inst.codigo_institucion)}
-                className={`group relative block bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-sm border-2 overflow-hidden transition-all duration-500 ease-out
-                  ${navegandoA === inst.codigo_institucion 
-                    ? 'border-[#6544FF] scale-[0.98] opacity-90 shadow-inner z-50' 
-                    : 'border-transparent hover:border-[#6544FF]/30 hover:-translate-y-2'
-                  }`}
-                style={{ animationDelay: `${(i % 10) * 50}ms` }}
-              >
-                
-                {/* --- NUEVA CAPA DE ANIMACIÓN DE CARGA (Al hacer click) --- */}
-                {navegandoA === inst.codigo_institucion && (
-                  <div className="absolute inset-0 bg-white/70 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
-                    <div className="relative mb-3">
-                      <div className="absolute inset-0 bg-[#6544FF] blur-xl opacity-40 rounded-full animate-pulse"></div>
-                      <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin relative z-10" />
-                    </div>
-                    <span className="font-black text-xl text-[#1A1528] tracking-tight animate-pulse bg-white/50 px-4 py-1 rounded-full">
-                      Accediendo...
-                    </span>
-                  </div>
-                )}
+            {!cargando && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {institucionesPaginadas.map((inst, i) => (
+                  <article key={`${inst.codigo_institucion}-${paginaActual}`}>
+                    <a 
+                      href={`/institucion/${inst.codigo_institucion}`}
+                      onClick={(e) => handleNavegar(e, inst.codigo_institucion)}
+                      className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full cursor-pointer
+                        ${navegandoA === inst.codigo_institucion 
+                          ? 'scale-[0.98] opacity-90 z-50' 
+                          : 'hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)]'
+                        }`}
+                      style={{ animationDelay: `${(i % 10) * 50}ms` }}
+                    >
+                      
+                      {/* --- BORDE CON GRADIENTE SUTIL (visible solo en hover) --- */}
+                      <div className={`absolute inset-0 rounded-[2.5rem] bg-gradient-to-br ${inst.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`} aria-hidden="true"></div>
 
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-                  
-                  {/* --- CONTENEDOR DE LOGO (BLANCO CON GLOW Y ZOOM IGUAL AL EJEMPLO) --- */}
-                  <div className="relative w-24 h-24 md:w-28 md:h-28 shrink-0">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${inst.color} rounded-[2rem] blur-xl opacity-0 group-hover:opacity-30 transition-all duration-500 group-hover:scale-110`}></div>
-                    <div className="relative w-full h-full bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 flex items-center justify-center overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] z-10">
-                      {erroresLogos.includes(inst.codigo_institucion) ? (
-                        <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${inst.color} group-hover:scale-105 transition-transform duration-500`}>
-                          <span className="text-white font-black text-2xl md:text-3xl tracking-tighter drop-shadow-md">
-                            {obtenerSiglas(inst.nombre)}
+                      {/* --- CONTENIDO INTERNO DE LA CARD --- */}
+                      <div className="relative flex flex-col bg-white rounded-[2.4rem] p-6 h-full z-10">
+                        
+                        {/* --- CAPA DE ANIMACIÓN DE CARGA --- */}
+                        {navegandoA === inst.codigo_institucion && (
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300 rounded-[2.3rem]">
+                            <div className="relative mb-3">
+                              <div className="absolute inset-0 bg-[#6544FF] blur-xl opacity-40 rounded-full animate-pulse"></div>
+                              <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin relative z-10" />
+                            </div>
+                            <span className="font-bold text-lg text-[#1A1528] tracking-tight animate-pulse">
+                              Accediendo...
+                            </span>
+                          </div>
+                        )}
+
+                        {/* FX Luces Fondo sutiles */}
+                        <div className={`absolute -right-20 -top-40 w-[25rem] h-[25rem] bg-gradient-to-br ${inst.color} rounded-full opacity-[0.04] blur-[100px] group-hover:opacity-[0.08] transition-opacity duration-700 pointer-events-none`} aria-hidden="true"></div>
+
+                        {/* ============================================
+                            1. FILA SUPERIOR: LOGO + BADGES
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-4 mb-5">
+                          {/* Logo institucional */}
+                          <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-gray-100 shrink-0 group-hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] group-hover:-translate-y-0.5 transition-all duration-500">
+                            {erroresLogos.includes(inst.codigo_institucion) ? (
+                              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${inst.color}`}>
+                                <span className="text-white font-black text-base tracking-tighter">
+                                  {obtenerSiglas(inst.nombre)}
+                                </span>
+                              </div>
+                            ) : (
+                              <img 
+                                src={`/logos/${generarSlugLogo(inst.nombre)}`} 
+                                alt={inst.nombre} 
+                                className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500 ease-out" 
+                                onError={() => handleLogoError(inst.codigo_institucion)} 
+                              />
+                            )}
+                          </div>
+
+                          {/* Badges: Tipo + Gratuidad */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r ${inst.color} text-white shadow-sm`}>
+                              {inst.tipo?.includes("Universidad") ? "U" : inst.tipo?.includes("Instituto") ? "IP" : inst.tipo?.includes("Centro") ? "CFT" : "Institución"}
+                            </span>
+                            {inst.adscrita_gratuidad && (
+                              <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 text-[11px] font-bold flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3 h-3" /> Gratuidad
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* ============================================
+                            2. NOMBRE DE LA INSTITUCIÓN
+                        ============================================ */}
+                        <div className="relative z-10 mb-4">
+                          <h3 className="text-lg font-bold text-[#1A1528] tracking-normal group-hover:text-[#6544FF] transition-colors duration-300 line-clamp-2 leading-relaxed">
+                            {inst.nombre}
+                          </h3>
+                        </div>
+
+                        {/* ============================================
+                            3. ACREDITACIÓN
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-2 mb-5 text-sm text-slate-500">
+                          <Award className={`w-3.5 h-3.5 shrink-0 ${inst.acreditada ? 'text-amber-500' : 'text-slate-400'}`} />
+                          <span className="font-medium truncate">
+                            {inst.acreditada ? 'Acreditada por CNA' : 'No Acreditada'}
                           </span>
                         </div>
-                      ) : (
-                        <img 
-                          src={`/logos/${generarSlugLogo(inst.nombre)}`} 
-                          alt={inst.nombre} 
-                          className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" 
-                          onError={() => handleLogoError(inst.codigo_institucion)} 
-                        />
-                      )}
-                    </div>
-                  </div>
 
-                  {/* INFO CENTRAL */}
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-wrap items-center gap-3 mb-4">
-                      <span className="px-4 py-1.5 rounded-xl bg-[#6544FF]/10 text-[#6544FF] text-xs font-black uppercase tracking-widest">{inst.tipo || "Institución Superior"}</span>
-                      {inst.adscrita_gratuidad && (
-                        <span className="px-4 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-bold uppercase flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Gratuidad
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6 group-hover:text-[#6544FF] transition-colors">
-                      {inst.nombre}
-                    </h3>
-                    
-                    {/* CHIPS DE DETALLES */}
-                    <div className="flex flex-wrap gap-3">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-sm font-bold text-slate-800">
-                        <Award className={`w-4 h-4 ${inst.acreditada ? 'text-amber-500' : 'text-slate-400'}`} />
-                        {inst.acreditada ? `Acreditada por CNA` : 'No Acreditada'}
+                        {/* ============================================
+                            4. REGIONES
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-2 mt-auto pt-4 border-t border-gray-100 text-sm text-slate-500">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="font-medium truncate">
+                            {inst.regiones.length > 1 
+                              ? `Presencia en ${inst.regiones.length} regiones` 
+                              : inst.regiones[0] || "Sede Principal"}
+                          </span>
+                        </div>
+
                       </div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-sm font-semibold text-slate-600">
-                        <MapPin className="w-4 h-4" /> 
-                        {inst.regiones.length > 1 ? `Presencia en ${inst.regiones.length} regiones` : inst.regiones[0] || "Sede Principal"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="w-full md:w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center group-hover:bg-[#6544FF] group-hover:text-white transition-all shrink-0">
-                    <ChevronRight className="w-6 h-6" />
-                  </div>
-
-                </div>
-              </a>
-            ))}
+                    </a>
+                  </article>
+                ))}
+              </div>
+            )}
 
             {/* PAGINACIÓN */}
             {!cargando && totalPaginas > 1 && (

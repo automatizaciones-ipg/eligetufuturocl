@@ -1,16 +1,15 @@
 import os
 import time
 import random
-import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # ==========================================
-# 1. BANCO DE TEXTOS OPTIMIZADOS PARA SEO
+# 1. BANCO DE TEXTOS (SEO 4.0 MARKETING JUVENIL)
 # ==========================================
 
 def clasificar_area_carrera(nombre_carrera):
-    """Detecta el área de estudio para inyectar keywords semánticas específicas."""
+    if not nombre_carrera: return 'general'
     nombre = str(nombre_carrera).lower()
     if any(word in nombre for word in ['ingeniería', 'informática', 'computación', 'datos', 'desarrollo', 'tecnología', 'software', 'redes']):
         return 'tecnologia'
@@ -27,47 +26,11 @@ def clasificar_area_carrera(nombre_carrera):
     else:
         return 'general'
 
-def generar_descripcion_institucion(nombre, adscrita_gratuidad, acreditada):
-    """Genera descripciones ricas en keywords institucionales de alto volumen de búsqueda."""
-    nombre_formateado = str(nombre).title()
-    
-    # INTROS: Atacan la keyword "Dónde estudiar en Chile" y "Alternativas académicas"
-    intros = [
-        f"¿Evaluando dónde estudiar en Chile? {nombre_formateado} se alza como una de las alternativas académicas más sólidas para tu futuro, enfocándose en entregar herramientas prácticas para el mundo real.",
-        f"Elegir tu casa de estudios es clave. En {nombre_formateado} vas a encontrar una oferta académica diseñada para potenciar tus habilidades y asegurar una inserción laboral exitosa.",
-        f"Si buscas una institución de educación superior que conecte con tu vocación, {nombre_formateado} ofrece un excelente proyecto educativo enfocado en los desafíos profesionales de hoy."
-    ]
-    
-    # FINANCIAMIENTO: Ataca "Adscrita a gratuidad", "Fuas", "Beneficios estatales"
-    if adscrita_gratuidad:
-        financiamiento = random.choice([
-            "Un tremendo beneficio es que está adscrita a la Gratuidad. Esto te permite postular vía FUAS y estudiar sin que las lucas o el financiamiento sean un freno en tu carrera.",
-            "Destaca por estar adscrita al beneficio de la Gratuidad institucional, asegurando que tu talento sea el único requisito para acceder a la educación superior."
-        ])
-    else:
-        financiamiento = random.choice([
-            "Cuenta con una red de beneficios estudiantiles y becas internas destinadas a apoyar el financiamiento de tu carrera de forma accesible.",
-            "Para facilitarte las cosas, dispone de convenios de financiamiento y apoyo económico pensado en mitigar el costo del arancel anual."
-        ])
-        
-    # CALIDAD: Ataca "Acreditación institucional", "Acreditada CNA"
-    if acreditada:
-        calidad = random.choice([
-            "Para tu total tranquilidad, cuenta con acreditación institucional vigente. Este sello de calidad garantiza que la infraestructura, los profes y los programas cumplen con las exigencias del sistema educativo chileno.",
-            "Al ser una institución acreditada, tienes el respaldo oficial de que tu título profesional tendrá peso y validez en el mercado laboral."
-        ])
-    else:
-        calidad = "Actualmente la institución ejecuta planes de mejora continua en sus mallas curriculares para adecuarse a los estándares de calidad del consejo educativo."
-
-    return f"{random.choice(intros)} {financiamiento} {calidad}"
-
 def generar_descripcion_carrera(nombre_carrera, nombre_institucion, acreditacion_carrera):
-    """Genera textos de alta conversión y SEO, optimizando 'Campo laboral' y 'Empleabilidad' por área."""
-    carrera = str(nombre_carrera).capitalize()
-    institucion = str(nombre_institucion).title()
+    carrera = str(nombre_carrera or 'la carrera').capitalize()
+    institucion = str(nombre_institucion or 'esta institución').title()
     area = clasificar_area_carrera(nombre_carrera)
     
-    # BANCO POR ÁREAS: Inyección masiva de keywords semánticas (Léase: transformación digital, salud pública, etc.)
     intros = {
         'tecnologia': [
             f"Si buscas una de las carreras con mayor empleabilidad, estudiar {carrera} en {institucion} es tu mejor opción. Su perfil de egreso está altamente enfocado en transformación digital, desarrollo de software e innovación tecnológica.",
@@ -101,9 +64,8 @@ def generar_descripcion_carrera(nombre_carrera, nombre_institucion, acreditacion
     
     texto_intro = random.choice(intros[area])
     
-    # CIERRES: Optimizan "Acreditación de carrera" y "Salida laboral"
     acred_texto = str(acreditacion_carrera).strip()
-    if acred_texto and acred_texto.lower() not in ['no acreditada', 'none', '']:
+    if acreditacion_carrera and acred_texto.lower() not in ['no acreditada', 'none', '']:
         cierre = random.choice([
             f"Un dato clave para tu postulación: este programa cuenta con acreditación vigente ({acred_texto}), garantizando la excelencia de su cuerpo docente y su prestigio laboral.",
             f"Al estar acreditada oficialmente ({acred_texto}), tienes la certeza de que su título profesional cuenta con el máximo reconocimiento del sistema de educación superior."
@@ -117,12 +79,12 @@ def generar_descripcion_carrera(nombre_carrera, nombre_institucion, acreditacion
     return f"{texto_intro} {cierre}"
 
 # ==========================================
-# 2. FUNCIÓN PRINCIPAL DE INYECCIÓN
+# 2. MOTOR FRANCOTIRADOR (SOLO NULLS)
 # ==========================================
-def inyeccion_descripciones_seo():
+def inyeccion_francotirador():
     tiempo_inicio = time.time()
     print("======================================================================")
-    print("🚀 INICIANDO INYECTOR DE DESCRIPCIONES 4.0 (SEO EXT_QUALITY & OVERWRITE)")
+    print("🎯 INICIANDO MODO FRANCOTIRADOR: INYECCIÓN EXCLUSIVA EN NULLS")
     print("======================================================================\n")
     
     load_dotenv()
@@ -130,87 +92,74 @@ def inyeccion_descripciones_seo():
     key = os.environ.get("SUPABASE_KEY")
     
     if not url or not key:
-        print("❌ ERROR: Faltan credenciales SUPABASE_URL o SUPABASE_KEY en tu .env")
+        print("❌ ERROR: Faltan credenciales SUPABASE_URL o SUPABASE_KEY.")
         return
         
     supabase: Client = create_client(url, key)
 
-    # --- FASE 1: INSTITUCIONES ---
-    print("🏛️ FASE 1: Generando descripciones SEO para INSTITUCIONES...")
+    # --- 1. CARGAR MAPA DE INSTITUCIONES ---
+    print("📥 Cargando mapa de instituciones...")
     try:
-        res_inst = supabase.table('instituciones').select('codigo_institucion, nombre, adscrita_gratuidad, acreditada').execute()
-        instituciones_db = res_inst.data
-        
-        mapa_instituciones = {} 
-        inst_inyectadas = 0
-
-        for inst in instituciones_db:
-            mapa_instituciones[inst['codigo_institucion']] = inst['nombre']
-            
-            desc_propuesta = generar_descripcion_institucion(
-                inst['nombre'], 
-                inst.get('adscrita_gratuidad', False), 
-                inst.get('acreditada', False)
-            )
-            
-            supabase.table('instituciones').update({"descripcion": desc_propuesta}).eq('codigo_institucion', inst['codigo_institucion']).execute()
-            inst_inyectadas += 1
-            print(f"   ✅ [SEO UPDATE] Institución: {inst['nombre'][:40]}...")
-
-        print(f"▶️ Resultado Instituciones: {inst_inyectadas} inyectadas exitosamente.\n")
+        res_inst = supabase.table('instituciones').select('codigo_institucion, nombre').execute()
+        mapa_instituciones = {inst['codigo_institucion']: inst['nombre'] for inst in res_inst.data}
     except Exception as e:
-        print(f"❌ Error crítico en Fase 1: {e}\n")
+        print(f"❌ Error al cargar instituciones: {e}")
         return
 
-    # --- FASE 2: CARRERAS ---
-    print("🎓 FASE 2: Generando descripciones SEO para CARRERAS...")
+    # --- 2. BÚSQUEDA EXCLUSIVA DE VACÍOS (LA MAGIA ESTÁ AQUÍ) ---
+    print("🔍 Consultando a Supabase ÚNICAMENTE las carreras con descripción en NULL...")
     inicio, rango = 0, 1000
-    carreras_inyectadas = 0
+    carreras_reparadas = 0
     bloque_n = 1
 
     while True:
         try:
+            # MAGIA: Usamos .is_('descripcion', 'null') para que Supabase NO nos envíe las que ya están listas.
             res_carreras = supabase.table('carreras').select(
                 'id, codigo_institucion, nombre_carrera, acreditacion_carrera'
-            ).range(inicio, inicio + rango - 1).execute()
+            ).is_('descripcion', 'null').range(inicio, inicio + rango - 1).execute()
             
-            carreras_db = res_carreras.data
-            if not carreras_db: break 
+            carreras_vacias = res_carreras.data
             
-            for c in carreras_db:
-                nombre_inst = mapa_instituciones.get(c['codigo_institucion'], "esta institución")
-                
-                desc_propuesta = generar_descripcion_carrera(
-                    c['nombre_carrera'], 
-                    nombre_inst, 
-                    c.get('acreditacion_carrera', 'No Acreditada')
-                )
-                
-                supabase.table('carreras').update({"descripcion": desc_propuesta}).eq('id', c['id']).execute()
-                carreras_inyectadas += 1
-                
-                if carreras_inyectadas % 100 == 0:
-                    print(f"   🟢 {carreras_inyectadas} descripciones SEO optimizadas (Última: {c['nombre_carrera'][:30]}...)")
+            # Si la lista vuelve vacía, significa que ya no hay NULLs en la base de datos.
+            if not carreras_vacias:
+                break 
             
-            print(f"📦 Bloque {bloque_n:02d} completado exitosamente.")
+            for c in carreras_vacias:
+                # Obtenemos datos seguros
+                id_carrera = c.get('id')
+                nombre_carrera = c.get('nombre_carrera')
+                cod_inst = c.get('codigo_institucion')
+                acreditacion = c.get('acreditacion_carrera', 'No Acreditada')
+                
+                nombre_inst = mapa_instituciones.get(cod_inst, "esta institución")
+                
+                # Generamos texto
+                desc_nueva = generar_descripcion_carrera(nombre_carrera, nombre_inst, acreditacion)
+                
+                # Inyectamos
+                supabase.table('carreras').update({"descripcion": desc_nueva}).eq('id', id_carrera).execute()
+                carreras_reparadas += 1
+                
+                nombre_seguro = str(nombre_carrera or 'Desconocida')[:40]
+                print(f"   🎯 [INYECTADA ID {id_carrera}] {nombre_seguro}...")
             
             bloque_n += 1
             inicio += rango
             
         except Exception as e:
-            print(f"❌ Error en el bloque {bloque_n} de Carreras: {e}")
-            break
+            print(f"❌ Error en el bloque {bloque_n}: {e}")
+            break 
 
-    # --- MÉTRICAS FINALES ---
+    # --- 3. MÉTRICAS FINALES ---
     duracion = time.time() - tiempo_inicio
     print("\n" + "="*70)
-    print("🎉 INYECCIÓN PROGRAMMATIC SEO COMPLETADA CON ÉXITO")
+    print("🎉 OPERACIÓN FRANCOTIRADOR COMPLETADA")
     print("="*70)
-    print(f"⏱️ Tiempo total  : {duracion:.2f} segundos")
-    print(f"🏛️ Instituciones : {inst_inyectadas} actualizadas con enfoque SEO")
-    print(f"🎓 Carreras      : {carreras_inyectadas} actualizadas con enfoque SEO")
+    print(f"⏱️ Tiempo total    : {duracion:.2f} segundos")
+    print(f"🛡️ Carreras sanas  : (Intactas, no se descargaron de la BD)")
+    print(f"🎯 Carreras curadas: {carreras_reparadas} (Rellenadas con éxito SEO)")
     print("="*70)
 
 if __name__ == "__main__":
-    import random # Aseguramos la importación local por si acaso
-    激 = inyeccion_descripciones_seo()
+    inyeccion_francotirador()

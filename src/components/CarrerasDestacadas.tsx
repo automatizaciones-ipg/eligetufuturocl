@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { 
   Briefcase, 
   DollarSign, 
-  GraduationCap, 
   ArrowUpRight, 
   Star,
   ArrowRight,
@@ -179,7 +178,6 @@ export default function CarrerasDestacadas() {
         if (data) {
           const rawData = data as unknown as CarreraDB[];
           
-          // 1. Mapeamos y extraemos la data pura de TODOS los registros primero
           const todasAdaptadas = rawData.map((item) => {
             const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
             const nombreInst = inst?.nombre || "No informada";
@@ -187,10 +185,8 @@ export default function CarrerasDestacadas() {
               ? Number((item.empleabilidad_1er_anio * 100).toFixed(1)) 
               : 0;
   
-            // LOGO POR DEFECTO DINÁMICO
             const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(nombreInst)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
   
-            // LLAVE DESTRUCTORA: Elimina tildes, comas, puntos y espacios extras.
             const llaveFiltro = item.nombre_carrera
               .trim()
               .toLowerCase()
@@ -206,7 +202,7 @@ export default function CarrerasDestacadas() {
                 carrera: item.nombre_carrera.trim(),
                 institucion: nombreInst,
                 tipoInst: inst?.tipo || "Universidades",
-                // Asigna logo_url, si es null o no existe usa el fallbackLogo
+                // Toma la URL WebP de Supabase, o el fallback si viene vacía
                 logoInst: inst?.logo_url || fallbackLogo,
                 empleabilidad: empleabilidadReal,
                 arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
@@ -218,7 +214,6 @@ export default function CarrerasDestacadas() {
             };
           });
   
-          // 2. Filtro Infranqueable con Set (garantiza UNICIDAD ABSOLUTA por Carrera)
           const filtroDefinitivo: CarreraUI[] = [];
           const nombresYaAgregados = new Set<string>();
   
@@ -296,9 +291,37 @@ export default function CarrerasDestacadas() {
     }
   };
 
+  // --- MEJORA SEO: Generación Dinámica de JSON-LD ---
+  const jsonLdData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": carrerasBD.map((carrera, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Course",
+        "name": carrera.carrera,
+        "description": `Carrera de ${carrera.carrera} impartida por ${carrera.institucion}. Empleabilidad al primer año: ${carrera.empleabilidad}%. Arancel anual: ${carrera.arancel}.`,
+        "provider": {
+          "@type": "EducationalOrganization",
+          "name": carrera.institucion,
+          "logo": carrera.logoInst
+        }
+      }
+    }))
+  };
+
   return (
     <section className="w-full bg-[#F4F5F9] pb-24 overflow-hidden tracking-tight">
       
+      {/* MEJORA SEO: Inyección de Datos Estructurados para Google */}
+      {carrerasBD.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+        />
+      )}
+
       {/* 1. HERO BANNER */}
       <div className="relative w-full bg-[#0A0518] pt-24 pb-48 px-6 overflow-hidden z-20 border-b border-white/5">
         <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
@@ -309,7 +332,7 @@ export default function CarrerasDestacadas() {
 
         <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center space-y-4">
           <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white/10 text-emerald-300 font-bold text-sm mb-2 border border-white/20 uppercase tracking-widest backdrop-blur-md">
-            <Star className="w-4 h-4 fill-emerald-300/20" /> Top Nacional
+            <Star className="w-4 h-4 fill-emerald-300/20" aria-hidden="true" /> Top Nacional
           </div>
           <h2 className="font-black uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-none">
             Carreras <br className="md:hidden" />
@@ -328,22 +351,24 @@ export default function CarrerasDestacadas() {
           <div className="absolute -top-16 right-8 z-40 flex items-center gap-2.5">
             <button 
               onClick={() => handleNavegacion("left")}
+              aria-label="Desplazar slider a la izquierda"
               className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white hover:text-[#0A0518] border border-white/10 flex items-center justify-center transition-all duration-300 shadow-xl backdrop-blur-md active:scale-95"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-6 h-6" aria-hidden="true" />
             </button>
             <button 
               onClick={() => handleNavegacion("right")}
+              aria-label="Desplazar slider a la derecha"
               className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white hover:text-[#0A0518] border border-white/10 flex items-center justify-center transition-all duration-300 shadow-xl backdrop-blur-md active:scale-95"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
         )}
 
         {cargando ? (
           <div className="w-full flex flex-col items-center justify-center py-28 bg-white rounded-[2.5rem] shadow-xl border border-gray-100">
-            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" />
+            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" aria-hidden="true" />
             <p className="font-bold text-gray-500">Cargando carreras destacadas...</p>
           </div>
         ) : (
@@ -359,31 +384,33 @@ export default function CarrerasDestacadas() {
                 isDragging ? 'cursor-grabbing select-none' : 'cursor-grab snap-x snap-mandatory scroll-smooth'
               }`}
               style={{ WebkitOverflowScrolling: "touch" }}
+              role="region"
+              aria-label="Lista de Carreras Destacadas"
             >
               {carrerasBD.map((carrera, i) => (
-                <div 
+                <article 
                   key={carrera.id}
                   className={`w-[88vw] sm:w-[420px] md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-[2.5rem] p-6 md:p-7 border border-gray-100/80 shadow-[0_10px_35px_rgba(0,0,0,0.03)] flex flex-col transition-all duration-300 ${carrera.tema.borderHover} hover:-translate-y-1.5 group ${isDragging ? 'pointer-events-none' : ''}`}
                   style={{ animation: `fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 80}ms both` }}
                 >
                   
                   {/* Cabecera: Badges e Icono General */}
-                  <div className="flex justify-between items-start mb-4">
+                  <header className="flex justify-between items-start mb-4">
                     <div className="flex flex-wrap gap-2 items-center">
                       <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full ${carrera.tema.bgBadge} ${carrera.tema.textBadge} shadow-sm`}>
                         {carrera.tipoInst}
                       </span>
                       {carrera.es_promocionada && (
                         <span className="bg-gradient-to-r from-[#1A1528] to-[#2D2442] text-[#FACC15] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#FACC15]/20">
-                          TOP <Star className="w-3 h-3 fill-[#FACC15]" />
+                          TOP <Star className="w-3 h-3 fill-[#FACC15]" aria-hidden="true" />
                         </span>
                       )}
                     </div>
-                  </div>
+                  </header>
 
                   {/* Títulos y Bloque Imponente de Institución */}
                   <div className="mb-6">
-                    <h3 className={`font-black text-xl md:text-2xl leading-tight mb-4 uppercase tracking-tight line-clamp-2 min-h-[3.5rem] ${carrera.tema.textGradient}`} title={carrera.carrera}>
+                    <h3 className={`font-black text-xl md:text-2xl leading-tight mb-4 uppercase tracking-tight line-clamp-2 min-h-[3.5rem] ${carrera.tema.textGradient}`} title={`Carrera: ${carrera.carrera}`}>
                       {carrera.carrera}
                     </h3>
                     
@@ -392,16 +419,17 @@ export default function CarrerasDestacadas() {
                         <div className={`absolute inset-0 ${carrera.tema.barGradient} rounded-xl blur-md opacity-0 group-hover/inst:opacity-30 transition-opacity duration-500`}></div>
                         
                         <div className="relative w-14 h-14 bg-white rounded-xl p-1.5 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover/inst:scale-[1.03]">
-                          {/* 🔥 AQUÍ OCURRE LA MAGIA DEL LOGO POR DEFECTO
-                            Si el servidor de la URL responde con error 404 (imagen borrada o enlace roto), 
-                            el evento 'onError' cambia la URL inmediatamente a la imagen de UI-Avatars.
-                          */}
+                          {/* MEJORA SEO: Atributo alt semántico, lazy loading */}
                           <img 
                             src={carrera.logoInst} 
-                            alt={`Logo de ${carrera.institucion}`}
-                            className="w-full h-full object-contain rounded-lg transition-transform duration-300"
+                            alt={`Logotipo oficial de ${carrera.institucion}`}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-contain rounded-lg transition-transform duration-300 drop-shadow-sm"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(carrera.institucion)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null; 
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(carrera.institucion)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
                             }}
                           />
                         </div>
@@ -410,7 +438,7 @@ export default function CarrerasDestacadas() {
                         <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">
                           Impartido por
                         </span>
-                        <p className="text-[13px] md:text-sm font-bold tracking-tight text-[#1A1528] uppercase truncate" title={carrera.institucion}>
+                        <p className="text-[13px] md:text-sm font-bold tracking-tight text-[#1A1528] uppercase truncate" title={`Institución: ${carrera.institucion}`}>
                           {carrera.institucion}
                         </p>
                       </div>
@@ -422,7 +450,7 @@ export default function CarrerasDestacadas() {
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-white rounded-xl shadow-sm border border-white/50">
-                          <Briefcase className={`w-4 h-4 ${carrera.tema.textAccent}`} />
+                          <Briefcase className={`w-4 h-4 ${carrera.tema.textAccent}`} aria-hidden="true" />
                         </div>
                         <span className="text-xs font-bold text-gray-600 leading-tight">
                           Empleabilidad<br/>al 1er Año
@@ -433,7 +461,7 @@ export default function CarrerasDestacadas() {
                       </span>
                     </div>
                     
-                    <div className="w-full bg-white/70 rounded-full h-2.5 overflow-hidden border border-white/50 shadow-inner">
+                    <div className="w-full bg-white/70 rounded-full h-2.5 overflow-hidden border border-white/50 shadow-inner" aria-hidden="true">
                       <div 
                         className={`h-full rounded-full ${carrera.tema.barGradient} transition-all duration-1000 ease-out`}
                         style={{ width: animarBarras ? `${carrera.empleabilidad}%` : '0%' }}
@@ -447,29 +475,30 @@ export default function CarrerasDestacadas() {
                       <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">
                         Arancel Anual
                       </span>
-                      <span className="font-black text-[#1A1528] text-base truncate">
+                      <span className="font-black text-[#1A1528] text-base truncate" title={`Arancel anual: ${carrera.arancel}`}>
                         {carrera.arancel}
                       </span>
                     </div>
 
                     <div className={`col-span-3 ${carrera.tema.darkBox} rounded-2xl p-3.5 relative overflow-hidden flex flex-col justify-center shadow-inner`}>
                       <div className="absolute -right-3 -bottom-4 opacity-[0.07]">
-                        <DollarSign className="w-20 h-20 text-white" />
+                        <DollarSign className="w-20 h-20 text-white" aria-hidden="true" />
                       </div>
                       <span className="text-[9px] font-extrabold text-white/60 uppercase tracking-wider mb-1 relative z-10">
                         Sueldo Promedio
                       </span>
-                      <span className="font-black text-white text-xs md:text-[11px] leading-tight tracking-tight relative z-10 block pr-2">
+                      <span className="font-black text-white text-xs md:text-[11px] leading-tight tracking-tight relative z-10 block pr-2" title={`Ingreso promedio: ${carrera.ingreso}`}>
                         {carrera.ingreso}
                       </span>
                     </div>
                   </div>
 
                   {/* Footer */}
-                  <div className="mt-auto pt-4 flex justify-between items-center border-t border-gray-100 justify-center">
-                    
+                  <footer className="mt-auto pt-4 flex justify-between items-center border-t border-gray-100 justify-center">
+                    {/* MEJORA SEO: aria-label explícito para el lector de pantalla */}
                     <a 
                       href={`/carrera/${carrera.codigo_carrera}`}
+                      aria-label={`Ver detalles completos de la carrera ${carrera.carrera} en ${carrera.institucion}`}
                       onClick={(e) => {
                         if (isDragging) e.preventDefault();
                         else setAccediendoId(carrera.codigo_carrera);
@@ -481,14 +510,14 @@ export default function CarrerasDestacadas() {
                       }`}
                     >
                       {accediendoId === carrera.codigo_carrera ? (
-                        <><Loader2 className="w-3 h-3 animate-spin" /> ...</>
+                        <><Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> ...</>
                       ) : (
-                        <>Ver detalles <ArrowUpRight className="w-3.5 h-3.5" /></>
+                        <>Ver detalles <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" /></>
                       )}
                     </a>
-                  </div>
+                  </footer>
 
-                </div>
+                </article>
               ))}
             </div>
 
@@ -503,7 +532,7 @@ export default function CarrerasDestacadas() {
                       ? 'w-8 h-2.5 bg-[#6544FF]' 
                       : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
                   }`}
-                  aria-label={`Ir a tarjeta ${index + 1}`}
+                  aria-label={`Ir a la página ${index + 1} del carrusel de carreras`}
                 />
               ))}
             </div>
@@ -514,6 +543,7 @@ export default function CarrerasDestacadas() {
         <div className="mt-4 flex justify-center animate-in fade-in slide-in-from-bottom-6">
           <a 
             href="/herramientas/mercado-laboral"
+            aria-label="Ir a la herramienta interactiva de exploración del mercado laboral"
             className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#1A1528] text-white font-black italic uppercase tracking-wider rounded-full overflow-hidden shadow-[0_10px_40px_rgba(26,21,40,0.25)] hover:shadow-[0_15px_45px_rgba(101,68,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-[#6544FF] via-[#D946EF] to-[#3B82F6] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -521,7 +551,7 @@ export default function CarrerasDestacadas() {
               Explorar Mercado Laboral 
             </span>
             <div className="relative z-10 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
-              <ArrowRight className="w-4 h-4 text-white" />
+              <ArrowRight className="w-4 h-4 text-white" aria-hidden="true" />
             </div>
           </a>
         </div>

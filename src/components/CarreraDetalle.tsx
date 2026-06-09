@@ -1,22 +1,75 @@
 // src/components/CarreraDetalle.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building, 
-  ArrowLeft, CheckCircle2, Sparkles, ChevronRight, 
-  User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award 
+  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award 
 } from 'lucide-react';
 
-// Generador de Logo
-const normalizarNombreLogo = (nombre: string) => {
-  if (!nombre) return 'default-logo.png';
-  return nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") + '.png';
-};
+// ============================================================================
+// 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
+// ============================================================================
+interface Institucion {
+  nombre?: string;
+  tipo?: string;
+  logo_url?: string;
+}
 
-// Formateadores
-const formatoDinero = (valor: number | null) => valor ? `$${valor.toLocaleString('es-CL')}` : 'No informado';
-const formatoPorcentaje = (valor: number | null) => valor ? `${(valor * 100).toFixed(1)}%` : 'No informado';
+interface CarreraData {
+  nombre_carrera?: string;
+  duracion_semestres?: number;
+  instituciones?: Institucion;
+  empleabilidad_1er_anio?: number | null;
+  ingreso_promedio_4to_anio?: string | number | null;
+  arancel_anual?: number | null;
+  region?: string;
+  sede?: string;
+  jornada?: string;
+  descripcion?: string;
+}
 
-// Opciones del Combobox
+interface CarreraDetalleProps {
+  carrera?: CarreraData;
+}
+
+interface FormState {
+  nombre: string;
+  email: string;
+  telefono: string;
+  profesion: string;
+  tiposPregunta: string[];
+  mensajeOtro: string;
+}
+
+interface StatCardProps {
+  icon?: React.ReactElement<{ className?: string }>;
+  bgIcon: React.ReactNode;
+  title: string;
+  value: string | number | null;
+  color: string;
+  bg: string;
+  isDark: boolean;
+  delay: string;
+}
+
+interface InputFieldProps {
+  label: string;
+  icon?: React.ReactElement<{ className?: string }>;
+  type: string;
+  name: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  placeholder: string;
+  required: boolean;
+}
+
+interface DataPointProps {
+  label: string;
+  value: string;
+}
+
+// ============================================================================
+// 2. CONSTANTES Y CONFIGURACIÓN (Optimizados fuera del render)
+// ============================================================================
 const TIPOS_PREGUNTAS = [
   "Información General",
   "Documentación Requerida",
@@ -27,21 +80,81 @@ const TIPOS_PREGUNTAS = [
   "Otro"
 ];
 
-export default function CarreraDetalle({ carrera }: { carrera: any }) {
-  const institucionNombre = carrera.instituciones?.nombre || 'Institución Desconocida';
-  const tipoInstitucion = carrera.instituciones?.tipo || 'Educación Superior';
-  const logoPath = `/logos/${normalizarNombreLogo(institucionNombre)}`;
+const CONECTORES = ['de', 'en', 'el', 'la', 'los', 'las', 'y', 'del', 'a', 'por', 'con', 'para'];
 
-  // --- ESTADOS DEL FORMULARIO LEAD 3.0 ---
-  const [formState, setFormState] = useState({
-    nombre: '', email: '', telefono: '', profesion: '', tiposPregunta: [] as string[], mensajeOtro: '' 
+const MAPA_TILDES: Record<string, string> = {
+  'actuacion': 'actuación', 'administracion': 'administración', 'ingenieria': 'ingeniería',
+  'tecnico': 'técnico', 'tecnologia': 'tecnología', 'computacion': 'computación',
+  'informatica': 'informática', 'psicologia': 'psicología', 'pedagogia': 'pedagogía',
+  'educacion': 'educación', 'kinesiologia': 'kinesiología', 'odontologia': 'odontología',
+  'fonoaudiologia': 'fonoaudiología', 'nutricion': 'nutrición', 'biologia': 'biología',
+  'quimica': 'química', 'fisica': 'física', 'geologia': 'geología', 'agronomia': 'agronomía',
+  'electronica': 'electrónica', 'electrica': 'eléctrica', 'mecanica': 'mecánica',
+  'automatizacion': 'automatización', 'gestion': 'gestión', 'publico': 'público',
+  'publicas': 'públicas', 'juridica': 'jurídica', 'politica': 'política',
+  'politicas': 'políticas', 'antropologia': 'antropología', 'arqueologia': 'arqueología',
+  'sociologia': 'sociología', 'filosofia': 'filosofía', 'teologia': 'teología',
+  'musica': 'música', 'animacion': 'animación', 'gastronomia': 'gastronomía',
+  'estetica': 'estética', 'cosmetologia': 'cosmetología', 'logistica': 'logística',
+  'prevencion': 'prevención', 'construccion': 'construcción', 'comunicacion': 'comunicación',
+  'diseno': 'diseño', 'parvulo': 'párvulo', 'bilingue': 'bilingüe', 'ingles': 'inglés',
+  'enfermeria': 'enfermería', 'audicion': 'audición', 'optometria': 'optometría',
+  'clinico': 'clínico', 'radiologia': 'radiología', 'odontologico': 'odontológico',
+  'medico': 'médico', 'bioquimica': 'bioquímica', 'biotecnologia': 'biotecnología',
+  'estadistica': 'estadística', 'matematica': 'matemática', 'astronomia': 'astronomía',
+  'geofisica': 'geofísica', 'geografia': 'geografía', 'linguistica': 'lingüística',
+  'basica': 'básica', 'plasticas': 'plásticas', 'coreografia': 'coreografía', 
+  'grafico': 'gráfico', 'geomatica': 'geomática', 'topografia': 'topografía', 
+  'hoteleria': 'hotelería', 'television': 'televisión', 'fotografia': 'fotografía', 
+  'religion': 'religión', 'traduccion': 'traducción', 'interpretacion': 'interpretación', 
+  'fraces': 'francés', 'aleman': 'alemán', 'orientacion': 'orientación'
+};
+
+// ============================================================================
+// 3. HELPERS DE FORMATEO
+// ============================================================================
+const normalizarNombreLogo = (nombre: string): string => {
+  if (!nombre) return 'default-logo.png';
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-") + '.png';
+};
+
+const formatoDinero = (valor: number | null | undefined): string => 
+  valor ? `$${valor.toLocaleString('es-CL')}` : 'No informado';
+
+const formatoPorcentaje = (valor: number | null | undefined): string => 
+  valor ? `${(valor * 100).toFixed(1)}%` : 'No informado';
+
+const formatearTitulo = (texto: string): string => {
+  if (!texto) return "";
+  return texto.toLowerCase().split(' ').map((palabra, index) => {
+    const palabraLimpia = palabra.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+    const palabraCorregida = MAPA_TILDES[palabraLimpia] 
+      ? palabra.replace(palabraLimpia, MAPA_TILDES[palabraLimpia]) 
+      : palabra;
+
+    if (index > 0 && CONECTORES.includes(palabraCorregida)) return palabraCorregida;
+    return palabraCorregida.charAt(0).toUpperCase() + palabraCorregida.slice(1);
+  }).join(' ');
+};
+
+// ============================================================================
+// 4. COMPONENTE PRINCIPAL
+// ============================================================================
+export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
+  const [formState, setFormState] = useState<FormState>({
+    nombre: '', email: '', telefono: '', profesion: '', tiposPregunta: [], mensajeOtro: '' 
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cerrar el dropdown al hacer clic afuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -51,6 +164,47 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Manejo de variables de entorno seguro para Astro
+  const getSupabaseUrl = (): string => {
+    try {
+      // @ts-ignore
+      return import.meta.env.PUBLIC_SUPABASE_URL || '';
+    } catch (e) {
+      return '';
+    }
+  };
+
+  // Memorización de valores para evitar recálculos en cada re-render del formulario
+  const institucionNombre = useMemo(() => carrera?.instituciones?.nombre || 'Institución Desconocida', [carrera]);
+  const tipoInstitucion = useMemo(() => carrera?.instituciones?.tipo || 'Educación Superior', [carrera]);
+  
+  const nombreCarreraFormateado = useMemo(() => 
+    carrera?.nombre_carrera ? formatearTitulo(carrera.nombre_carrera) : 'Carrera no especificada', 
+    [carrera?.nombre_carrera]
+  );
+
+  const SUPABASE_PROJECT_URL = useMemo(() => getSupabaseUrl(), []);
+  
+  const logoPath = useMemo(() => {
+    if (carrera?.instituciones?.logo_url) return carrera.instituciones.logo_url;
+    if (SUPABASE_PROJECT_URL) return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/logos/${normalizarNombreLogo(institucionNombre)}`;
+    return '';
+  }, [carrera?.instituciones?.logo_url, SUPABASE_PROJECT_URL, institucionNombre]);
+
+  const mapaQuery = useMemo(() => 
+    encodeURIComponent(`${institucionNombre} ${carrera?.sede || carrera?.region || 'Chile'}`),
+    [institucionNombre, carrera?.sede, carrera?.region]
+  );
+
+  if (!carrera) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F5F9] text-[#0A0518]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#7C3AED] mb-4" />
+        <p className="font-medium">Cargando información de la carrera...</p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,57 +234,60 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
       return { 
         ...prev, 
         tiposPregunta: nuevasPreguntas,
-        mensajeOtro: (!isSelected && pregunta === "Otro") ? prev.mensajeOtro : (!nuevasPreguntas.includes("Otro") ? '' : prev.mensajeOtro)
+        mensajeOtro: (!isSelected && pregunta === "Otro") 
+          ? prev.mensajeOtro : (!nuevasPreguntas.includes("Otro") ? '' : prev.mensajeOtro)
       };
     });
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans pb-20 selection:bg-[#7C3AED] selection:text-white">
+    <main 
+      itemScope 
+      itemType="https://schema.org/EducationalOccupationalProgram"
+      className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans pb-20 selection:bg-[#7C3AED] selection:text-white"
+    >
+      <meta itemProp="name" content={nombreCarreraFormateado} />
+      <meta itemProp="provider" content={institucionNombre} />
+      <meta itemProp="timeToComplete" content={carrera?.duracion_semestres ? `P${carrera.duracion_semestres / 2}Y` : ''} />
       
-      {/* =========================================================================
-          1. HERO SECTION (BANNER) - BRUTAL Y FLUIDO (SIN CUADRÍCULA)
-      ========================================================================= */}
-      <div className="relative w-full bg-[#0A0518] text-white pt-20 pb-40 px-6 overflow-visible border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20">
-        
-        {/* Fondo Animado Mesh Gradient Brutal */}
-        <div className="absolute inset-0 overflow-hidden z-0">
+      <header className="relative w-full bg-[#0A0518] text-white pt-20 pb-40 px-6 overflow-hidden border-b border-white/5 shadow-[0_20px_60px_rgba(109,40,217,0.15)] z-20">
+        <div className="absolute inset-0 overflow-hidden z-0" aria-hidden="true">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/40 rounded-full blur-[120px] mix-blend-screen animate-blob"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4000"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#9333EA]/30 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2s"></div>
+          <div className="absolute bottom-[-30%] left-[20%] w-[70vw] h-[70vw] bg-[#3B82F6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob animation-delay-4s"></div>
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
-          
-          {/* Botón Volver */}
-          <button 
-            onClick={() => window.history.back()} 
-            className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" />
-            Volver
-          </button>
+          <nav aria-label="Navegación secundaria">
+            <button 
+              onClick={() => { if(typeof window !== 'undefined') window.history.back() }} 
+              aria-label="Volver a la página anterior"
+              className="inline-flex items-center text-[#A78BFA] hover:text-white transition-all duration-300 mb-12 group font-semibold text-sm tracking-wide bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+              Volver
+            </button>
+          </nav>
 
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 animate-fade-in-up">
-            
-            {/* Contenedor del Logo */}
             <div className="relative group animate-float w-40 h-40 md:w-52 md:h-52 shrink-0">
-              <div className="absolute -inset-1 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[2.5rem] blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6] rounded-[2.5rem] blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200" aria-hidden="true"></div>
               
               <div className="relative w-full h-full bg-white rounded-[2.5rem] p-6 flex items-center justify-center overflow-hidden shadow-2xl">
-                
                 <img 
                   src={logoPath} 
-                  alt={`Logo ${institucionNombre}`}
+                  alt={`Logo oficial de ${institucionNombre}`}
+                  itemProp="image"
                   className="w-full h-full object-contain relative z-10 drop-shadow-sm transition-transform duration-700 group-hover:scale-110"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement?.querySelector('.fallback-logo')?.classList.remove('hidden');
+                    const fallback = e.currentTarget.parentElement?.querySelector('.fallback-logo');
+                    if(fallback) fallback.classList.remove('hidden');
                   }}
                 />
                 
-                <div className="fallback-logo hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#2E1065] to-[#170F2E]">
+                <div className="fallback-logo hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-br from-[#2E1065] to-[#170F2E]" aria-hidden="true">
                   <Building className="w-10 h-10 text-white/20 mb-2" />
                   <span className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter">
                     {institucionNombre.substring(0, 2).toUpperCase()}
@@ -139,20 +296,18 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
               </div>
             </div>
 
-            {/* Encabezado e Info de la Carrera */}
             <div className="flex-1 text-center md:text-left flex flex-col justify-center md:pt-4">
-              
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
                 <span className="bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-inner">
                   {tipoInstitucion}
                 </span>
                 <span className="bg-[#7C3AED]/20 backdrop-blur-md border border-[#8B5CF6]/40 text-[#E0E7FF] text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_20px_rgba(124,58,237,0.4)]">
-                  <Award className="w-3.5 h-3.5 text-[#A78BFA]" /> Datos Oficiales
+                  <Award className="w-3.5 h-3.5 text-[#A78BFA]" aria-hidden="true" /> Datos Oficiales
                 </span>
               </div>
               
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tight mb-4 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-white via-[#E2E8F0] to-[#94A3B8] drop-shadow-lg">
-                {carrera.nombre_carrera}
+                {nombreCarreraFormateado}
               </h1>
               
               <h2 className="text-xl md:text-3xl text-[#A78BFA] font-medium flex items-center justify-center md:justify-start gap-3">
@@ -161,136 +316,112 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* =========================================================================
-          2. BENTO BOX GRID (Contenido Principal)
-      ========================================================================= */}
-      <div className="max-w-7xl mx-auto px-6 -mt-24 relative z-30">
-        
-        {/* =========================================================
-            NUEVA GRILLA DE MÉTRICAS RÁPIDAS (BENTO CARDS 4.0)
-        ========================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-          
-          {/* Tarjeta 1: Empleabilidad */}
+      <article className="max-w-7xl mx-auto px-6 -mt-24 relative z-30">
+        <section aria-label="Métricas de la carrera" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
           <StatCard 
             delay="0s" 
-            icon={<Briefcase className="w-6 h-6" />} 
+            icon={<Briefcase />} 
             bgIcon={<Briefcase className="w-32 h-32" />} 
             title="Empleabilidad (1er Año)" 
-            value={formatoPorcentaje(carrera.empleabilidad_1er_anio)} 
+            value={formatoPorcentaje(carrera?.empleabilidad_1er_anio)} 
             color="text-emerald-500" 
             bg="bg-emerald-50" 
             isDark={false}
           />
-          
-          {/* Tarjeta 2: Ingreso (Tarjeta Oscura como Mercado Laboral) */}
           <StatCard 
             delay="0.1s" 
-            icon={<TrendingUp className="w-6 h-6" />} 
+            icon={<TrendingUp />} 
             bgIcon={<DollarSign className="w-40 h-40" />} 
             title="Ingreso (4to Año)" 
-            value={carrera.ingreso_promedio_4to_anio && carrera.ingreso_promedio_4to_anio !== "s/i" ? carrera.ingreso_promedio_4to_anio : "No informado"} 
+            value={carrera?.ingreso_promedio_4to_anio && carrera.ingreso_promedio_4to_anio !== "s/i" ? carrera.ingreso_promedio_4to_anio : "No informado"} 
             color="text-[#C1AFFF]" 
             bg="bg-white/10" 
             isDark={true}
           />
-          
-          {/* Tarjeta 3: Arancel */}
           <StatCard 
             delay="0.2s" 
-            icon={<DollarSign className="w-6 h-6" />} 
+            icon={<DollarSign />} 
             bgIcon={<DollarSign className="w-32 h-32" />} 
             title="Arancel Anual (2026)" 
-            value={formatoDinero(carrera.arancel_anual)} 
+            value={formatoDinero(carrera?.arancel_anual)} 
             color="text-amber-500" 
             bg="bg-amber-50" 
             isDark={false}
           />
-          
-          {/* Tarjeta 4: Duración */}
           <StatCard 
             delay="0.3s" 
-            icon={<Clock className="w-6 h-6" />} 
+            icon={<Clock />} 
             bgIcon={<Clock className="w-32 h-32" />} 
             title="Duración Formal" 
-            value={carrera.duracion_semestres ? `${carrera.duracion_semestres} Semestres` : "No informada"} 
+            value={carrera?.duracion_semestres ? `${carrera.duracion_semestres} Semestres` : "No informada"} 
             color="text-violet-500" 
             bg="bg-violet-50" 
             isDark={false}
           />
+        </section>
 
-        </div>
-
-        {/* Detalles Profundos */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Columna Izquierda: Detalles Operativos */}
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow border border-gray-100/80">
               <h3 className="text-2xl font-black text-[#0A0518] mb-8 flex items-center gap-3">
-                <div className="p-2 bg-[#7C3AED]/10 rounded-xl"><MapPin className="text-[#7C3AED] w-6 h-6" /></div>
+                <div className="p-2 bg-[#7C3AED]/10 rounded-xl" aria-hidden="true"><MapPin className="text-[#7C3AED] w-6 h-6" /></div>
                 Ubicación y Jornada
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <DataPoint label="Región" value={carrera.region || "No informada"} />
-                <DataPoint label="Sede" value={carrera.sede || "No informada"} />
-                <DataPoint label="Jornada" value={carrera.jornada || "No informada"} />
+                <DataPoint label="Región" value={carrera?.region ? formatearTitulo(carrera.region) : "No informada"} />
+                <DataPoint label="Sede" value={carrera?.sede ? formatearTitulo(carrera.sede) : "No informada"} />
+                <DataPoint label="Jornada" value={carrera?.jornada ? formatearTitulo(carrera.jornada) : "No informada"} />
               </div>
 
-              {/* INYECTOR DE DESCRIPCIÓN RECIÉN AGREGADO (ANTES DEL MAPA) */}
-              {carrera.descripcion && (
+              {carrera?.descripcion && (
                 <div className="mb-8 p-6 bg-[#7C3AED]/5 rounded-3xl border border-[#7C3AED]/10 relative overflow-hidden group/desc">
-                  <div className="absolute -top-6 -right-6 p-4 opacity-[0.04] text-[#7C3AED] transition-transform duration-700 group-hover/desc:scale-125">
+                  <div className="absolute -top-6 -right-6 p-4 opacity-[0.04] text-[#7C3AED] transition-transform duration-700 group-hover/desc:scale-125" aria-hidden="true">
                     <Sparkles className="w-32 h-32" />
                   </div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#7C3AED] mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 animate-pulse" /> Descripción del Programa
+                    <Sparkles className="w-4 h-4 animate-pulse" aria-hidden="true" /> Descripción del Programa
                   </h4>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed relative z-10 font-medium whitespace-pre-line">
+                  <p itemProp="description" className="text-gray-600 text-sm md:text-base leading-relaxed relative z-10 font-medium whitespace-pre-line">
                     {carrera.descripcion}
                   </p>
                 </div>
               )}
 
-              {/* Mapa */}
               <div className="w-full h-72 bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 relative shadow-inner group">
-                 <iframe
+                <iframe
                   title="Mapa de la Sede"
                   width="100%"
                   height="100%"
                   style={{ border: 0, filter: 'contrast(1.1) saturation(0.8)' }}
                   loading="lazy"
                   allowFullScreen
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(institucionNombre + ' ' + (carrera.sede || carrera.region) + ' Chile')}&t=m&z=15&output=embed`}
+                  src={`https://maps.google.com/maps?q=${mapaQuery}&t=m&z=15&output=embed`}
                 ></iframe>
-                <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5 rounded-3xl"></div>
+                <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5 rounded-3xl" aria-hidden="true"></div>
               </div>
             </section>
           </div>
 
-          {/* Columna Derecha: LEAD FORM 3.0 */}
-          <div className="space-y-6">
+          <aside className="space-y-6" aria-label="Formulario de solicitud de información">
             <section className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/40 border border-gray-100 overflow-visible relative flex flex-col">
-              {/* Deco Header Form */}
               <div className="bg-[#0A0518] p-8 text-center relative overflow-hidden rounded-t-[2rem]">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#7C3AED] rounded-full blur-[60px] opacity-60"></div>
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-[#D946EF] rounded-full blur-[60px] opacity-40"></div>
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#7C3AED] rounded-full blur-[60px] opacity-60" aria-hidden="true"></div>
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-[#D946EF] rounded-full blur-[60px] opacity-40" aria-hidden="true"></div>
                 <h3 className="text-2xl font-black text-white mb-2 relative z-10">¿Te interesa?</h3>
                 <p className="text-gray-300 text-sm relative z-10 leading-relaxed">
                   Solicita información directa sobre esta carrera de <span className="text-white font-bold">{institucionNombre}</span>.
                 </p>
               </div>
 
-              {/* Formulario / Estado de Éxito */}
               <div className="p-8">
                 {isSuccess ? (
-                  <div className="text-center py-10 animate-fade-in-up">
+                  <div className="text-center py-10 animate-fade-in-up" role="alert" aria-live="polite">
                     <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                      <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-20"></div>
-                      <CheckCircle2 className="w-12 h-12 text-emerald-500 relative z-10" />
+                      <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-20" aria-hidden="true"></div>
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500 relative z-10" aria-hidden="true" />
                     </div>
                     <h4 className="text-3xl font-black text-[#0A0518] mb-3">¡Enviado!</h4>
                     <p className="text-gray-500 text-sm mb-8 leading-relaxed px-4">
@@ -304,7 +435,7 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                     <InputField label="Nombre Completo" icon={<User />} type="text" name="nombre" value={formState.nombre} onChange={handleChange} placeholder="Ej. Camila Valdés" required />
                     
                     <div className="grid grid-cols-1 gap-5">
@@ -314,12 +445,24 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
 
                     <InputField label="Profesión (Opcional)" icon={<Briefcase />} type="text" name="profesion" value={formState.profesion} onChange={handleChange} placeholder="Ej. Estudiante" required={false} />
 
-                    {/* Custom Combobox */}
                     <div className="relative" ref={dropdownRef}>
-                      <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">¿Qué información necesitas? <span className="text-[#7C3AED]">*</span></label>
+                      <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block" id="combobox-label">
+                        ¿Qué información necesitas? <span className="text-[#7C3AED]" aria-hidden="true">*</span>
+                      </label>
                       <div 
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        aria-haspopup="listbox"
+                        aria-expanded={isDropdownOpen}
+                        aria-labelledby="combobox-label"
                         className={`w-full bg-[#F8FAFC] border ${isDropdownOpen ? 'border-[#7C3AED] ring-4 ring-[#7C3AED]/10' : 'border-gray-200'} text-gray-800 text-sm rounded-xl py-3.5 px-4 flex items-center justify-between cursor-pointer transition-all hover:border-[#7C3AED]/50 select-none`}
+                        role="combobox"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIsDropdownOpen(!isDropdownOpen);
+                          }
+                        }}
                       >
                         <div className="flex-1 truncate pr-2">
                           {formState.tiposPregunta.length === 0 ? (
@@ -338,21 +481,22 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                             </div>
                           )}
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 flex-shrink-0 ${isDropdownOpen ? 'rotate-180 text-[#7C3AED]' : ''}`} />
+                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 flex-shrink-0 ${isDropdownOpen ? 'rotate-180 text-[#7C3AED]' : ''}`} aria-hidden="true" />
                       </div>
 
-                      {/* Dropdown Menu */}
                       {isDropdownOpen && (
-                        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-h-60 overflow-y-auto py-2 custom-scrollbar animate-fade-in-up">
+                        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-h-60 overflow-y-auto py-2 custom-scrollbar animate-fade-in-up" role="listbox">
                           {TIPOS_PREGUNTAS.map((opcion) => {
                             const isSelected = formState.tiposPregunta.includes(opcion);
                             return (
                               <div 
                                 key={opcion}
                                 onClick={() => togglePregunta(opcion)}
+                                role="option"
+                                aria-selected={isSelected}
                                 className={`flex items-center px-4 py-3 cursor-pointer transition-colors ${isSelected ? 'bg-[#7C3AED]/5' : 'hover:bg-gray-50'}`}
                               >
-                                <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center transition-all ${isSelected ? 'bg-[#7C3AED] border-[#7C3AED]' : 'border-gray-300'}`}>
+                                <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center transition-all ${isSelected ? 'bg-[#7C3AED] border-[#7C3AED]' : 'border-gray-300'}`} aria-hidden="true">
                                   {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                                 </div>
                                 <span className={`text-sm ${isSelected ? 'font-bold text-[#0A0518]' : 'font-medium text-gray-600'}`}>
@@ -365,13 +509,13 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                       )}
                     </div>
 
-                    {/* Textarea Condicional para "Otro" */}
                     {formState.tiposPregunta.includes("Otro") && (
                       <div className="relative animate-fade-in-up">
-                        <label className="text-[11px] font-bold text-[#7C3AED] uppercase tracking-wider mb-1.5 block">Detalla tu consulta</label>
+                        <label htmlFor="mensajeOtro" className="text-[11px] font-bold text-[#7C3AED] uppercase tracking-wider mb-1.5 block">Detalla tu consulta</label>
                         <div className="relative">
-                          <Edit3 className="absolute left-4 top-4 w-5 h-5 text-[#7C3AED]" />
+                          <Edit3 className="absolute left-4 top-4 w-5 h-5 text-[#7C3AED]" aria-hidden="true" />
                           <textarea 
+                            id="mensajeOtro"
                             name="mensajeOtro"
                             required
                             value={formState.mensajeOtro}
@@ -384,7 +528,6 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                       </div>
                     )}
 
-                    {/* Checkbox */}
                     <div className="flex items-start gap-3 pt-4">
                       <input 
                         type="checkbox" 
@@ -397,19 +540,19 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                       </label>
                     </div>
 
-                    {/* Botón Submit Brutal */}
                     <button 
                       type="submit"
                       disabled={isSubmitting || (formState.tiposPregunta.length === 0)}
+                      aria-disabled={isSubmitting || (formState.tiposPregunta.length === 0)}
                       className="w-full mt-4 relative group overflow-hidden bg-[#0A0518] text-white font-black py-4 px-6 rounded-xl shadow-xl transition-all hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none"
                     >
-                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-[#7C3AED] to-[#D946EF] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-[#7C3AED] to-[#D946EF] opacity-0 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true"></div>
                       
                       <div className="relative flex items-center justify-center gap-2 z-10">
                         {isSubmitting ? (
-                          <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>
+                          <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Procesando...</>
                         ) : (
-                          <>Solicitar Información <Send className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" /></>
+                          <>Solicitar Información <Send className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" aria-hidden="true" /></>
                         )}
                       </div>
                     </button>
@@ -417,14 +560,11 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
                 )}
               </div>
             </section>
-          </div>
+          </aside>
 
         </div>
-      </div>
+      </article>
 
-      {/* =========================================================================
-          3. CSS CUSTOM PARA LAS ANIMACIONES FLUIDAS
-      ========================================================================= */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -440,8 +580,8 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
         .animate-blob {
           animation: blob 12s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
+        .animation-delay-2s { animation-delay: 2s; }
+        .animation-delay-4s { animation-delay: 4s; }
 
         @keyframes float {
           0% { transform: translateY(0px); }
@@ -460,16 +600,15 @@ export default function CarreraDetalle({ carrera }: { carrera: any }) {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}} />
-    </div>
+    </main>
   );
 }
 
-// =========================================================================
-// NUEVO COMPONENTE STATCARD 4.0 (DISEÑO BENTO GRID EXACTO)
-// =========================================================================
-function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any) {
-  
-  const valueLength = String(value).length;
+// ============================================================================
+// 5. SUB-COMPONENTES AUXILIARES
+// ============================================================================
+function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: StatCardProps) {
+  const valueLength = String(value || '').length;
   const textSizeClass = valueLength > 20 
     ? 'text-[1.1rem] md:text-[1.2rem] leading-snug' 
     : 'text-2xl md:text-3xl'; 
@@ -484,20 +623,20 @@ function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any)
       style={{ animationDelay: delay, animationFillMode: 'both' }}
     >
       <div className={`absolute -right-4 -bottom-4 pointer-events-none transition-transform duration-700 ease-out group-hover:scale-110 
-        ${isDark ? 'opacity-10 text-white' : 'opacity-[0.03] text-[#1A1528]'}`}>
+        ${isDark ? 'opacity-10 text-white' : 'opacity-[0.03] text-[#1A1528]'}`} aria-hidden="true">
         {bgIcon}
       </div>
 
-      <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center mb-4 relative z-10 shadow-inner group-hover:scale-110 transition-transform duration-300`}>
-        {React.cloneElement(icon, { className: `w-6 h-6 ${color}` })}
+      <div className={`w-12 h-12 rounded-2xl ${bg} flex items-center justify-center mb-4 relative z-10 shadow-inner group-hover:scale-110 transition-transform duration-300`} aria-hidden="true">
+        {icon && React.cloneElement(icon, { className: `w-6 h-6 ${color}` })}
       </div>
 
       <div className="relative z-10">
-        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 
+        <h4 className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 
           ${isDark ? 'text-[#C1AFFF]' : 'text-gray-400'}`}
         >
           {title}
-        </p>
+        </h4>
         <p className={`font-black tracking-tight ${textSizeClass} 
           ${isDark ? 'text-white' : 'text-[#1A1528]'}`}
         >
@@ -508,17 +647,19 @@ function StatCard({ icon, bgIcon, title, value, color, bg, isDark, delay }: any)
   );
 }
 
-function InputField({ label, icon, type, name, value, onChange, placeholder, required }: any) {
+function InputField({ label, icon, type, name, value, onChange, placeholder, required }: InputFieldProps) {
+  const inputId = `input-${name}`;
   return (
     <div className="relative">
-      <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 flex justify-between">
-        <span>{label} {required && <span className="text-[#7C3AED]">*</span>}</span>
+      <label htmlFor={inputId} className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 flex justify-between">
+        <span>{label} {required && <span className="text-[#7C3AED]" aria-hidden="true">*</span>}</span>
       </label>
       <div className="relative flex items-center">
-        <div className="absolute left-4 w-5 h-5 text-gray-400 flex items-center justify-center">
-          {React.cloneElement(icon, { className: "w-full h-full" })}
+        <div className="absolute left-4 w-5 h-5 text-gray-400 flex items-center justify-center" aria-hidden="true">
+          {icon && React.cloneElement(icon, { className: "w-full h-full" })}
         </div>
         <input 
+          id={inputId}
           type={type} 
           name={name}
           required={required}
@@ -532,7 +673,7 @@ function InputField({ label, icon, type, name, value, onChange, placeholder, req
   );
 }
 
-function DataPoint({ label, value }: any) {
+function DataPoint({ label, value }: DataPointProps) {
   return (
     <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100/80">
       <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-widest">{label}</p>

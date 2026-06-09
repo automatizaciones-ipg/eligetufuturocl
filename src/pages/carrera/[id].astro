@@ -5,17 +5,12 @@ import { supabase } from "../../../lib/supabase";
 import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
 
-// ============================================================================
-// 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
-// ============================================================================
 export const getStaticPaths = (async () => {
   let allCodes: any[] = [];
   let hasMore = true;
   let page = 0;
   const limit = 1000;
 
-  // Solo pedimos la columna "codigo_carrera". Esto hace que la consulta sea
-  // 100 veces más ligera, evitando que tu servidor colapse.
   while (hasMore) {
     const { data, error } = await supabase
       .from("carreras")
@@ -30,30 +25,28 @@ export const getStaticPaths = (async () => {
     }
   }
 
-  // Retornamos SOLO el param de la URL, sin pasar data pesada por props
   return allCodes.map((carrera) => ({
     params: { id: carrera.codigo_carrera.toString() },
   }));
 }) satisfies GetStaticPaths;
 
-// ============================================================================
-// 2. OBTENEMOS EL ID DE LA URL Y BUSCAMOS SU DATA ESPECÍFICA
-// ============================================================================
 const { id } = Astro.params;
 
-// Traemos los detalles ÚNICAMENTE de la carrera a la que el usuario hizo clic
 const { data: carrera, error } = await supabase
   .from("carreras")
   .select(
     `
     *,
-    instituciones (nombre, tipo)
+    instituciones (
+      nombre, 
+      tipo,
+      logo_url
+    )
   `,
   )
   .eq("codigo_carrera", id)
-  .single(); // .single() hace que traiga un objeto, no un array
+  .single();
 
-// Si por alguna razón la carrera no existe, ahí sí tiramos un 404 real
 if (error || !carrera) {
   return Astro.redirect("/404");
 }

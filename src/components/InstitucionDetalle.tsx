@@ -4,7 +4,7 @@ import {
   MapPin, Building, Award, CheckCircle2, ChevronRight, 
   User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, 
   ArrowLeft, Landmark, ShieldCheck, GraduationCap,
-  Star
+  Star, Sparkles // <-- ¡Agregado Sparkles aquí!
 } from 'lucide-react';
 
 // Formateador y Generador de Logo (Idéntico al de carreras)
@@ -238,6 +238,23 @@ export default function InstitucionDetalle({ institucion }: { institucion: any }
                 <DataPoint label="Tipo" value={tipoInstitucion} />
                 <DataPoint label="Nivel" value="Educación Superior" />
               </div>
+
+              {/* ========================================================
+                  INYECTOR DE DESCRIPCIÓN INSTITUCIONAL (ANTES DEL MAPA)
+              ======================================================== */}
+              {institucion.descripcion && (
+                <div className="mb-8 p-6 bg-[#7C3AED]/5 rounded-3xl border border-[#7C3AED]/10 relative overflow-hidden group/desc">
+                  <div className="absolute -top-6 -right-6 p-4 opacity-[0.04] text-[#7C3AED] transition-transform duration-700 group-hover/desc:scale-125">
+                    <Sparkles className="w-32 h-32" />
+                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#7C3AED] mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 animate-pulse" /> Descripción Institucional
+                  </h4>
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed relative z-10 font-medium whitespace-pre-line">
+                    {institucion.descripcion}
+                  </p>
+                </div>
+              )}
 
               {/* Mapa de Presencia Nacional */}
               <div className="w-full h-72 bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 relative shadow-inner group">
