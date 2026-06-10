@@ -2,12 +2,11 @@
   "name": "eligetufuturocl",
   "type": "module",
   "version": "0.0.1",
- "scripts": {
+"scripts": {
   "dev": "astro dev",
   "build": "astro build",
   "preview": "astro preview",
   "astro": "astro",
-  "postinstall": "astro build",
   "start": "node dist/server/entry.mjs"
 },
   "dependencies": {
