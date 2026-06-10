@@ -4,15 +4,13 @@ import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 
-// https://astro.build/config
 export default defineConfig({
   integrations: [react()],
 
   vite: {
-    // @ts-ignore: Ignoramos el conflicto de tipos entre Vite 6 y Vite 7
+    // @ts-ignore
     plugins: [tailwindcss()],
-    
-    // Solución de optimización para React 19 + Vite 6
+
     optimizeDeps: {
       include: [
         'react',
@@ -23,20 +21,20 @@ export default defineConfig({
       ],
     },
     resolve: {
-      // Evita que pnpm resuelva duplicados o versiones alternas de React
       dedupe: ['react', 'react-dom']
     }
   },
 
-  // Le decimos a Astro que construya un servidor dinámico (SSR)
-  output: 'server', 
+  output: 'server',
 
-  // Configuramos el adaptador en modo standalone para Hostinger
+  // Directorio de salida personalizado (evita el anidamiento en Hostinger)
+  outDir: './output',
+
   adapter: node({
     mode: 'standalone',
-   // @ts-ignore
+    // @ts-ignore
     host: process.env.HOST || '0.0.0.0',
-  // @ts-ignore
+    // @ts-ignore
     port: parseInt(process.env.PORT) || 4321
   })
 });
