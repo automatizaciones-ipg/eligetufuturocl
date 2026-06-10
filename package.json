@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && mv dist/client . && mv dist/server . && rm -rf dist",
     "preview": "astro preview",
     "postbuild": "mkdir -p tmp && touch tmp/restart.txt",
     "astro": "astro",
