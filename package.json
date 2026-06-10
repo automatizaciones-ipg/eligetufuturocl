@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "postbuild": "mkdir -p tmp && touch tmp/restart.txt",
     "astro": "astro",
     "start": "node dist/server/entry.mjs"
   },
