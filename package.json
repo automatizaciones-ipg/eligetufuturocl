@@ -2,14 +2,14 @@
   "name": "eligetufuturocl",
   "type": "module",
   "version": "0.0.1",
-  "scripts": {
-    "dev": "astro dev",
-    "build": "astro build && mv dist/client . && mv dist/server . && rm -rf dist",
-    "preview": "astro preview",
-    "postbuild": "mkdir -p tmp && touch tmp/restart.txt",
-    "astro": "astro",
-    "start": "node dist/server/entry.mjs"
-  },
+ "scripts": {
+  "dev": "astro dev",
+  "build": "astro build",
+  "preview": "astro preview",
+  "astro": "astro",
+  "postinstall": "astro build",
+  "start": "node dist/server/entry.mjs"
+},
   "dependencies": {
     "@astrojs/node": "^10.1.3",
     "@astrojs/react": "^4.4.2",
