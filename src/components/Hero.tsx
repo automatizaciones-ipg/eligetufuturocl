@@ -15,10 +15,10 @@ export default function Hero() {
               <h1 className="uppercase tracking-tighter flex flex-col items-start w-full space-y-2">
                 <span className="text-[#1E003E] font-extrabold italic text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[58px] leading-[1] lg:leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 drop-shadow-sm">
                   DECISIÓN ACTIVA
-                </span>
+                </span> 
                 
                 <span className="text-[#8554E4] font-extrabold italic text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[58px] leading-[1] lg:leading-[0.9] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 drop-shadow-sm">
-                  DESCUBRE TU FUTURO
+                  DESCUBRE TU FUTURO  
                 </span>
                 
                 <span className="text-[#1E003E] font-bold italic text-[3.25rem] sm:text-[4rem] md:text-[4.75rem] lg:text-[76px] leading-[0.95] lg:leading-[0.85] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 drop-shadow-sm mt-1 lg:-mt-1 pt-2">
@@ -38,6 +38,7 @@ export default function Hero() {
                 { icon: Calendar, label: "Calendario", href: "herramientas/calendario" },
                 { icon: Calculator, label: "Calculadora", href: "herramientas/calculadora" },
               ].map((item) => (
+                
                 <a
                   key={item.label}
                   href={item.href} 

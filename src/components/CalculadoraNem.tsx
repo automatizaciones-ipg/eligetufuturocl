@@ -204,7 +204,7 @@ export default function CalculadoraNem() {
               
               <h3 className="relative text-white font-bold text-xl mb-8 flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-[#6544FF]" />
-                Tus Resultados
+                Tus Resultados:
               </h3>
 
               <div className="relative space-y-8">
