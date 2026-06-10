@@ -10,7 +10,6 @@ export default defineConfig({
   vite: {
     // @ts-ignore
     plugins: [tailwindcss()],
-
     optimizeDeps: {
       include: [
         'react',
@@ -18,7 +17,7 @@ export default defineConfig({
         'react/jsx-dev-runtime',
         'react-dom',
         'react-dom/client'
-      ],
+      ]
     },
     resolve: {
       dedupe: ['react', 'react-dom']
@@ -26,9 +25,6 @@ export default defineConfig({
   },
 
   output: 'server',
-
-  // Directorio de salida personalizado (evita el anidamiento en Hostinger)
-  outDir: './output',
 
   adapter: node({
     mode: 'standalone',
