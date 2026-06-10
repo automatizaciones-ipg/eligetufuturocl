@@ -33,6 +33,10 @@ export default defineConfig({
 
   // Configuramos el adaptador en modo standalone para Hostinger
   adapter: node({
-    mode: 'standalone' 
+    mode: 'standalone',
+   // @ts-ignore
+    host: process.env.HOST || '0.0.0.0',
+  // @ts-ignore
+    port: parseInt(process.env.PORT) || 4321
   })
 });
