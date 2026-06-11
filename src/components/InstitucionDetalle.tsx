@@ -54,8 +54,26 @@ export default function InstitucionDetalle({ institucion }: { institucion: any }
     setIsSubmitting(true);
 
     try {
-      // Aquí iría tu lógica real de envío a Supabase (tabla leads_vocacional)
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      const respuesta = await fetch("/api/solicitud-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: "institucion",
+          nombre: formState.nombre,
+          email: formState.email,
+          telefono: formState.telefono,
+          profesion: formState.profesion,
+          tiposPregunta: formState.tiposPregunta,
+          mensajeOtro: formState.mensajeOtro,
+          nombreInstitucion: institucionNombre,
+          tipoInstitucion: tipoInstitucion,
+          urlOrigen: typeof window !== "undefined" ? window.location.href : undefined,
+        }),
+      });
+      const resultado = await respuesta.json();
+      if (!respuesta.ok || !resultado.ok) {
+        throw new Error(resultado.message || "Error al enviar la solicitud.");
+      }
       setIsSuccess(true);
       setFormState({ nombre: '', email: '', telefono: '', profesion: '', tiposPregunta: [], mensajeOtro: '' });
     } catch (error) {

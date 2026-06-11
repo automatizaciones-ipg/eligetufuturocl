@@ -114,8 +114,15 @@ export default function FormularioContacto() {
 
     setEstadoEnvio("enviando");
     try {
-      // Simulación de envío (reemplazar con Resend)
-      await new Promise((r) => setTimeout(r, 2000));
+      const respuesta = await fetch("/api/contacto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const resultado = await respuesta.json();
+      if (!respuesta.ok || !resultado.ok) {
+        throw new Error(resultado.message || "Error al enviar el mensaje.");
+      }
       setEstadoEnvio("exito");
       setMostrarExito(true);
       setTimeout(() => {
@@ -363,8 +370,8 @@ export default function FormularioContacto() {
 
         <div className="mt-10 text-center">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em] mb-3">También puedes escribirnos a</p>
-          <a href="mailto:contacto@ejemplo.com" className="text-[#6544FF] font-bold text-sm hover:underline">
-            contacto@ejemplo.com
+          <a href="mailto:contacto@eligetufuturo.cl" className="text-[#6544FF] font-bold text-sm hover:underline">
+            contacto@eligetufuturo.cl
           </a>
         </div>
       </div>

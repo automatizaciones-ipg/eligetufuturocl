@@ -63,11 +63,11 @@ export default function ResultadosTest({ areaPredominante, perfilInfo, carrerasD
 
     setIsSubmitting(true);
     try {
-      const respuesta = await fetch('/api/solicitud-vocacional', {
+      const respuesta = await fetch('/api/solicitar-informacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tipo: "contacto", // Acción manual desde el formulario
+          tipo: "contacto",
           nombre: datosUsuario.nombre,
           correo: datosUsuario.email,
           telefono: datosUsuario.telefono,
@@ -77,7 +77,8 @@ export default function ResultadosTest({ areaPredominante, perfilInfo, carrerasD
         })
       });
 
-      if (respuesta.ok) {
+      const resultado = await respuesta.json();
+      if (respuesta.ok && resultado.ok) {
         setSolicitudEnviada(true);
       }
     } catch (error) {
