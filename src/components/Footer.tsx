@@ -79,7 +79,7 @@ export default function Footer() {
 
         {/* Barra inferior */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-center text-xs text-gray-500">
-          <p>2026 EligeTuFuturo.cl - By Luis Rvera - Nayely Soto</p>
+          <p>2026 EligeTuFuturo.cl - By Luis Rivera - Nayely Soto</p>
         </div>
         
       </div>
