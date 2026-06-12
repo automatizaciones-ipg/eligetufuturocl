@@ -1,10 +1,10 @@
 // src/components/InstitucionDetalle.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapPin, Building, Award, CheckCircle2, ChevronRight, 
   User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, 
   ArrowLeft, Landmark, ShieldCheck, GraduationCap,
-  Star, Sparkles // <-- ¡Agregado Sparkles aquí!
+  Star, Sparkles
 } from 'lucide-react';
 
 // Formateador y Generador de Logo (Idéntico al de carreras)
@@ -26,7 +26,31 @@ const TIPOS_PREGUNTAS = [
 export default function InstitucionDetalle({ institucion }: { institucion: any }) {
   const institucionNombre = institucion?.nombre || 'Institución Desconocida';
   const tipoInstitucion = institucion?.tipo || 'Educación Superior';
-  const logoPath = `/logos/${normalizarNombreLogo(institucionNombre)}`;
+
+  // ──── Construcción inteligente de la URL del logo (IGUAL A CarreraDetalle) ────
+  const getSupabaseUrl = (): string => {
+    try {
+      // @ts-ignore - import.meta.env es provisto por Astro
+      return import.meta.env.PUBLIC_SUPABASE_URL || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const SUPABASE_PROJECT_URL = useMemo(() => getSupabaseUrl(), []);
+
+  const logoPath = useMemo(() => {
+    // 1. Si la institución ya tiene logo_url (completa), usarla directamente
+    if (institucion?.logo_url && institucion.logo_url.startsWith('http')) {
+      return institucion.logo_url;
+    }
+    // 2. Si hay URL de Supabase, construir la ruta pública del bucket
+    if (SUPABASE_PROJECT_URL) {
+      const bucket = 'logos_instituciones';
+      return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${bucket}/${normalizarNombreLogo(institucionNombre)}`;
+    }
+    return ''; // fallback vacío (se mostrará el respaldo visual)
+  }, [institucion?.logo_url, SUPABASE_PROJECT_URL, institucionNombre]);
 
   // --- ESTADOS DEL FORMULARIO LEAD 3.0 ---
   const [formState, setFormState] = useState({

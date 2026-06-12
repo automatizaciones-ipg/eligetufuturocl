@@ -262,6 +262,28 @@ export default function BuscadorCarreras() {
           const instNombre = instObj?.nombre || "Institución Desconocida";
           const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
           
+          // ============================================================
+          // 🔧 AJUSTE PRECISO PARA CARGAR LOGOS DESDE SUPABASE STORAGE
+          // ============================================================
+          let logoUrl = "";
+          const rawLogo = instObj?.logo_url;
+          if (rawLogo) {
+            if (rawLogo.startsWith("http")) {
+              logoUrl = rawLogo;
+            } else {
+              const bucket = "logos_instituciones";
+              // Usar variable pública de Astro (PUBLIC_SUPABASE_URL)
+              // @ts-ignore - import.meta.env es provisto por Astro
+              const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+              if (!baseUrl) {
+                console.error("⚠️ No se encontró la URL pública de Supabase. Define PUBLIC_SUPABASE_URL en tu .env");
+                logoUrl = ""; // Forzará el fallback
+              } else {
+                logoUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${rawLogo}`;
+              }
+            }
+          }
+          
           return {
             id: item.codigo_carrera,
             nombre: formatearTitulo(item.nombre_carrera),
@@ -272,7 +294,7 @@ export default function BuscadorCarreras() {
             puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "Arancel no informado",
             duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "Duración no informada",
             color: PALETA_COLORES[index % PALETA_COLORES.length],
-            logoUrl: instObj?.logo_url || fallbackLogo
+            logoUrl: logoUrl || fallbackLogo
           };
         });
         setCarreras(resultadosAdaptados);
@@ -678,7 +700,6 @@ export default function BuscadorCarreras() {
 
                           {/* Badges: Tipo + Región */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            {/* Badge Tipo con color del gradiente de la card */}
                             <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r ${carrera.color} text-white shadow-sm`}>
                               {carrera.tipoInst}
                             </span>

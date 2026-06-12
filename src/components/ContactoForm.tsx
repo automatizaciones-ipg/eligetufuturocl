@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Loader2,
   Star,
+  CheckCircle2,
 } from "lucide-react";
 
 const OPCIONES_TIPO = [
@@ -31,6 +32,7 @@ export default function FormularioContacto() {
   const [estadoEnvio, setEstadoEnvio] = useState<"idle" | "enviando" | "exito" | "error">("idle");
   const [comboAbierto, setComboAbierto] = useState(false);
   const [mostrarExito, setMostrarExito] = useState(false);
+  const [consentimiento, setConsentimiento] = useState(false);
 
   const comboRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -110,7 +112,7 @@ export default function FormularioContacto() {
     }
     setErrores(nuevosErrores);
     setTouched({ nombre: true, correo: true, telefono: true, tipoMensaje: true, mensaje: true });
-    if (!valido) return;
+    if (!valido || !consentimiento) return;
 
     setEstadoEnvio("enviando");
     try {
@@ -131,6 +133,7 @@ export default function FormularioContacto() {
         setTouched({});
         setEstadoEnvio("idle");
         setMostrarExito(false);
+        setConsentimiento(false);
       }, 3500);
     } catch {
       setEstadoEnvio("error");
@@ -138,26 +141,15 @@ export default function FormularioContacto() {
     }
   };
 
-  // Clases CSS reutilizables
+  // Clases base iguales al formulario del test vocacional
   const inputBase =
-    "w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6544FF]/40 focus:border-[#6544FF] transition-all text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-sm";
-  const inputError = "border-rose-300 focus:ring-rose-400/40";
-  const inputSuccess = "border-emerald-300 focus:ring-emerald-400/40";
-
-  const labelClases =
-    "block text-xs font-black uppercase tracking-[0.15em] text-[#1A1528] mb-2 flex items-center gap-2";
-
-  // Botón con gradiente personalizado y efectos mejorados
-  const botonBase =
-    "relative w-full py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm transition-all duration-500 flex items-center justify-center gap-3 overflow-hidden";
-  const botonGradiente =
-    "bg-gradient-to-r from-[#5B21B6] via-[#9333EA] to-[#3B82F6] shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 active:scale-[0.98]";
-  const botonError = "bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/25";
-  const botonDisabled = "opacity-70 cursor-not-allowed hover:translate-y-0 active:scale-100";
+    "w-full bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 py-2.5 text-xs text-gray-700 font-medium outline-none focus:border-[#6544FF] focus:bg-white transition-all placeholder:text-gray-300";
+  const inputError = "border-rose-300";
+  const inputSuccess = "border-emerald-300";
 
   return (
     <section className="w-full bg-[#F4F5F9] tracking-tight">
-      {/* ========== HERO BANNER ========== */}
+      {/* ========== HERO BANNER (SIN CAMBIOS) ========== */}
       <div className="relative w-full bg-[#0A0518] pt-24 pb-48 px-6 overflow-hidden z-20 border-b border-white/5">
         <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
           <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob" />
@@ -175,196 +167,201 @@ export default function FormularioContacto() {
             </span>
           </h2>
           <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
-            Completa el formulario y te responderemos en menos de 24 horas hábiles.
+            Completa el formulario y te responderemos.
           </p>
         </div>
       </div>
 
-      {/* ========== FORMULARIO ========== */}
+      {/* ========== FORMULARIO (DISEÑO ACTUALIZADO) ========== */}
       <div className="w-full max-w-2xl mx-auto px-4 sm:px-8 -mt-32 relative z-30 pb-24">
-        <div className="relative bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-[0_25px_60px_rgba(0,0,0,0.08)] border border-gray-100">
-          {/* Overlay éxito */}
+        <div className="relative bg-white rounded-[2rem] p-8 shadow-xl border border-gray-100 overflow-hidden">
+          {/* Overlay éxito (igual al del test vocacional) */}
           {mostrarExito && (
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2.5rem] flex flex-col items-center justify-center z-50">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg mb-6">
-                <svg className="w-12 h-12 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 2L11 13" />
-                  <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-                </svg>
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-xl rounded-[2rem] flex flex-col items-center justify-center z-50 animate-in zoom-in-95 duration-500">
+              <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+                <CheckCircle2 className="w-7 h-7 text-emerald-600" />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">¡Mensaje Enviado!</h3>
-              <p className="text-gray-500">Te responderemos pronto.</p>
+              <h4 className="text-lg font-black text-[#1A1528] mb-1">¡Mensaje Enviado!</h4>
+              <p className="text-gray-500 text-xs px-2 leading-relaxed">
+                Muchas gracias pr tu consulta, te contactaremos pronto.
+              </p>
             </div>
           )}
 
-          <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
-            {/* Nombre */}
-            <div>
-              <label className={labelClases}>
-                <User className="w-3.5 h-3.5 text-[#6544FF]" /> Nombre Completo
-              </label>
-              <input
-                type="text"
-                value={form.nombre}
-                onChange={(e) => handleChange("nombre", e.target.value)}
-                onBlur={() => handleBlur("nombre")}
-                placeholder="Ej: María González"
-                disabled={estadoEnvio === "enviando"}
-                className={`${inputBase} ${touched.nombre && errores.nombre ? inputError : touched.nombre && !errores.nombre ? inputSuccess : ""}`}
-              />
-              {touched.nombre && errores.nombre && (
-                <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.nombre}</p>
-              )}
+          <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* Título del formulario */}
+            <div className="mb-2">
+              <h4 className="text-lg font-black text-[#1A1528] mb-1 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#6544FF]" /> Escríbenos
+              </h4>
+              <p className="text-gray-400 text-xs">Completa el formulario y te contactaremos pronto.</p>
             </div>
 
-            {/* Correo */}
-            <div>
-              <label className={labelClases}>
-                <Mail className="w-3.5 h-3.5 text-[#6544FF]" /> Correo Electrónico
-              </label>
-              <input
-                type="email"
-                value={form.correo}
-                onChange={(e) => handleChange("correo", e.target.value)}
-                onBlur={() => handleBlur("correo")}
-                placeholder="Ej: maria@email.com"
-                disabled={estadoEnvio === "enviando"}
-                className={`${inputBase} ${touched.correo && errores.correo ? inputError : touched.correo && !errores.correo ? inputSuccess : ""}`}
-              />
-              {touched.correo && errores.correo && (
-                <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.correo}</p>
-              )}
-            </div>
+            {/* Campos con iconos dentro, mismo estilo */}
+            <div className="space-y-2.5">
+              {/* Nombre */}
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="text"
+                  value={form.nombre}
+                  onChange={(e) => handleChange("nombre", e.target.value)}
+                  onBlur={() => handleBlur("nombre")}
+                  placeholder="Tu nombre completo"
+                  disabled={estadoEnvio === "enviando"}
+                  className={`${inputBase} ${touched.nombre && errores.nombre ? inputError : touched.nombre && !errores.nombre ? inputSuccess : ""}`}
+                />
+                {touched.nombre && errores.nombre && (
+                  <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.nombre}</p>
+                )}
+              </div>
 
-            {/* Teléfono */}
-            <div>
-              <label className={labelClases}>
-                <Phone className="w-3.5 h-3.5 text-[#6544FF]" /> Teléfono
-              </label>
-              <input
-                type="tel"
-                value={form.telefono}
-                onChange={(e) => handleChange("telefono", e.target.value)}
-                onBlur={() => handleBlur("telefono")}
-                placeholder="Ej: 912345678"
-                disabled={estadoEnvio === "enviando"}
-                className={`${inputBase} ${touched.telefono && errores.telefono ? inputError : touched.telefono && !errores.telefono ? inputSuccess : ""}`}
-              />
-              {touched.telefono && errores.telefono && (
-                <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.telefono}</p>
-              )}
-            </div>
+              {/* Correo */}
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="email"
+                  value={form.correo}
+                  onChange={(e) => handleChange("correo", e.target.value)}
+                  onBlur={() => handleBlur("correo")}
+                  placeholder="correo@ejemplo.com"
+                  disabled={estadoEnvio === "enviando"}
+                  className={`${inputBase} ${touched.correo && errores.correo ? inputError : touched.correo && !errores.correo ? inputSuccess : ""}`}
+                />
+                {touched.correo && errores.correo && (
+                  <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.correo}</p>
+                )}
+              </div>
 
-            {/* COMBOBOX */}
-            <div ref={comboRef} className="relative">
-              <label className={labelClases}>
-                <MessageSquare className="w-3.5 h-3.5 text-[#6544FF]" /> ¿De qué trata tu mensaje?
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  if (estadoEnvio !== "enviando") setComboAbierto(!comboAbierto);
-                }}
-                disabled={estadoEnvio === "enviando"}
-                className={`${inputBase} text-left flex items-center justify-between ${
-                  !form.tipoMensaje ? "text-gray-400" : "text-gray-800"
-                } ${touched.tipoMensaje && errores.tipoMensaje ? inputError : touched.tipoMensaje && !errores.tipoMensaje ? inputSuccess : ""}`}
-              >
-                <span>{OPCIONES_TIPO.find((o) => o.value === form.tipoMensaje)?.label || "Selecciona una opción"}</span>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${comboAbierto ? "rotate-180" : ""}`} />
-              </button>
-              {comboAbierto && (
-                <div className="absolute z-[100] w-full mt-2 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 py-2 overflow-visible">
-                  {OPCIONES_TIPO.map((opcion) => (
-                    <div
-                      key={opcion.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        seleccionarOpcion(opcion.value);
-                      }}
-                      className={`px-4 py-3 text-sm font-medium cursor-pointer flex items-center justify-between hover:bg-[#6544FF]/5 transition-colors ${
-                        form.tipoMensaje === opcion.value ? "bg-[#6544FF]/10 text-[#6544FF] font-bold" : "text-gray-700"
-                      }`}
-                    >
-                      {opcion.label}
-                      {form.tipoMensaje === opcion.value && <Check className="w-4 h-4 text-[#6544FF]" />}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {touched.tipoMensaje && errores.tipoMensaje && (
-                <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.tipoMensaje}</p>
-              )}
-            </div>
+              {/* Teléfono */}
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="tel"
+                  value={form.telefono}
+                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  onBlur={() => handleBlur("telefono")}
+                  placeholder="912345678"
+                  disabled={estadoEnvio === "enviando"}
+                  className={`${inputBase} ${touched.telefono && errores.telefono ? inputError : touched.telefono && !errores.telefono ? inputSuccess : ""}`}
+                />
+                {touched.telefono && errores.telefono && (
+                  <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.telefono}</p>
+                )}
+              </div>
 
-            {/* MENSAJE CON CONTADOR */}
-            <div>
-              <label className={labelClases}>
-                <MessageSquare className="w-3.5 h-3.5 text-[#6544FF]" /> Tu Mensaje
-              </label>
+              {/* Tipo de mensaje (combobox) */}
+              <div ref={comboRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (estadoEnvio !== "enviando") setComboAbierto(!comboAbierto);
+                  }}
+                  disabled={estadoEnvio === "enviando"}
+                  className={`${inputBase} text-left flex items-center justify-between ${
+                    !form.tipoMensaje ? "text-gray-300" : "text-gray-700"
+                  } ${touched.tipoMensaje && errores.tipoMensaje ? inputError : touched.tipoMensaje && !errores.tipoMensaje ? inputSuccess : ""}`}
+                >
+                  <span>{OPCIONES_TIPO.find((o) => o.value === form.tipoMensaje)?.label || "Selecciona una opción"}</span>
+                  <ChevronDown className="w-4 h-4 text-gray-300" />
+                </button>
+                {comboAbierto && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
+                    {OPCIONES_TIPO.map((opcion) => (
+                      <div
+                        key={opcion.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          seleccionarOpcion(opcion.value);
+                        }}
+                        className={`px-4 py-2.5 text-xs font-medium cursor-pointer flex items-center justify-between hover:bg-[#6544FF]/5 transition-colors ${
+                          form.tipoMensaje === opcion.value ? "bg-[#6544FF]/10 text-[#6544FF] font-bold" : "text-gray-600"
+                        }`}
+                      >
+                        {opcion.label}
+                        {form.tipoMensaje === opcion.value && <Check className="w-3.5 h-3.5 text-[#6544FF]" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {touched.tipoMensaje && errores.tipoMensaje && (
+                  <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.tipoMensaje}</p>
+                )}
+              </div>
+
+              {/* Mensaje */}
               <div className="relative">
                 <textarea
                   value={form.mensaje}
                   onChange={(e) => handleChange("mensaje", e.target.value)}
                   onBlur={() => handleBlur("mensaje")}
                   placeholder="Escribe tu mensaje aquí... (mín. 10 caracteres)"
-                  rows={5}
+                  rows={3}
                   maxLength={1000}
                   disabled={estadoEnvio === "enviando"}
-                  className={`${inputBase} resize-none ${
+                  className={`w-full bg-white border border-gray-200 focus:border-[#6544FF] rounded-xl px-4 py-3 text-xs text-[#1A1528] font-medium outline-none transition-all placeholder:text-gray-300 resize-none shadow-inner ${
                     touched.mensaje && errores.mensaje ? inputError : touched.mensaje && !errores.mensaje ? inputSuccess : ""
                   }`}
                 />
-                <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-lg shadow-sm border border-gray-100 text-xs font-bold">
-                  <span className={form.mensaje.length > 900 ? "text-rose-500" : form.mensaje.length > 700 ? "text-amber-500" : "text-gray-400"}>
-                    {form.mensaje.length}
-                  </span>
-                  <span className="text-gray-300"> / 1000</span>
+                {/* Contador de caracteres discreto */}
+                <div className="absolute bottom-2 right-2 text-[10px] text-gray-400 font-bold">
+                  {form.mensaje.length}/1000
                 </div>
+                {touched.mensaje && errores.mensaje && (
+                  <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.mensaje}</p>
+                )}
               </div>
-              {touched.mensaje && errores.mensaje && (
-                <p className="text-rose-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.mensaje}</p>
-              )}
             </div>
 
-            {/* BOTÓN DE ENVIAR CON GRADIENTE Y EFECTOS MEJORADOS */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={estadoEnvio === "enviando" || estadoEnvio === "exito"}
-                className={`${botonBase} ${
-                  estadoEnvio === "error" ? botonError : botonGradiente
-                } ${estadoEnvio !== "idle" ? botonDisabled : ""} text-white`}
-              >
-                {/* Efecto de brillo al hacer hover */}
-                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
-                
-                {estadoEnvio === "idle" && (
-                  <span className="relative z-10 flex items-center gap-2">
-                    Enviar Mensaje
-                    <Send className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </span>
-                )}
-                {estadoEnvio === "enviando" && (
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Enviando...
-                  </span>
-                )}
-                {estadoEnvio === "exito" && (
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Check className="w-5 h-5" />
-                    ¡Enviado!
-                  </span>
-                )}
-                {estadoEnvio === "error" && (
-                  <span className="relative z-10">Error - Reintentar</span>
-                )}
-              </button>
-              {estadoEnvio === "error" && (
-                <p className="text-center text-rose-600 text-xs mt-2">Error al enviar. Intenta de nuevo.</p>
+            {/* Consentimiento */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={consentimiento}
+                onChange={(e) => setConsentimiento(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#6544FF] focus:ring-[#6544FF]"
+              />
+              <span className="text-[10px] text-gray-500 leading-relaxed">
+                Acepto los{" "}
+                <a href="/terminos-y-condiciones" target="_blank" className="text-[#6544FF] font-semibold underline">
+                  Términos y Condiciones
+                </a>{" "}
+                y la{" "}
+                <a href="/politica-de-privacidad" target="_blank" className="text-[#6544FF] font-semibold underline">
+                  Política de Privacidad
+                </a>{" "}
+                de EligeTuFuturo.
+              </span>
+            </label>
+
+            {/* Botón de envío (estilo test vocacional) */}
+            <button
+              type="submit"
+              disabled={estadoEnvio === "enviando" || estadoEnvio === "exito" || !consentimiento}
+              className={`w-full bg-[#6544FF] hover:bg-[#5233e8] disabled:bg-gray-100 disabled:text-gray-400 text-white font-bold py-3.5 rounded-xl text-xs transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-[#6544FF]/10 ${
+                estadoEnvio === "error" ? "!bg-rose-500 hover:!bg-rose-600" : ""
+              }`}
+            >
+              {estadoEnvio === "idle" && (
+                <>
+                  Enviar Mensaje <Send className="w-3.5 h-3.5" />
+                </>
               )}
-            </div>
+              {estadoEnvio === "enviando" && (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Enviando...
+                </>
+              )}
+              {estadoEnvio === "exito" && (
+                <>
+                  <Check className="w-4 h-4" /> ¡Enviado!
+                </>
+              )}
+              {estadoEnvio === "error" && "Error - Reintentar"}
+            </button>
+            {estadoEnvio === "error" && (
+              <p className="text-center text-rose-600 text-xs mt-2">Error al enviar. Intenta de nuevo.</p>
+            )}
           </form>
         </div>
 

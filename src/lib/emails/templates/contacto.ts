@@ -49,7 +49,7 @@ export function contactoConfirmacionEmail(data: ContactoPayload): { subject: str
 
   const bodyHtml = `
     <p style="margin:0 0 16px 0;">Hola <strong>${primerNombre}</strong>,</p>
-    <p style="margin:0 0 20px 0;">Recibimos tu mensaje correctamente. Nuestro equipo revisará tu consulta sobre <strong>${tipoLabel}</strong> y te responderá en menos de <strong>24 horas hábiles</strong>.</p>
+    <p style="margin:0 0 20px 0;">Recibimos tu mensaje correctamente. Nuestro equipo revisará tu consulta sobre <strong>${tipoLabel}</strong> y te responderá <strong>pronto</strong>.</p>
     ${messageBox(data.mensaje)}
     <p style="margin:20px 0 0 0;font-size:14px;color:#64748B;">Mientras tanto, puedes explorar carreras, hacer el test vocacional o revisar becas en nuestra plataforma.</p>`;
 

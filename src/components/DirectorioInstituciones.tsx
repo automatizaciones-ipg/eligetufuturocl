@@ -16,6 +16,7 @@ interface InstitucionDB {
   tipo: string;
   adscrita_gratuidad: boolean;
   acreditada: boolean;
+  logo_url?: string | null;        // ← Añadido para el logo
   carreras?: { region: string | null }[]; 
 }
 
@@ -23,6 +24,7 @@ interface InstitucionUI extends Omit<InstitucionDB, 'carreras'> {
   color: string;
   destacada: boolean;
   regiones: string[];
+  logoUrl: string;                 // ← URL final para la imagen
 }
 
 // Colores premium
@@ -61,7 +63,7 @@ const ITEMS_POR_PAGINA = 15;
 export default function DirectorioInstituciones() {
   // Estados de los Filtros
   const [regionActiva, setRegionActiva] = useState("todas");
-  const [filtroTipo, setFiltroTipo] = useState("Todos"); // Todos, U, IP, CFT
+  const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroAcreditacion, setFiltroAcreditacion] = useState("Todas"); 
   const [ordenNombre, setOrdenNombre] = useState("asc"); 
   const [busqueda, setBusqueda] = useState("");
@@ -106,6 +108,7 @@ export default function DirectorioInstituciones() {
             tipo,
             adscrita_gratuidad,
             acreditada,
+            logo_url,
             carreras ( region )
           `);
 
@@ -117,6 +120,24 @@ export default function DirectorioInstituciones() {
               ? item.carreras.map(c => c.region).filter(Boolean) as string[]
               : [];
             const regionesUnicas = Array.from(new Set(regionesMapeadas));
+
+            // ── Construir la URL pública del logo ──
+            let logoUrl = "";
+            const rawLogo = item.logo_url;
+            if (rawLogo) {
+              if (rawLogo.startsWith("http")) {
+                logoUrl = rawLogo;
+              } else {
+                const bucket = "logos_instituciones";
+                // @ts-ignore - import.meta.env es provisto por Astro
+                const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+                if (!baseUrl) {
+                  console.error("⚠️ No se encontró PUBLIC_SUPABASE_URL. Define la variable en .env");
+                } else {
+                  logoUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${rawLogo}`;
+                }
+              }
+            }
             
             return {
               codigo_institucion: item.codigo_institucion,
@@ -124,9 +145,11 @@ export default function DirectorioInstituciones() {
               tipo: item.tipo,
               adscrita_gratuidad: item.adscrita_gratuidad,
               acreditada: item.acreditada,
+              logo_url: item.logo_url,       // preservamos el original si se necesita (no se usa en la UI)
               regiones: regionesUnicas,
               color: PALETA_COLORES[index % PALETA_COLORES.length],
-              destacada: item.acreditada && item.adscrita_gratuidad
+              destacada: item.acreditada && item.adscrita_gratuidad,
+              logoUrl: logoUrl
             };
           });
 
@@ -202,16 +225,6 @@ export default function DirectorioInstituciones() {
 
   const obtenerSiglas = (nombre: string) => {
     return nombre.split(' ').map((n) => n[0]).join('').substring(0, 3).toUpperCase();
-  };
-
-  const generarSlugLogo = (nombre: string) => {
-    return nombre
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-") + ".png";
   };
 
   const handleNavegar = (e: React.MouseEvent, id: number) => {
@@ -511,7 +524,7 @@ export default function DirectorioInstituciones() {
                               </div>
                             ) : (
                               <img 
-                                src={`/logos/${generarSlugLogo(inst.nombre)}`} 
+                                src={inst.logoUrl} 
                                 alt={inst.nombre} 
                                 className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500 ease-out" 
                                 onError={() => handleLogoError(inst.codigo_institucion)} 
