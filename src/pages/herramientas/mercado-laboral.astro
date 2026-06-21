@@ -3,7 +3,10 @@ import Layout from "../../layouts/Layout.astro";
 import MercadoLaboralComponent from "../../components/MercadoLaboral.tsx";
 ---
 
-<Layout title="Mercado Laboral y Empleabilidad | Elige tu Futuro">
+<Layout
+  title="Mercado Laboral y Empleabilidad | Elige tu Futuro"
+  description="Compara empleabilidad al primer año e ingreso promedio al cuarto año por carrera en Chile. Decide tu futuro con datos reales del mercado laboral (fuente SIES)."
+>
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="">
       <MercadoLaboralComponent client:load />

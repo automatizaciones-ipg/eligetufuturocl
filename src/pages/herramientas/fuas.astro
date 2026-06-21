@@ -1,9 +1,38 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import GuiaFuas from "../../components/GuiaFuas.tsx";
+import { faqSchema, breadcrumbSchema } from "../../lib/seo";
+
+const fuasJsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Becas y Gratuidad (FUAS)", url: "/herramientas/fuas" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Qué es el FUAS?",
+      answer:
+        "El FUAS (Formulario Único de Acreditación Socioeconómica) es el formulario gratuito que se completa en línea para postular a la gratuidad, becas de arancel y créditos del Estado en Chile.",
+    },
+    {
+      question: "¿Cuándo se llena el FUAS para la Admisión 2026?",
+      answer:
+        "El FUAS se completa durante el periodo oficial definido por el MINEDUC, generalmente entre octubre y noviembre del año anterior al ingreso. Conviene completarlo apenas se abre la plataforma.",
+    },
+    {
+      question: "¿Quiénes pueden acceder a la gratuidad?",
+      answer:
+        "La gratuidad está dirigida a estudiantes pertenecientes a los hogares de menores ingresos del país que estudien en instituciones adscritas al beneficio, cumpliendo los requisitos académicos y socioeconómicos.",
+    },
+  ]),
+];
 ---
 
-<Layout title="Guía FUAS y Gratuidad - Beneficios Estudiantiles">
+<Layout
+  title="Guía FUAS y Gratuidad - Beneficios Estudiantiles"
+  description="Guía completa para postular a la gratuidad, becas y créditos en Chile: cómo y cuándo completar el FUAS, requisitos y beneficios estudiantiles para la Admisión 2026."
+  jsonLd={fuasJsonLd}
+>
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="">
       <GuiaFuas client:load />

@@ -4,7 +4,10 @@ import Layout from "../../layouts/Layout.astro";
 import CalculadoraNem from "../../components/CalculadoraNem.tsx";
 ---
 
-<Layout title="Calculadora de Puntaje PAES - Elige Tu Futuro">
+<Layout
+  title="Calculadora de Puntaje PAES - Elige Tu Futuro"
+  description="Calcula tu puntaje ponderado de postulación combinando PAES, NEM y Ranking. Simula tus posibilidades de admisión a carreras universitarias en Chile 2026 gratis."
+>
   <div class="bg-[#fafafa] min-h-screen h-screen">
     <div class="relative z-10 w-full">
       <CalculadoraNem client:load />

@@ -1,0 +1,24 @@
+{
+  "name": "Elige Tu Futuro",
+  "short_name": "EligeTuFuturo",
+  "description": "Orientación vocacional en Chile: test vocacional, carreras, PAES, becas y empleabilidad para la Admisión 2026.",
+  "lang": "es-CL",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#130E24",
+  "theme_color": "#6544FF",
+  "icons": [
+    {
+      "src": "/Icono.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

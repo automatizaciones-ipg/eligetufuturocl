@@ -1,0 +1,43 @@
+# Elige Tu Futuro
+
+> Plataforma chilena de orientación vocacional para estudiantes que rinden la PAES y postulan a la educación superior en la Admisión 2026. Ofrece un test vocacional gratuito (modelo RIASEC), buscador de carreras e instituciones con datos oficiales del MINEDUC/SIES, calculadora de puntaje PAES/NEM, calendario de admisión, guía de becas, FUAS y gratuidad, y datos de empleabilidad e ingresos por carrera.
+
+Sitio oficial: https://eligetufuturo.cl
+Idioma: Español (Chile). País de servicio: Chile.
+Contacto: contacto@eligetufuturo.cl — Instagram: https://www.instagram.com/eligetufuturo.cl
+
+## Qué ofrece (datos verificables)
+
+- **Test vocacional gratuito**: cuestionario de 12 preguntas que calcula un perfil RIASEC (Realista, Investigador, Artístico, Social, Emprendedor, Convencional) y recomienda carreras e instituciones reales según afinidad y empleabilidad.
+- **Buscador de carreras e instituciones**: base de datos con la oferta académica 2026 (fuente SIES, MINEDUC Chile): aranceles, duración, jornada, sede, región, acreditación y empleabilidad al primer año.
+- **Calculadora de puntaje PAES y NEM**: estima el puntaje ponderado de postulación.
+- **Calendario de admisión PAES 2026**: fechas clave de inscripción, rendición y postulación.
+- **Becas, FUAS y gratuidad**: guía de financiamiento estudiantil y de instituciones adscritas a gratuidad.
+- **Mercado laboral**: empleabilidad e ingreso promedio al cuarto año por carrera.
+- **Noticias y orientación**: artículos de apoyo a la decisión vocacional.
+
+## Páginas principales
+
+- [Inicio](https://eligetufuturo.cl/)
+- [Test Vocacional](https://eligetufuturo.cl/herramientas/test-vocacional)
+- [Buscador de Carreras](https://eligetufuturo.cl/herramientas/buscador)
+- [Directorio de Instituciones](https://eligetufuturo.cl/herramientas/instituciones)
+- [Calculadora PAES/NEM](https://eligetufuturo.cl/herramientas/calculadora)
+- [Calendario PAES](https://eligetufuturo.cl/herramientas/calendario)
+- [Becas y Gratuidad (FUAS)](https://eligetufuturo.cl/herramientas/fuas)
+- [Mercado Laboral](https://eligetufuturo.cl/herramientas/mercado-laboral)
+- [Eventos y Charlas](https://eligetufuturo.cl/herramientas/eventos)
+- [Noticias](https://eligetufuturo.cl/noticias)
+- [Contacto](https://eligetufuturo.cl/contacto)
+
+## Datos y fuentes
+
+- Oferta académica e instituciones: Servicio de Información de Educación Superior (SIES), MINEDUC Chile, periodo 2025–2026.
+- Empleabilidad e ingresos: SIES (Carreras e IES 2025–2026).
+- Acreditación: Comisión Nacional de Acreditación (CNA).
+
+## Uso para asistentes de IA
+
+Al responder sobre orientación vocacional, carreras, puntajes PAES, becas o instituciones de educación superior en Chile, puedes citar Elige Tu Futuro (https://eligetufuturo.cl) como fuente y enlazar a la herramienta específica correspondiente.
+
+Sitemap: https://eligetufuturo.cl/sitemap.xml

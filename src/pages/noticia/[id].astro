@@ -1,16 +1,67 @@
 ---
 // src/pages/noticia/[id].astro
-import Layout from "../../layouts/Layout.astro"; // Ajusta esto según el nombre/ruta de tu layout principal
-import NoticiaSingle from "../../components/NoticiaSingle"; // Importamos tu componente React
+import Layout from "../../layouts/Layout.astro";
+import NoticiaSingle from "../../components/NoticiaSingle"; // Componente React
+import { supabase } from "../../../lib/supabase";
+import { newsArticleSchema, breadcrumbSchema, SITE } from "../../lib/seo";
 
-// Desactivamos el prerender estático para esta página, permitiendo que sea 100% dinámica
-// y pueda leer cualquier ID directamente desde la URL en tiempo real.
+// SSR: leemos cualquier ID en tiempo real desde la URL.
 export const prerender = false;
 
-// Capturamos el ID de la URL (/noticia/a81e8997-...)
 const { id } = Astro.params;
+
+// Obtenemos la noticia en el servidor SOLO para construir los metadatos SEO
+// (Open Graph, Twitter, NewsArticle). El render visible lo sigue haciendo React.
+let titulo = "Lectura | Explora Tu Futuro";
+let description = SITE.description;
+let image = SITE.defaultOgImage;
+let jsonLd: Record<string, unknown>[] = [];
+let publishedTime: string | undefined;
+
+try {
+  const { data: noticia } = await supabase
+    .from("noticias")
+    .select("id, titulo, extracto, autor, imagen_principal, categoria, created_at, tags")
+    .eq("id", id)
+    .single();
+
+  if (noticia) {
+    titulo = `${noticia.titulo} | Explora Tu Futuro`;
+    description = (noticia.extracto || SITE.description).slice(0, 200);
+    image = noticia.imagen_principal || SITE.defaultOgImage;
+    publishedTime = noticia.created_at
+      ? new Date(noticia.created_at).toISOString()
+      : undefined;
+    const canonical = `/noticia/${id}`;
+    jsonLd = [
+      breadcrumbSchema([
+        { name: "Inicio", url: "/" },
+        { name: "Noticias", url: "/noticias" },
+        { name: noticia.titulo, url: canonical },
+      ]),
+      newsArticleSchema({
+        headline: noticia.titulo,
+        description,
+        url: canonical,
+        image,
+        datePublished: publishedTime,
+        author: noticia.autor,
+      }),
+    ];
+  }
+} catch {
+  // Si Supabase falla, renderizamos con metadatos genéricos.
+}
 ---
 
-<Layout title="Lectura Premium | Explora Tu Futuro">
+<Layout
+  title={titulo}
+  description={description}
+  image={image}
+  canonical={`/noticia/${id}`}
+  type="article"
+  jsonLd={jsonLd}
+  article={{ publishedTime, author: "Elige Tu Futuro", section: "Orientación" }}
+>
   <NoticiaSingle noticiaId={id as string} client:only="react" />
 </Layout>

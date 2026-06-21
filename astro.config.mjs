@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 
 export default defineConfig({
+  // URL canónica del sitio: necesaria para canonical, Open Graph y sitemap.
+  site: process.env['PUBLIC_SITE_URL'] || 'https://eligetufuturo.cl',
+
   integrations: [react()],
 
   vite: {

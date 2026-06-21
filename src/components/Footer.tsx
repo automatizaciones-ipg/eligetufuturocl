@@ -42,10 +42,10 @@ export default function Footer() {
             </h5>
             <ul className="space-y-4 text-sm text-gray-400">
               <li><a href="/terminos-y-condiciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Términos y condiciones</a></li>
-              <li><a href="/informacion/becas" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Becas y Gratuidad</a></li>
-              <li><a href="/informacion/calendario" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Calendario PAES</a></li>
-              <li><a href="/instituciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Instituciones</a></li>
-              <li><a href="/informacion/eventos" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Eventos y Charlas</a></li>
+              <li><a href="/herramientas/fuas" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Becas y Gratuidad</a></li>
+              <li><a href="/herramientas/calendario" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Calendario PAES</a></li>
+              <li><a href="/herramientas/instituciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Instituciones</a></li>
+              <li><a href="/herramientas/eventos" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Eventos y Charlas</a></li>
             </ul>
           </div>
 
@@ -62,7 +62,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="mailto:cntact@eligetufuturo.cl" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
+                <a href="mailto:contacto@eligetufuturo.cl" className="group flex items-center gap-3 hover:text-white transition-colors duration-200">
                   <Mail className="w-4 h-4 text-[#6544FF] group-hover:text-white transition-colors" />
                   <span>contacto@eligetufuturo.cl</span>
                 </a>

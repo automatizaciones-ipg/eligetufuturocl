@@ -4,6 +4,7 @@ import type { GetStaticPaths } from "astro";
 import { supabase } from "../../../lib/supabase";
 import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
+import { courseSchema, breadcrumbSchema } from "../../lib/seo";
 
 export const getStaticPaths = (async () => {
   let allCodes: any[] = [];
@@ -52,9 +53,45 @@ if (error || !carrera) {
 }
 
 const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | Elige Tu Futuro`;
+
+const institucionNombre = carrera.instituciones?.nombre ?? "institución de educación superior";
+const detalles = [
+  carrera.region && `Región: ${carrera.region}`,
+  carrera.jornada && `Jornada: ${carrera.jornada}`,
+  carrera.duracion_semestres && `Duración: ${carrera.duracion_semestres} semestres`,
+  carrera.empleabilidad_1er_anio &&
+    `Empleabilidad 1er año: ${carrera.empleabilidad_1er_anio}%`,
+]
+  .filter(Boolean)
+  .join(". ");
+
+const description =
+  carrera.descripcion?.slice(0, 200) ||
+  `Estudia ${carrera.nombre_carrera} en ${institucionNombre} (Chile). ${detalles}. Conoce arancel, duración, jornada, acreditación y empleabilidad. Admisión 2026.`;
+
+const canonical = `/carrera/${id}`;
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Buscador de Carreras", url: "/herramientas/buscador" },
+    { name: carrera.nombre_carrera, url: canonical },
+  ]),
+  courseSchema({
+    name: carrera.nombre_carrera,
+    description,
+    url: canonical,
+    providerName: carrera.instituciones?.nombre,
+  }),
+];
 ---
 
-<Layout title={title}>
+<Layout
+  title={title}
+  description={description}
+  canonical={canonical}
+  type="article"
+  jsonLd={jsonLd}
+>
   <main class="min-h-screen bg-[#F4F5F9]">
     <CarreraDetalle carrera={carrera} client:load />
   </main>

@@ -3,7 +3,10 @@ import Layout from "../../layouts/Layout.astro";
 import BuscadorCarrerasComponent from "../../components/BuscadorCarreras.tsx";
 ---
 
-<Layout title="Buscador de Carreras | Elige tu Futuro">
+<Layout
+  title="Buscador de Carreras | Elige tu Futuro"
+  description="Busca y compara carreras técnicas y universitarias en Chile: arancel, duración, jornada, sede, acreditación y empleabilidad. Datos oficiales SIES para la Admisión 2026."
+>
   <div class="bg-[#FAFAFA] min-h-screen h-screen">
     <div class="relative z-10 w-full">
       <BuscadorCarrerasComponent client:load />

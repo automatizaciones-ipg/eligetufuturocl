@@ -2,9 +2,43 @@
 // src/pages/herramientas/test-vocacional.astro
 import Layout from "../../layouts/Layout.astro";
 import TestVocacionalComponent from "../../components/TestVocacional.tsx";
+import { faqSchema, breadcrumbSchema } from "../../lib/seo";
+
+const faqJsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Test Vocacional", url: "/herramientas/test-vocacional" },
+  ]),
+  faqSchema([
+    {
+      question: "¿El test vocacional es gratis?",
+      answer:
+        "Sí. El test vocacional de Elige Tu Futuro es 100% gratuito y no requiere pago ni registro previo para conocer tu perfil.",
+    },
+    {
+      question: "¿Cuánto dura el test vocacional?",
+      answer:
+        "El test toma alrededor de 5 minutos. Son 12 preguntas que calculan tu perfil RIASEC y te recomiendan carreras e instituciones afines.",
+    },
+    {
+      question: "¿Cómo funciona el test vocacional?",
+      answer:
+        "Se basa en el modelo RIASEC (Realista, Investigador, Artístico, Social, Emprendedor y Convencional). Según tus respuestas se identifica tu área predominante y se cruzan tus intereses con la oferta académica chilena 2026 y datos de empleabilidad.",
+    },
+    {
+      question: "¿Qué obtengo al terminar el test?",
+      answer:
+        "Recibes tu perfil vocacional con porcentaje de afinidad, una lista de carreras recomendadas e instituciones destacadas en Chile, y la opción de recibir orientación personalizada.",
+    },
+  ]),
+];
 ---
 
-<Layout title="Test Vocacional Premium - Elige Tu Futuro">
+<Layout
+  title="Test Vocacional Premium - Elige Tu Futuro"
+  description="Haz el test vocacional gratuito (modelo RIASEC) y descubre qué estudiar en Chile. Recibe carreras e instituciones recomendadas según tu perfil en 5 minutos."
+  jsonLd={faqJsonLd}
+>
   <div
     class="bg-[#FAFAFA] min-h-screen pt-24 pb-32 overflow-hidden relative flex flex-col justify-center"
   >

@@ -3,23 +3,57 @@
 import { ClientRouter } from "astro:transitions";
 import Header from "../components/Header.tsx";
 import Footer from "../components/Footer.tsx";
+import Seo from "../components/Seo.astro";
+import Analytics from "../components/Analytics.astro";
+import { SITE } from "../lib/seo";
+import type { SeoProps } from "../lib/seo";
 import "../styles/global.css";
 
-interface Props {
-  title: string;
-}
+// El Layout acepta `title` (compatibilidad con páginas existentes) más todas
+// las props de SEO opcionales. Así ninguna página actual se rompe y, página a
+// página, se enriquece el SEO/GEO sin tocar el Layout.
+type Props = SeoProps;
 
-const { title } = Astro.props;
+const {
+  title,
+  description,
+  image,
+  canonical,
+  type,
+  noindex,
+  jsonLd,
+  article,
+} = Astro.props;
 ---
 
 <!doctype html>
 <html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="Plataforma Elige Tu Futuro" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title}</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <!-- Precarga de orígenes de terceros para mejorar Core Web Vitals -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+
+    <Seo
+      title={title}
+      description={description}
+      image={image}
+      canonical={canonical}
+      type={type}
+      noindex={noindex}
+      jsonLd={jsonLd}
+      article={article}
+    />
+
+    <Analytics />
     <ClientRouter />
   </head>
   <body

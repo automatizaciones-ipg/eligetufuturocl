@@ -4,7 +4,10 @@ import Layout from "../../layouts/Layout.astro";
 import CalendarioPaesComponent from "../../components/CalendarioPaes.tsx";
 ---
 
-<Layout title="Calendario PAES - Fechas Clave y Ensayos">
+<Layout
+  title="Calendario PAES - Fechas Clave y Ensayos"
+  description="Calendario oficial de la PAES y la Admisión 2026: fechas de inscripción, rendición, publicación de resultados y periodo de postulación a la educación superior en Chile."
+>
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="relative z-10 w-full">
       <CalendarioPaesComponent client:load />

@@ -7,6 +7,27 @@ import FeaturedEventBanner from "../components/FeaturedEventBanner.tsx"; // El n
 import CarrerasDestacadas from "../components/CarrerasDestacadas.tsx";
 import NoticiasDestacadas from "../components/NoticiasDestacadas.tsx";
 import ToolsSection from "../components/ToolsSection.tsx";
+import { faqSchema } from "../lib/seo";
+
+// FAQ de marca: refuerza el SEO y, sobre todo, el GEO (respuestas que los
+// motores de IA pueden citar directamente).
+const homeFaq = faqSchema([
+  {
+    question: "¿Qué es Elige Tu Futuro?",
+    answer:
+      "Elige Tu Futuro es una plataforma chilena gratuita de orientación vocacional con test vocacional, buscador de carreras e instituciones, calculadora de puntaje PAES, calendario de admisión, guía de becas y FUAS, y datos de empleabilidad para la Admisión 2026.",
+  },
+  {
+    question: "¿Cómo sé qué carrera estudiar en Chile?",
+    answer:
+      "Puedes hacer el test vocacional gratuito basado en el modelo RIASEC, que en 5 minutos identifica tu perfil y te recomienda carreras e instituciones afines con datos oficiales del SIES.",
+  },
+  {
+    question: "¿La plataforma tiene costo?",
+    answer:
+      "No. Todas las herramientas de Elige Tu Futuro (test, buscador, calculadora PAES y guía de becas) son gratuitas.",
+  },
+]);
 
 // FUTURA CONEXIÓN SUPABASE / API
 // Deja esta estructura fija. Cuando montes la base de datos, solo mapeas la respuesta aquí.
@@ -25,7 +46,11 @@ const featuredEvent = {
 };
 ---
 
-<Layout title="Elige Tu Futuro - Inicio">
+<Layout
+  title="Elige Tu Futuro - Orientación Vocacional y Carreras en Chile"
+  description="Plataforma gratuita de orientación vocacional en Chile: test vocacional, buscador de carreras e instituciones, calculadora PAES, becas, FUAS y empleabilidad. Admisión 2026."
+  jsonLd={[homeFaq]}
+>
   <main class="bg-[#F4F5F9] overflow-x-hidden">
     <Hero client:load />
 

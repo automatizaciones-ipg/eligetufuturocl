@@ -4,6 +4,7 @@ import type { GetStaticPaths } from "astro";
 import { supabase } from "../../../lib/supabase";
 import InstitucionDetalle from "../../components/InstitucionDetalle";
 import Layout from "../../layouts/Layout.astro";
+import { educationalOrgSchema, breadcrumbSchema } from "../../lib/seo";
 
 // ============================================================================
 // 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
@@ -54,12 +55,38 @@ if (error || !institucion) {
 }
 
 const title = `${institucion.nombre} | Directorio de Educación Superior`;
+
+const canonical = `/institucion/${id}`;
+const description =
+  institucion.descripcion?.slice(0, 200) ||
+  `Conoce ${institucion.nombre}${institucion.tipo ? ` (${institucion.tipo})` : ""} en Chile: carreras, aranceles, acreditación, gratuidad y datos oficiales para la Admisión 2026.`;
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Instituciones", url: "/herramientas/instituciones" },
+    { name: institucion.nombre, url: canonical },
+  ]),
+  educationalOrgSchema({
+    name: institucion.nombre,
+    description,
+    url: canonical,
+    logo: institucion.logo_url,
+    type: institucion.tipo,
+  }),
+];
 ---
 
 {
   /* Eliminamos el prop 'description' para evitar el error de TypeScript y mantenerlo igual que en Carreras */
 }
-<Layout title={title}>
+<Layout
+  title={title}
+  description={description}
+  canonical={canonical}
+  type="profile"
+  jsonLd={jsonLd}
+>
   <main class="min-h-screen bg-[#F4F5F9]">
     <InstitucionDetalle institucion={institucion} client:load />
   </main>
