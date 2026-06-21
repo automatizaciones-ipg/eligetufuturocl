@@ -1,6 +1,6 @@
 // src/pages/api/solicitar-informacion.ts
 import type { APIRoute } from "astro";
-import { validarCampo, validarEmail, jsonResponse } from "../../lib/api/validators";
+import { validarCampo, validarEmail, validarTelefono, jsonResponse } from "../../lib/api/validators";
 import { getEmailConfig, sendEmail } from "../../lib/resend";
 import {
   vocacionalResultadosEmail,
@@ -22,6 +22,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!validarEmail(correo)) {
       return jsonResponse({ ok: false, message: "El correo no tiene un formato válido." }, 400);
+    }
+    if (!validarTelefono(telefono)) {
+      return jsonResponse({ ok: false, message: "El teléfono no tiene un formato válido." }, 400);
     }
 
     // Para acción "contacto", el mensaje es obligatorio

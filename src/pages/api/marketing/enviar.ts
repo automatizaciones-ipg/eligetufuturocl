@@ -23,11 +23,12 @@ import {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const marketingSecret = import.meta.env.MARKETING_API_SECRET;
-    if (marketingSecret) {
-      const auth = request.headers.get("authorization");
-      if (auth !== `Bearer ${marketingSecret}`) {
-        return jsonResponse({ ok: false, message: "No autorizado." }, 401);
-      }
+    if (!marketingSecret) {
+      return jsonResponse({ ok: false, message: "Endpoint no configurado." }, 503);
+    }
+    const auth = request.headers.get("authorization");
+    if (auth !== `Bearer ${marketingSecret}`) {
+      return jsonResponse({ ok: false, message: "No autorizado." }, 401);
     }
 
     const body = await request.json();

@@ -34,7 +34,7 @@ export const SITE = {
   /** Imagen social por defecto (1200x630 recomendado). Debe existir en /public. */
   defaultOgImage: "/imagenes/imagen_portada.png",
   themeColor: "#6544FF",
-  twitterHandle: "@eligetufuturo.cl",
+  twitterHandle: "@eligetufuturocl",
   email: "contacto@eligetufuturo.cl",
   social: {
     instagram: "https://www.instagram.com/eligetufuturo.cl",
