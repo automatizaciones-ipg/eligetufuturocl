@@ -6,6 +6,8 @@ import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { courseSchema, breadcrumbSchema } from "../../lib/seo";
 
+export const prerender = true;
+
 export const getStaticPaths = (async () => {
   let allCodes: any[] = [];
   let hasMore = true;

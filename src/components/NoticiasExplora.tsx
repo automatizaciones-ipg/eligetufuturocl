@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { 
-  Rocket, Flame, Sparkles, ArrowLeft, 
+import {
+  Flame, Sparkles, ArrowLeft,
   Clock, ArrowUpRight, BookOpen, Trophy, Globe, Loader2, Compass
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; 
+import { supabase } from "../../lib/supabase";
 import type { Noticia, NoticiaRow } from "../types/noticia";
+import { trackEvent } from "../lib/analytics";
 
 const CATEGORIAS: string[] = ["Todas", "Tendencias", "Inspiración", "Oportunidades", "Tips de Estudio"];
 
@@ -66,12 +67,13 @@ export default function NoticiasExplora() {
     fetchNoticias();
   }, [filtroActivo]);
 
-  const handleNavegar = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+  const handleNavegar = (e: React.MouseEvent<HTMLAnchorElement>, id: string, titulo: string) => {
     e.preventDefault();
     setNavegandoA(id);
+    trackEvent("noticia_click", { noticia_id: id, categoria: filtroActivo, titulo });
     setTimeout(() => {
-      window.location.href = `/noticia/${id}`; 
-    }, 400); 
+      window.location.href = `/noticia/${id}`;
+    }, 400);
   };
 
   return (
@@ -164,7 +166,7 @@ export default function NoticiasExplora() {
                     <a 
                       key={noticia.id}
                       href={`/noticia/${noticia.id}`}
-                      onClick={(e) => handleNavegar(e, noticia.id)}
+                      onClick={(e) => handleNavegar(e, noticia.id, noticia.titulo)}
                       className={`group relative flex flex-col bg-white rounded-[2.5rem] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.02)] border border-slate-100/80 hover:border-[#6544FF]/30 hover:shadow-[0_30px_60px_-15px_rgba(101,68,255,0.12)] transition-all duration-500 ease-out overflow-hidden cursor-pointer w-full
                         ${esEfectivamenteDestacada ? "col-span-1 sm:col-span-2 lg:col-span-3 lg:flex-row lg:p-7 gap-6 lg:gap-8" : ""}
                         ${navegandoA === noticia.id ? 'border-[#6544FF] scale-[0.99] opacity-95 z-50' : 'hover:-translate-y-2'}

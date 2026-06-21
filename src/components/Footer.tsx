@@ -1,5 +1,5 @@
 // src/components/Footer.tsx
-import { Mail, Smartphone, Instagram, Users, AtSign } from "lucide-react";
+import { Mail, Instagram, Users } from "lucide-react";
 
 export default function Footer() {
   return (

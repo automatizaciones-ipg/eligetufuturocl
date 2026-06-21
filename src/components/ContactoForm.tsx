@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { trackEvent } from "../lib/analytics";
 import {
   Send,
   Mail,
@@ -127,6 +128,7 @@ export default function FormularioContacto() {
       }
       setEstadoEnvio("exito");
       setMostrarExito(true);
+      trackEvent("contacto_enviado", { tipo_consulta: form.tipoMensaje });
       setTimeout(() => {
         setForm({ nombre: "", correo: "", telefono: "", tipoMensaje: "", mensaje: "" });
         setErrores({});

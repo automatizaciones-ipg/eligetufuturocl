@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { 
-  Building2, Map, Award, CheckCircle2, ChevronRight, 
-  Search, MapPin, Globe, BookOpen, Star, ArrowLeft, Loader2, ChevronLeft,
+import {
+  Building2, Award, CheckCircle2, ChevronRight,
+  Search, MapPin, Globe, Star, ArrowLeft, Loader2, ChevronLeft,
   X, ChevronDown, SlidersHorizontal, Building
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";

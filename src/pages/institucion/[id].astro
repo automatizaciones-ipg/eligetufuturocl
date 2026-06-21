@@ -9,6 +9,8 @@ import { educationalOrgSchema, breadcrumbSchema } from "../../lib/seo";
 // ============================================================================
 // 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
 // ============================================================================
+export const prerender = true;
+
 export const getStaticPaths = (async () => {
   let allCodes: any[] = [];
   let hasMore = true;

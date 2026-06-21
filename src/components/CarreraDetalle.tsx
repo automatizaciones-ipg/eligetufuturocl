@@ -1,5 +1,6 @@
 // src/components/CarreraDetalle.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { trackEvent } from '../lib/analytics';
 import { 
   MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building, 
   ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award 
@@ -233,6 +234,10 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
       }
       setIsSuccess(true);
       setFormState({ nombre: '', email: '', telefono: '', profesion: '', tiposPregunta: [], mensajeOtro: '' });
+      trackEvent("lead_carrera", {
+        carrera: nombreCarreraFormateado,
+        institucion: institucionNombre,
+      });
     } catch (error) {
       console.error("Error al enviar", error);
     } finally {

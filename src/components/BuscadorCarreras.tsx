@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from "react";
+import { trackEvent } from "../lib/analytics";
 import { 
   Search, SlidersHorizontal, Building, MapPin, Clock, Calculator, 
   ChevronRight, ChevronDown, Loader2, ChevronLeft, CheckCircle2, 
@@ -253,7 +254,12 @@ export default function BuscadorCarreras() {
       const { data, count, error } = await query.range(from, to);
 
       if (error) throw error;
-      if (count !== null) setTotalResultados(count);
+      if (count !== null) {
+        setTotalResultados(count);
+        if (busqueda.length >= 3) {
+          trackEvent("busqueda_carrera", { query: busqueda, resultados: count });
+        }
+      }
 
       if (data) {
         const bdData = data as unknown as SupabaseCarreraJoin[];

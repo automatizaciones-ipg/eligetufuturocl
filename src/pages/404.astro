@@ -1,0 +1,62 @@
+---
+// src/pages/404.astro — Página de error personalizada (prerenderizada en SSR)
+export const prerender = true;
+
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="Página no encontrada | Elige Tu Futuro"
+  description="La página que buscas no existe. Vuelve al inicio y descubre carreras, test vocacional, calculadora PAES y más herramientas gratuitas."
+  noindex={true}
+>
+  <main class="min-h-screen bg-[#F4F5F9] flex items-center justify-center px-6 py-32">
+    <div class="max-w-lg w-full text-center">
+      <!-- Número grande -->
+      <p class="text-[10rem] leading-none font-black text-transparent bg-clip-text bg-gradient-to-br from-[#6544FF] to-[#947BFF] select-none">
+        404
+      </p>
+
+      <h1 class="mt-4 text-3xl font-black text-[#1A1528] uppercase tracking-tight">
+        Página no encontrada
+      </h1>
+      <p class="mt-4 text-gray-500 font-medium text-lg leading-relaxed">
+        La URL que escribiste no existe o fue removida.<br />
+        Prueba volviendo al inicio o usa el buscador.
+      </p>
+
+      <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+        <a
+          href="/"
+          class="inline-flex items-center justify-center gap-2 bg-[#6544FF] hover:bg-[#5233e8] text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-lg shadow-[#6544FF]/25 hover:-translate-y-0.5"
+        >
+          Volver al inicio
+        </a>
+        <a
+          href="/herramientas/buscador"
+          class="inline-flex items-center justify-center gap-2 bg-white text-[#1A1528] font-bold px-8 py-4 rounded-2xl border border-gray-200 hover:border-[#6544FF]/40 transition-all hover:-translate-y-0.5"
+        >
+          Buscar carreras
+        </a>
+      </div>
+
+      <div class="mt-16 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+        {[
+          { label: "Test Vocacional", href: "/herramientas/test-vocacional" },
+          { label: "Calculadora PAES", href: "/herramientas/calculadora" },
+          { label: "Becas y FUAS", href: "/herramientas/fuas" },
+          { label: "Calendario PAES", href: "/herramientas/calendario" },
+          { label: "Instituciones", href: "/herramientas/instituciones" },
+          { label: "Noticias", href: "/noticias" },
+        ].map((link) => (
+          <a
+            href={link.href}
+            class="bg-white border border-gray-200 hover:border-[#6544FF]/40 hover:text-[#6544FF] text-gray-500 font-semibold px-4 py-3 rounded-xl transition-all text-center"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  </main>
+</Layout>

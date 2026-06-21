@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { PERFILES_RIASEC, PREGUNTAS_REALES, FRASES_ANALISIS } from "../data/vocacionalData";
 import { buscarCarrerasPorPerfil, guardarLead } from "../services/vocacionalService";
 import type { AreaRIASEC, CarreraDB, DatosUsuario, PerfilVocacional } from "../types/vocacional";
+import { trackEvent } from "../lib/analytics";
 
 type PerfilResultado = PerfilVocacional & {
   afinidad: number;
@@ -182,7 +183,7 @@ export const useTestVocacional = () => {
             setCarrerasDB(carrerasRankeadas.slice(0, 12));
             setInstitucionesDestacadas(instUnicas);
             
-            // 3. Guardar el Lead
+            // 3. Guardar el Lead y registrar conversión en GA4
             if (!leadRegistradoRef.current) {
               await guardarLead({
                 datos,
@@ -191,6 +192,11 @@ export const useTestVocacional = () => {
                 carreras_sugeridas: carrerasRankeadas.slice(0, 5).map((c) => c.nombre_carrera),
               });
               leadRegistradoRef.current = true;
+              trackEvent("test_vocacional_complete", {
+                perfil: ganador,
+                afinidad: porcentajeAfinidad,
+                carreras_encontradas: carrerasUnicas.length,
+              });
             }
           }
         } catch (error) {
