@@ -1,5 +1,7 @@
 ---
 // src/pages/herramientas/calculadora.astro
+export const prerender = true;
+
 import Layout from "../../layouts/Layout.astro";
 import CalculadoraNem from "../../components/CalculadoraNem.tsx";
 ---
@@ -10,7 +12,7 @@ import CalculadoraNem from "../../components/CalculadoraNem.tsx";
 >
   <div class="bg-[#fafafa] min-h-screen h-screen">
     <div class="relative z-10 w-full">
-      <CalculadoraNem client:load />
+      <CalculadoraNem client:visible />
     </div>
   </div>
 </Layout>
