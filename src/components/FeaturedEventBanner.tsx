@@ -40,7 +40,7 @@ export default function FeaturedEventBanner({ event }: Props) {
           <img
             src={event.imageUrl}
             alt={event.imageAlt || "Evento destacado"}
-            className="absolute bottom-0 lg:left-[50px] h-[340px] lg:h-[381px] w-auto max-w-none object-contain pointer-events-none z-10"
+            className="absolute bottom-0 lg:left-[50px] h-[340px] lg:h-[381px] w-auto max-w-full lg:max-w-none object-contain pointer-events-none z-10"
           />
           
           {/* BOTÓN EXACTO: 212 x 45, Radio 5 */}

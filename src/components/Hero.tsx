@@ -3,7 +3,7 @@ import { PenSquare, Search, Calendar, Calculator } from "lucide-react";
 
 export default function Hero() {
   return (
-    <section className="bg-[#fafafa] overflow-hidden min-h-[calc(100vh-5.5rem)] flex items-center relative py-12 lg:py-0">
+    <section className="bg-[#fafafa] overflow-hidden min-h-[calc(100dvh-5.5rem)] flex items-center relative py-12 lg:py-0">
       <div className="container mx-auto px-6 lg:px-12 relative z-10">
         {/* Cambiamos el gap en móvil a gap-16 para dar un "respiro" perfecto entre las cards y la imagen */}
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-8 items-center">
@@ -41,8 +41,8 @@ export default function Hero() {
                 
                 <a
                   key={item.label}
-                  href={item.href} 
-                  className="group flex items-center gap-3 bg-white hover:bg-[#F3F0FF] rounded-2xl p-3 md:p-4 transition-all duration-200 shadow-sm border border-gray-100 hover:border-[#8B75FF]/30 hover:shadow-md"
+                  href={item.href}
+                  className="group flex items-center gap-3 bg-white hover:bg-[#F3F0FF] rounded-2xl p-3 md:p-4 min-h-[44px] transition-all duration-200 shadow-sm border border-gray-100 hover:border-[#8B75FF]/30 hover:shadow-md"
                 >
                   <div className="text-[#6544FF] group-hover:scale-110 transition-transform duration-200 shrink-0">
                     <item.icon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
@@ -67,11 +67,14 @@ export default function Hero() {
               <div className="absolute inset-0 bg-gradient-to-br from-[#6544FF]/20 to-[#947BFF]/10 rounded-full blur-2xl lg:blur-3xl -z-10 animate-pulse-slow"></div>
 
               {/* LA IMAGEN */}
-              <img 
+              <img
                 src="/imagenes/imagen_portada.png"
                 alt="Ilustración profesional descubriendo el futuro ideal"
                 className="w-full h-full object-contain object-center drop-shadow-xl lg:drop-shadow-2xl transition-transform duration-700 hover:scale-[1.03]"
-                
+                width={550}
+                height={550}
+                fetchPriority="high"
+                loading="eager"
               />
             </div>
           </div>

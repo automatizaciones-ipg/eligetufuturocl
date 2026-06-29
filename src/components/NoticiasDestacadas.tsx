@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  Clock, 
-  User, 
-  Calendar, 
-  ArrowUpRight, 
+import {
+  Clock,
+  User,
+  Calendar,
+  ArrowUpRight,
   Compass,
   ArrowRight,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -16,7 +15,8 @@ import {
   Flame,
   Trophy
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; 
+import { supabase } from "../../lib/supabase";
+import GenerandoLoader from "./GenerandoLoader";
 
 // --- INTERFACES DE TYPESCRIPT ---
 interface NoticiaDB {
@@ -122,9 +122,32 @@ const obtenerTemaPorCategoria = (categoria: string) => {
   };
 };
 
-export default function NoticiasDestacadas() {
-  const [noticiasUI, setNoticiasUI] = useState<NoticiaUI[]>([]);
-  const [cargando, setCargando] = useState(true);
+function procesarNoticias(rawData: NoticiaDB[]): NoticiaUI[] {
+  const fallbackImg = "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=800&auto=format&fit=crop";
+  return rawData.map((item) => {
+    const fechaLegible = new Date(item.created_at).toLocaleDateString('es-CL', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+    return {
+      id: item.id, titulo: item.titulo.trim(), extracto: item.extracto,
+      categoria: item.categoria || "General", autor: item.autor || "Equipo Editorial",
+      imagenPrincipal: item.imagen_principal || fallbackImg,
+      tiempoLectura: item.tiempo_lectura || "5 min",
+      fechaFormateada: fechaLegible, fechaRaw: item.created_at,
+      destacada: item.destacada || false,
+      tema: obtenerTemaPorCategoria(item.categoria || "")
+    };
+  });
+}
+
+const CACHE_NOTICIAS = 'etf_noticias_v1';
+const CACHE_NOTICIAS_TTL = 5 * 60 * 1000;
+
+export default function NoticiasDestacadas({ datosIniciales }: { datosIniciales?: NoticiaDB[] }) {
+  const [noticiasUI, setNoticiasUI] = useState<NoticiaUI[]>(
+    () => datosIniciales?.length ? procesarNoticias(datosIniciales) : []
+  );
+  const [cargando, setCargando] = useState(!datosIniciales?.length);
   const [accediendoId, setAccediendoId] = useState<string | number | null>(null);
   
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -156,35 +179,12 @@ export default function NoticiasDestacadas() {
         if (error) throw error;
 
         if (data) {
-          const rawData = data as unknown as NoticiaDB[];
-          
-          const noticiasAdaptadas: NoticiaUI[] = rawData.map((item) => {
-            const dateObj = new Date(item.created_at);
-            const fechaLegible = dateObj.toLocaleDateString('es-CL', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            });
-
-            const fallbackImg = `https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=800&auto=format&fit=crop`;
-
-            return {
-              id: item.id,
-              titulo: item.titulo.trim(),
-              extracto: item.extracto,
-              categoria: item.categoria || "General",
-              autor: item.autor || "Equipo Editorial",
-              imagenPrincipal: item.imagen_principal || fallbackImg,
-              tiempoLectura: item.tiempo_lectura || "5 min",
-              fechaFormateada: fechaLegible,
-              fechaRaw: item.created_at,
-              destacada: item.destacada || false,
-              tema: obtenerTemaPorCategoria(item.categoria || "")
-            };
-          });
-
-          setNoticiasUI(noticiasAdaptadas);
+          const resultado = procesarNoticias(data as unknown as NoticiaDB[]);
+          setNoticiasUI(resultado);
           setTimeout(() => setAnimarBarras(true), 100);
+          try {
+            sessionStorage.setItem(CACHE_NOTICIAS, JSON.stringify({ data: resultado, ts: Date.now() }));
+          } catch {}
         }
       } catch (err) {
         console.error("Error cargando noticias destacadas:", err);
@@ -192,6 +192,32 @@ export default function NoticiasDestacadas() {
         setCargando(false);
       }
     };
+
+    // 1. Datos pre-cargados en build-time: cero fetch, guardar en caché y activar barras
+    if (datosIniciales?.length) {
+      try {
+        sessionStorage.setItem(CACHE_NOTICIAS, JSON.stringify({ data: noticiasUI, ts: Date.now() }));
+      } catch {}
+      setTimeout(() => setAnimarBarras(true), 100);
+      return;
+    }
+
+    // 2. Caché sessionStorage (navegaciones SPA o visitas repetidas dentro de 5 min).
+    //    Se ignora cualquier caché vacía para que nunca bloquee el render.
+    try {
+      const raw = sessionStorage.getItem(CACHE_NOTICIAS);
+      if (raw) {
+        const { data: cached, ts } = JSON.parse(raw) as { data: NoticiaUI[]; ts: number };
+        if (Array.isArray(cached) && cached.length > 0 && Date.now() - ts < CACHE_NOTICIAS_TTL) {
+          setNoticiasUI(cached);
+          setCargando(false);
+          setTimeout(() => setAnimarBarras(true), 100);
+          return;
+        }
+      }
+    } catch {}
+
+    // 3. Fetch de red (primera visita sin datos pre-cargados)
     fetchTopNoticias();
   }, []);
 
@@ -259,8 +285,8 @@ export default function NoticiasDestacadas() {
       {/* 1. HERO BANNER */}
       <div className="relative w-full bg-[#0A0518] pt-24 pb-48 px-6 overflow-hidden z-20 border-b border-white/5">
         <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#6544FF]/15 rounded-full blur-[140px] mix-blend-screen animate-blob"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#D946EF]/10 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
+          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#6544FF]/15 rounded-full blur-[60px] md:blur-[140px] mix-blend-screen animate-blob"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#D946EF]/10 rounded-full blur-[60px] md:blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
           <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 mix-blend-overlay"></div>
         </div>
 
@@ -299,10 +325,15 @@ export default function NoticiasDestacadas() {
         )}
 
         {cargando ? (
-          <div className="w-full flex flex-col items-center justify-center py-28 bg-white rounded-[2.5rem] shadow-xl border border-gray-100">
-            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" />
-            <p className="font-bold text-gray-500 uppercase tracking-wider text-xs">Cargando artículos...</p>
-          </div>
+          <GenerandoLoader
+            tipo="noticias"
+            mensajes={[
+              "Recuperando artículos...",
+              "Clasificando por relevancia...",
+              "Preparando noticias...",
+            ]}
+            className="min-h-[340px]"
+          />
         ) : (
           <>
             <div 
@@ -438,18 +469,20 @@ export default function NoticiasDestacadas() {
             </div>
 
             {/* Paginación */}
-            <div className="flex justify-center items-center gap-2 mt-4 mb-8">
+            <div className="flex justify-center items-center gap-0 mt-4 mb-8">
               {noticiasUI.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => scrollToDot(index)}
-                  className={`transition-all duration-300 rounded-full ${
-                    activeIndex === index 
-                      ? 'w-8 h-2.5 bg-[#6544FF]' 
-                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
-                  }`}
+                  className="p-4 flex items-center justify-center"
                   aria-label={`Ir a noticia ${index + 1}`}
-                />
+                >
+                  <span className={`block rounded-full transition-all duration-300 ${
+                    activeIndex === index
+                      ? 'w-8 h-2.5 bg-[#6544FF]'
+                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
+                  }`} />
+                </button>
               ))}
             </div>
           </>
@@ -473,26 +506,6 @@ export default function NoticiasDestacadas() {
 
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -40px) scale(1.08); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 14s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .animation-delay-2000 { animation-delay: 2s; }
-
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(35px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}} />
     </section>
   );
 }

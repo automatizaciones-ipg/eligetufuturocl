@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { 
-  Briefcase, 
-  DollarSign, 
-  ArrowUpRight, 
+﻿import { useState, useEffect, useRef } from "react";
+import {
+  DollarSign,
+  ArrowUpRight,
   Star,
   ArrowRight,
-  Loader2,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
+import GenerandoLoader from "./GenerandoLoader";
 import { supabase } from "../../lib/supabase";
 
 // --- INTERFACES DE TYPESCRIPT ---
@@ -39,7 +38,7 @@ interface CarreraUI {
   empleabilidad: number;
   arancel: string;
   ingreso: string;
-  es_promocionada: boolean; 
+  esAliada: boolean;
   tema: {
     borderHover: string;
     textGradient: string;
@@ -133,9 +132,111 @@ const obtenerTemaPorCarrera = (nombre: string) => {
   };
 };
 
-export default function CarrerasDestacadas() {
-  const [carrerasBD, setCarrerasBD] = useState<CarreraUI[]>([]);
-  const [cargando, setCargando] = useState(true);
+// Instituciones socias: sus carreras se intercalan de forma prudente en el slider
+const SOCIAS = ['ipg', 'autonoma', 'uautonoma'];
+const MAX_CARRERAS = 15;
+
+function normalizarNombre(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function esInstitucionSocia(nombreInst: string): boolean {
+  const n = normalizarNombre(nombreInst);
+  return SOCIAS.some(p => n.includes(p));
+}
+
+function esUAutonoma(nombreInst: string): boolean {
+  return normalizarNombre(nombreInst).includes("autonoma");
+}
+
+function adaptarCarrera(item: CarreraDB): { ui: CarreraUI; llave: string } {
+  const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
+  const nombreInst = inst?.nombre || "No informada";
+  const empleabilidadReal = item.empleabilidad_1er_anio
+    ? Number((item.empleabilidad_1er_anio * 100).toFixed(1))
+    : 0;
+  const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(nombreInst)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+  const llave = item.nombre_carrera.trim().toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ");
+  return {
+    ui: {
+      id: item.id, codigo_carrera: item.codigo_carrera,
+      carrera: item.nombre_carrera.trim(), institucion: nombreInst,
+      tipoInst: inst?.tipo || "Universidades", logoInst: inst?.logo_url || fallbackLogo,
+      empleabilidad: empleabilidadReal,
+      arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
+      ingreso: item.ingreso_promedio_4to_anio || "No informado",
+      esAliada: esInstitucionSocia(nombreInst),
+      tema: obtenerTemaPorCarrera(item.nombre_carrera)
+    },
+    llave
+  };
+}
+
+function procesarCarreras(rawData: CarreraDB[]): CarreraUI[] {
+  const vistos = new Set<string>();
+  const socias: CarreraUI[] = [];
+  const organicas: CarreraUI[] = [];
+
+  // Pase 1: socias primero, para que reserven el nombre de su carrera y no se
+  // pierdan si una universidad del top ofrece un programa con el mismo nombre.
+  for (const item of rawData) {
+    const { ui, llave } = adaptarCarrera(item);
+    if (!ui.esAliada || vistos.has(llave)) continue;
+    vistos.add(llave);
+    socias.push(ui);
+  }
+  // Pase 2: resto de carreras (orden orgánico del ranking, sin duplicar nombres).
+  for (const item of rawData) {
+    const { ui, llave } = adaptarCarrera(item);
+    if (ui.esAliada || vistos.has(llave)) continue;
+    vistos.add(llave);
+    organicas.push(ui);
+  }
+
+  // Separar socias por institución: U. Autónoma y Instituto Profesional IPG.
+  const ua = socias.filter(c => esUAutonoma(c.institucion));
+  const ipg = socias.filter(c => !esUAutonoma(c.institucion));
+
+  const resultado: CarreraUI[] = [];
+
+  // Orden fijo al inicio: 1º U. Autónoma, 2º Instituto Profesional IPG.
+  if (ua.length) resultado.push(ua.shift()!);
+  if (ipg.length) resultado.push(ipg.shift()!);
+
+  // Cola con el resto de socias, alternando UA / IPG para repartir equilibrado.
+  const restoSocias: CarreraUI[] = [];
+  while (ua.length || ipg.length) {
+    if (ua.length) restoSocias.push(ua.shift()!);
+    if (ipg.length) restoSocias.push(ipg.shift()!);
+  }
+
+  // Luego las demás: 3 orgánicas por cada 1 socia, de forma prudente.
+  let iOrg = 0, iSoc = 0;
+  while (resultado.length < MAX_CARRERAS && (iOrg < organicas.length || iSoc < restoSocias.length)) {
+    for (let k = 0; k < 3 && resultado.length < MAX_CARRERAS && iOrg < organicas.length; k++) {
+      resultado.push(organicas[iOrg++]);
+    }
+    if (resultado.length < MAX_CARRERAS && iSoc < restoSocias.length) {
+      resultado.push(restoSocias[iSoc++]);
+    }
+  }
+  // Rellenar el cupo restante con lo que quede disponible.
+  while (resultado.length < MAX_CARRERAS && iOrg < organicas.length) resultado.push(organicas[iOrg++]);
+  while (resultado.length < MAX_CARRERAS && iSoc < restoSocias.length) resultado.push(restoSocias[iSoc++]);
+
+  return resultado;
+}
+
+const CACHE_CARRERAS = 'etf_carreras_v1';
+const CACHE_TTL = 5 * 60 * 1000;
+
+export default function CarrerasDestacadas({ datosIniciales }: { datosIniciales?: CarreraDB[] }) {
+  const [carrerasBD, setCarrerasBD] = useState<CarreraUI[]>(
+    () => datosIniciales?.length ? procesarCarreras(datosIniciales) : []
+  );
+  const [cargando, setCargando] = useState(!datosIniciales?.length);
   const [accediendoId, setAccediendoId] = useState<string | number | null>(null);
   
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -143,7 +244,6 @@ export default function CarrerasDestacadas() {
   const [startX, setStartX] = useState(0);
   const [scrollLeftPos, setScrollLeftPos] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [animarBarras, setAnimarBarras] = useState(false);
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -157,87 +257,60 @@ export default function CarrerasDestacadas() {
     const fetchTopCarreras = async () => {
       setCargando(true);
       try {
-        const { data, error } = await supabase
-          .from('carreras')
-          .select(`
-            id,
-            codigo_carrera,
-            nombre_carrera,
-            empleabilidad_1er_anio,
-            ingreso_promedio_4to_anio,
-            arancel_anual,
-            instituciones!inner (nombre, tipo, logo_url)
-          `)
-          .not('empleabilidad_1er_anio', 'is', null)
-          .not('ingreso_promedio_4to_anio', 'is', null)
-          .order('empleabilidad_1er_anio', { ascending: false })
-          .limit(30);
-
-        if (error) throw error;
-
-        if (data) {
-          const rawData = data as unknown as CarreraDB[];
-          
-          const todasAdaptadas = rawData.map((item) => {
-            const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
-            const nombreInst = inst?.nombre || "No informada";
-            const empleabilidadReal = item.empleabilidad_1er_anio 
-              ? Number((item.empleabilidad_1er_anio * 100).toFixed(1)) 
-              : 0;
-  
-            const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(nombreInst)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
-  
-            const llaveFiltro = item.nombre_carrera
-              .trim()
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/[^a-z0-9\s]/g, "")
-              .replace(/\s+/g, " ");
-  
-            return {
-              datosUI: {
-                id: item.id,
-                codigo_carrera: item.codigo_carrera,
-                carrera: item.nombre_carrera.trim(),
-                institucion: nombreInst,
-                tipoInst: inst?.tipo || "Universidades",
-                // Toma la URL WebP de Supabase, o el fallback si viene vacía
-                logoInst: inst?.logo_url || fallbackLogo,
-                empleabilidad: empleabilidadReal,
-                arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
-                ingreso: item.ingreso_promedio_4to_anio || "No informado",
-                es_promocionada: item.es_promocionada || false, 
-                tema: obtenerTemaPorCarrera(item.nombre_carrera)
-              },
-              llave: llaveFiltro
-            };
-          });
-  
-          const filtroDefinitivo: CarreraUI[] = [];
-          const nombresYaAgregados = new Set<string>();
-  
-          for (const item of todasAdaptadas) {
-            if (!nombresYaAgregados.has(item.llave)) {
-              nombresYaAgregados.add(item.llave);
-              
-              filtroDefinitivo.push({
-                ...item.datosUI,
-                es_promocionada: item.datosUI.es_promocionada || filtroDefinitivo.length === 0
-              });
-            }
-            if (filtroDefinitivo.length >= 15) break;
-          }
-  
-          setCarrerasBD(filtroDefinitivo);
-          setTimeout(() => setAnimarBarras(true), 100);
-        }
+        const CAMPOS = 'id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)';
+        const [{ data: top }, { data: ua }, { data: ipg }] = await Promise.all([
+          // Top por empleabilidad (orden orgánico del ranking)
+          supabase.from('carreras').select(CAMPOS)
+            .not('empleabilidad_1er_anio', 'is', null)
+            .not('ingreso_promedio_4to_anio', 'is', null)
+            .order('empleabilidad_1er_anio', { ascending: false })
+            .limit(25),
+          // Socias por institución (consultas separadas para garantizar presencia
+          // de ambas). %aut_noma% matchea "Autónoma" y "Autonoma".
+          supabase.from('carreras').select(CAMPOS)
+            .ilike('instituciones.nombre', '%aut_noma%')
+            .limit(8),
+          supabase.from('carreras').select(CAMPOS)
+            .ilike('instituciones.nombre', '%ipg%')
+            .limit(8),
+        ]);
+        // U. Autónoma antes que IPG en el orden de entrada (procesarCarreras fija el orden final)
+        const combinados = [...(top || []), ...(ua || []), ...(ipg || [])];
+        const resultado = procesarCarreras(combinados as unknown as CarreraDB[]);
+        setCarrerasBD(resultado);
+        try {
+          sessionStorage.setItem(CACHE_CARRERAS, JSON.stringify({ data: resultado, ts: Date.now() }));
+        } catch {}
       } catch (err) {
         console.error("Error cargando carreras destacadas:", err);
       } finally {
         setCargando(false);
       }
     };
+
+    // 1. Datos pre-cargados en build-time: cero fetch, guardar en caché y activar barras
+    if (datosIniciales?.length) {
+      try {
+        sessionStorage.setItem(CACHE_CARRERAS, JSON.stringify({ data: carrerasBD, ts: Date.now() }));
+      } catch {}
+      return;
+    }
+
+    // 2. Caché sessionStorage (navegaciones SPA o visitas repetidas dentro de 5 min).
+    //    Se ignora cualquier caché vacía para que nunca bloquee el render del slider.
+    try {
+      const raw = sessionStorage.getItem(CACHE_CARRERAS);
+      if (raw) {
+        const { data: cached, ts } = JSON.parse(raw) as { data: CarreraUI[]; ts: number };
+        if (Array.isArray(cached) && cached.length > 0 && Date.now() - ts < CACHE_TTL) {
+          setCarrerasBD(cached);
+          setCargando(false);
+          return;
+        }
+      }
+    } catch {}
+
+    // 3. Fetch de red (primera visita sin datos pre-cargados)
     fetchTopCarreras();
   }, []);
 
@@ -301,7 +374,7 @@ export default function CarrerasDestacadas() {
       "item": {
         "@type": "Course",
         "name": carrera.carrera,
-        "description": `Carrera de ${carrera.carrera} impartida por ${carrera.institucion}. Empleabilidad al primer año: ${carrera.empleabilidad}%. Arancel anual: ${carrera.arancel}.`,
+        "description": `Carrera de ${carrera.carrera} impartida por ${carrera.institucion}. Arancel anual: ${carrera.arancel}.`,
         "provider": {
           "@type": "EducationalOrganization",
           "name": carrera.institucion,
@@ -325,8 +398,8 @@ export default function CarrerasDestacadas() {
       {/* 1. HERO BANNER */}
       <div className="relative w-full bg-[#0A0518] pt-24 pb-48 px-6 overflow-hidden z-20 border-b border-white/5">
         <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/20 rounded-full blur-[140px] mix-blend-screen animate-blob"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#15803d]/15 rounded-full blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
+          <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-[#5B21B6]/20 rounded-full blur-[60px] md:blur-[140px] mix-blend-screen animate-blob"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-[#15803d]/15 rounded-full blur-[60px] md:blur-[130px] mix-blend-screen animate-blob animation-delay-2000"></div>
           <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 mix-blend-overlay"></div>
         </div>
 
@@ -367,10 +440,11 @@ export default function CarrerasDestacadas() {
         )}
 
         {cargando ? (
-          <div className="w-full flex flex-col items-center justify-center py-28 bg-white rounded-[2.5rem] shadow-xl border border-gray-100">
-            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" aria-hidden="true" />
-            <p className="font-bold text-gray-500">Cargando carreras destacadas...</p>
-          </div>
+          <GenerandoLoader
+            tipo="carreras"
+            mensajes={["Consultando datos SIES...", "Calculando empleabilidad...", "Ordenando por rendimiento..."]}
+            className="min-h-[340px]"
+          />
         ) : (
           <>
             <div 
@@ -400,9 +474,9 @@ export default function CarrerasDestacadas() {
                       <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full ${carrera.tema.bgBadge} ${carrera.tema.textBadge} shadow-sm`}>
                         {carrera.tipoInst}
                       </span>
-                      {carrera.es_promocionada && (
-                        <span className="bg-gradient-to-r from-[#1A1528] to-[#2D2442] text-[#FACC15] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#FACC15]/20">
-                          TOP <Star className="w-3 h-3 fill-[#FACC15]" aria-hidden="true" />
+                      {carrera.esAliada && (
+                        <span className="text-[9px] font-bold text-[#6544FF]/80 border border-[#6544FF]/15 bg-[#6544FF]/5 px-2.5 py-1 rounded-full tracking-wide">
+                          Destacada
                         </span>
                       )}
                     </div>
@@ -442,30 +516,6 @@ export default function CarrerasDestacadas() {
                           {carrera.institucion}
                         </p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Sección Empleabilidad */}
-                  <div className={`rounded-2xl p-4 mb-4 border border-white/40 flex flex-col gap-3 ${carrera.tema.lightBg}`}>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-xl shadow-sm border border-white/50">
-                          <Briefcase className={`w-4 h-4 ${carrera.tema.textAccent}`} aria-hidden="true" />
-                        </div>
-                        <span className="text-xs font-bold text-gray-600 leading-tight">
-                          Empleabilidad<br/>al 1er Año
-                        </span>
-                      </div>
-                      <span className={`font-black text-2xl tracking-tighter ${carrera.tema.textGradient}`}>
-                        {carrera.empleabilidad}%
-                      </span>
-                    </div>
-                    
-                    <div className="w-full bg-white/70 rounded-full h-2.5 overflow-hidden border border-white/50 shadow-inner" aria-hidden="true">
-                      <div 
-                        className={`h-full rounded-full ${carrera.tema.barGradient} transition-all duration-1000 ease-out`}
-                        style={{ width: animarBarras ? `${carrera.empleabilidad}%` : '0%' }}
-                      />
                     </div>
                   </div>
 
@@ -522,18 +572,20 @@ export default function CarrerasDestacadas() {
             </div>
 
             {/* Paginación */}
-            <div className="flex justify-center items-center gap-2 mt-4 mb-8">
+            <div className="flex justify-center items-center gap-0 mt-4 mb-8">
               {carrerasBD.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => scrollToDot(index)}
-                  className={`transition-all duration-300 rounded-full ${
-                    activeIndex === index 
-                      ? 'w-8 h-2.5 bg-[#6544FF]' 
-                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
-                  }`}
+                  className="p-4 flex items-center justify-center"
                   aria-label={`Ir a la página ${index + 1} del carrusel de carreras`}
-                />
+                >
+                  <span className={`block rounded-full transition-all duration-300 ${
+                    activeIndex === index
+                      ? 'w-8 h-2.5 bg-[#6544FF]'
+                      : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
+                  }`} />
+                </button>
               ))}
             </div>
           </>
@@ -558,26 +610,6 @@ export default function CarrerasDestacadas() {
 
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -40px) scale(1.08); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 14s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .animation-delay-2000 { animation-delay: 2s; }
-
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(35px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}} />
     </section>
   );
 }

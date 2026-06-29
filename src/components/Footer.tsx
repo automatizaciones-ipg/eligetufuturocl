@@ -12,10 +12,12 @@ export default function Footer() {
           {/* Columna 1: Logo y Descripción */}
           <div className="flex flex-col items-start max-w-sm">
             {/* Aquí mandamos a llamar el icono.svg desde la carpeta public */}
-            <img 
-              src="/logos_web/logo_principal_blanco.webp" 
-              alt="Elige Tu Futuro" 
+            <img
+              src="/logos_web/logo_principal_blanco.webp"
+              alt="Elige Tu Futuro"
               className="h-14 mb-6 hover:scale-105 transition-transform duration-300"
+              width="200"
+              height="56"
             />
             <p className="text-gray-400 text-sm leading-relaxed">
               La plataforma gratuita que te ayuda a elegir tu carrera ideal

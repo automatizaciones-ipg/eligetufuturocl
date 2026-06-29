@@ -1,10 +1,12 @@
 // src/components/InstitucionDetalle.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
-  MapPin, Building, Award, CheckCircle2, ChevronRight, 
-  User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, 
+import MapaOSM from './MapaOSM';
+import {
+  MapPin, Building, Award, CheckCircle2, ChevronRight,
+  User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3,
   ArrowLeft, Landmark, ShieldCheck, GraduationCap,
-  Star, Sparkles
+  Star, Sparkles,
+  Instagram, Facebook, Linkedin, Youtube, Twitter, Globe, CalendarDays, Building2
 } from 'lucide-react';
 
 // Formateador y Generador de Logo (Idéntico al de carreras)
@@ -282,6 +284,15 @@ export default function InstitucionDetalle({ institucion }: { institucion: any }
               </div>
 
               {/* ========================================================
+                  DETALLES ENRIQUECIDOS (Firecrawl) — arriba del mapa,
+                  antes de la descripción
+              ======================================================== */}
+              <DetallesEnriquecidos
+                detalles={institucion?.detalles}
+                sitioWeb={institucion?.sitio_web}
+              />
+
+              {/* ========================================================
                   INYECTOR DE DESCRIPCIÓN INSTITUCIONAL (ANTES DEL MAPA)
               ======================================================== */}
               {institucion.descripcion && (
@@ -298,19 +309,16 @@ export default function InstitucionDetalle({ institucion }: { institucion: any }
                 </div>
               )}
 
-              {/* Mapa de Presencia Nacional */}
-              <div className="w-full h-72 bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 relative shadow-inner group">
-                 <iframe
-                  title="Mapa Institucional"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0, filter: 'contrast(1.1) saturation(0.8)' }}
-                  loading="lazy"
-                  allowFullScreen
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(institucionNombre + ' Chile')}&t=m&z=12&output=embed`}
-                ></iframe>
-                <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5 rounded-3xl"></div>
-              </div>
+              {/* Mapa de ubicación — usa coordenadas reales almacenadas (geocodificadas
+                  desde la dirección SIES); el mapa interactivo se carga solo al hacer clic */}
+              <MapaOSM
+                lat={institucion?.latitud}
+                lng={institucion?.longitud}
+                nombre={institucionNombre}
+                direccion={institucion?.direccion}
+                query={`${institucionNombre} Chile`}
+                altura="h-72"
+              />
             </section>
           </div>
 
@@ -580,6 +588,102 @@ function DataPoint({ label, value }: any) {
     <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100/80">
       <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-widest">{label}</p>
       <p className="text-lg font-bold text-[#0A0518]">{value}</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// DETALLES ENRIQUECIDOS — datos extraídos del sitio oficial vía Firecrawl.
+// Render 100% resiliente: cada campo es opcional; si no hay datos, no renderiza.
+// Los datos viven en la columna JSONB `detalles` de `instituciones`.
+// ============================================================================
+function DetallesEnriquecidos({ detalles, sitioWeb }: { detalles?: any; sitioWeb?: string | null }) {
+  const d = detalles || {};
+
+  const fundacion = d.anio_fundacion;
+  const sedes = d.numero_sedes;
+  const modalidades: string[] = Array.isArray(d.modalidades) ? d.modalidades.filter(Boolean) : [];
+  const ciudades: string[] = Array.isArray(d.ciudades) ? d.ciudades.filter(Boolean) : [];
+  const tel = typeof d.telefono_admision === 'string' ? d.telefono_admision.trim() : '';
+  const email = typeof d.email_admision === 'string' ? d.email_admision.trim() : '';
+  const eslogan = typeof d.eslogan === 'string' ? d.eslogan.trim() : '';
+  const web = typeof sitioWeb === 'string' && sitioWeb.startsWith('http') ? sitioWeb : '';
+
+  const stats = [
+    fundacion ? { label: 'Fundación', value: String(fundacion), Icon: CalendarDays } : null,
+    sedes ? { label: sedes === 1 ? 'Sede' : 'Sedes', value: String(sedes), Icon: Building2 } : null,
+    modalidades.length ? { label: 'Modalidad', value: modalidades.join(' · '), Icon: GraduationCap } : null,
+    ciudades.length ? { label: ciudades.length === 1 ? 'Ciudad' : 'Ciudades', value: ciudades.join(' · '), Icon: MapPin } : null,
+  ].filter(Boolean) as { label: string; value: string; Icon: any }[];
+
+  const socials = [
+    { url: d.instagram, Icon: Instagram, label: 'Instagram' },
+    { url: d.facebook, Icon: Facebook, label: 'Facebook' },
+    { url: d.linkedin, Icon: Linkedin, label: 'LinkedIn' },
+    { url: d.youtube, Icon: Youtube, label: 'YouTube' },
+    { url: d.twitter, Icon: Twitter, label: 'X' },
+  ].filter(s => typeof s.url === 'string' && s.url.startsWith('http')) as { url: string; Icon: any; label: string }[];
+
+  const contactos = [
+    web ? { href: web, Icon: Globe, label: 'Sitio web' } : null,
+    tel ? { href: `tel:${tel.replace(/\s+/g, '')}`, Icon: Phone, label: tel } : null,
+    email ? { href: `mailto:${email}`, Icon: Mail, label: email } : null,
+  ].filter(Boolean) as { href: string; Icon: any; label: string }[];
+
+  if (!stats.length && !socials.length && !contactos.length && !eslogan) return null;
+
+  return (
+    <div className="mb-8 p-6 bg-gradient-to-br from-[#6544FF]/[0.04] to-[#3B82F6]/[0.04] rounded-3xl border border-[#6544FF]/10">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-[#6544FF] mb-4 flex items-center gap-2">
+        <Sparkles className="w-4 h-4" /> Detalles destacados
+      </h4>
+
+      {eslogan && (
+        <p className="text-sm md:text-base font-semibold text-[#1A1528] italic mb-5 leading-snug">
+          “{eslogan}”
+        </p>
+      )}
+
+      {stats.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {stats.map(({ label, value, Icon }) => (
+            <div key={label} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm flex flex-col gap-1">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#6544FF]/70">
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </span>
+              <span className="text-sm font-bold text-[#0A0518] leading-tight">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(contactos.length > 0 || socials.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {contactos.map(({ href, Icon, label }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-white text-[#1A1528] text-xs font-semibold px-3 py-2 rounded-xl border border-gray-100 shadow-sm hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-colors max-w-full"
+            >
+              <Icon className="w-4 h-4 text-[#6544FF] shrink-0" /> <span className="truncate">{label}</span>
+            </a>
+          ))}
+          {socials.map(({ url, Icon, label }) => (
+            <a
+              key={label}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={label}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-sm text-[#6544FF] hover:bg-[#6544FF] hover:text-white transition-colors"
+            >
+              <Icon className="w-4 h-4" />
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

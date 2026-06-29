@@ -2,11 +2,12 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { 
+import {
   TrendingUp, Briefcase, DollarSign,
   BarChart, ArrowLeft, Loader2, ChevronLeft, ChevronRight,
   Star
 } from "lucide-react";
+import GenerandoLoader from "./GenerandoLoader";
 import { supabase } from "../../lib/supabase";
 
 // ============================================================================
@@ -538,10 +539,15 @@ export default function MercadoLaboral() {
 
         {/* ESTADO DE CARGA */}
         {cargando && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-12 h-12 text-[#6544FF] animate-spin mb-4" />
-            <p className="font-bold text-gray-500">Consultando datos oficiales...</p>
-          </div>
+          <GenerandoLoader
+            tipo="mercado"
+            mensajes={[
+              "Consultando datos oficiales SIES...",
+              "Procesando índices de empleabilidad...",
+              "Preparando mercado laboral...",
+            ]}
+            className="min-h-[380px] my-4"
+          />
         )}
 
         {/* ================================================================

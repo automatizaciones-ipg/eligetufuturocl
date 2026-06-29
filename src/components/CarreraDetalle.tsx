@@ -1,10 +1,12 @@
 // src/components/CarreraDetalle.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import MapaOSM from './MapaOSM';
 import { trackEvent } from '../lib/analytics';
-import { 
-  MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building, 
-  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award 
+import {
+  MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building,
+  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award
 } from 'lucide-react';
+import GenerandoLoader from './GenerandoLoader';
 
 // ============================================================================
 // 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
@@ -193,16 +195,23 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
     return '';
   }, [carrera?.instituciones?.logo_url, SUPABASE_PROJECT_URL, institucionNombre]);
 
-  const mapaQuery = useMemo(() => 
-    encodeURIComponent(`${institucionNombre} ${carrera?.sede || carrera?.region || 'Chile'}`),
+  const mapaQuery = useMemo(() =>
+    `${institucionNombre} ${carrera?.sede || carrera?.region || 'Chile'}`,
     [institucionNombre, carrera?.sede, carrera?.region]
   );
 
   if (!carrera) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F5F9] text-[#0A0518]">
-        <Loader2 className="w-10 h-10 animate-spin text-[#7C3AED] mb-4" />
-        <p className="font-medium">Cargando información de la carrera...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F4F5F9] p-6">
+        <GenerandoLoader
+          tipo="carreras"
+          mensajes={[
+            "Cargando información académica...",
+            "Consultando datos de empleabilidad...",
+            "Preparando perfil de carrera...",
+          ]}
+          className="w-full max-w-md"
+        />
       </div>
     );
   }
@@ -415,18 +424,7 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
                 </div>
               )}
 
-              <div className="w-full h-72 bg-gray-50 rounded-3xl overflow-hidden border border-gray-200 relative shadow-inner group">
-                <iframe
-                  title="Mapa de la Sede"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0, filter: 'contrast(1.1) saturation(0.8)' }}
-                  loading="lazy"
-                  allowFullScreen
-                  src={`https://maps.google.com/maps?q=${mapaQuery}&t=m&z=15&output=embed`}
-                ></iframe>
-                <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5 rounded-3xl" aria-hidden="true"></div>
-              </div>
+              <MapaOSM query={mapaQuery} altura="h-72" />
             </section>
           </div>
 

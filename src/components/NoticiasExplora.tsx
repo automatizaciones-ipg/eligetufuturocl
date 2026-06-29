@@ -8,6 +8,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import type { Noticia, NoticiaRow } from "../types/noticia";
 import { trackEvent } from "../lib/analytics";
+import GenerandoLoader from "./GenerandoLoader";
 
 const CATEGORIAS: string[] = ["Todas", "Tendencias", "Inspiración", "Oportunidades", "Tips de Estudio"];
 
@@ -18,6 +19,22 @@ export default function NoticiasExplora() {
   const [navegandoA, setNavegandoA] = useState<string | null>(null);
 
   useEffect(() => {
+    const cacheKey = `etf_explora_${filtroActivo}`;
+    const CACHE_TTL = 3 * 60 * 1000;
+
+    // Caché por categoría: respuesta instantánea en cambios de filtro repetidos
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) {
+        const { data, ts } = JSON.parse(raw) as { data: Noticia[]; ts: number };
+        if (Date.now() - ts < CACHE_TTL) {
+          setNoticiasFiltradas(data);
+          setCargando(false);
+          return;
+        }
+      }
+    } catch {}
+
     const fetchNoticias = async () => {
       setCargando(true);
       try {
@@ -35,7 +52,6 @@ export default function NoticiasExplora() {
 
         if (error) throw error;
 
-        // Tipado estricto
         const rows = data as NoticiaRow[] | null;
 
         const noticiasFormateadas: Noticia[] = (rows || []).map((row: NoticiaRow) => ({
@@ -57,6 +73,9 @@ export default function NoticiasExplora() {
         }));
 
         setNoticiasFiltradas(noticiasFormateadas);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data: noticiasFormateadas, ts: Date.now() }));
+        } catch {}
       } catch (error) {
         console.error("Error crítico cargando noticias desde Supabase:", error);
       } finally {
@@ -148,10 +167,15 @@ export default function NoticiasExplora() {
 
         {/* CONTENIDO DINÁMICO */}
         {cargando ? (
-          <div className="w-full flex flex-col items-center justify-center py-40 bg-white rounded-[3rem] border border-slate-100 shadow-sm animate-in fade-in duration-500">
-            <Loader2 className="w-10 h-10 text-[#6544FF] animate-spin mb-4" />
-            <p className="font-bold text-sm tracking-wide text-slate-400 uppercase">Cargando noticias...</p>
-          </div>
+          <GenerandoLoader
+            tipo="noticias"
+            mensajes={[
+              "Recuperando noticias...",
+              "Clasificando por categoría...",
+              "Preparando artículos...",
+            ]}
+            className="min-h-[400px]"
+          />
         ) : (
           <div className="w-full">
             {noticiasFiltradas.length > 0 ? (
@@ -252,17 +276,7 @@ export default function NoticiasExplora() {
         )}
       </div>
 
-      {/* ESTILOS Y ANIMACIONES */}
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -40px) scale(1.05); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 10s infinite alternate cubic-bezier(0.4, 0, 0.2, 1); }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
         .custom-scrollbar::-webkit-scrollbar { height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 99px; }

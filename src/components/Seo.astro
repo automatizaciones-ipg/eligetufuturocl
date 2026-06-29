@@ -100,10 +100,11 @@ const graphs = [organizationSchema(), webSiteSchema(), ...jsonLd];
 
 <!-- PWA / íconos / tema -->
 <meta name="theme-color" content={SITE.themeColor} />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content={SITE.shortName} />
 <link rel="manifest" href="/site.webmanifest" />
-<link rel="apple-touch-icon" href="/Icono.svg" />
+<!-- apple-touch-icon requiere PNG 180×180. Pendiente: agregar /apple-touch-icon.png a public/ -->
 
 <!-- JSON-LD (Schema.org) — SEO técnico + base GEO -->
 {

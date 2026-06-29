@@ -1,13 +1,47 @@
 ---
 // src/pages/index.astro
+export const prerender = true;
+
 import Layout from "../layouts/Layout.astro";
-import Header from "../components/Header.tsx";
 import Hero from "../components/Hero.tsx";
 import FeaturedEventBanner from "../components/FeaturedEventBanner.tsx"; // El nuevo banner responsivo estilo Figma
 import CarrerasDestacadas from "../components/CarrerasDestacadas.tsx";
 import NoticiasDestacadas from "../components/NoticiasDestacadas.tsx";
 import ToolsSection from "../components/ToolsSection.tsx";
 import { faqSchema } from "../lib/seo";
+import { createClient } from "@supabase/supabase-js";
+
+// Pre-carga de datos en build-time: se ejecuta UNA sola vez al hacer `npm run build`.
+// Los datos quedan embebidos en el HTML estático → cero latencia en el cliente.
+const supabaseBuild = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+);
+
+const CAMPOS_CARRERA = 'id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)';
+
+const [{ data: carrerasTop }, { data: carrerasUA }, { data: carrerasIPG }, { data: noticiasIniciales }] = await Promise.all([
+  // Top por empleabilidad (ranking orgánico)
+  supabaseBuild.from('carreras').select(CAMPOS_CARRERA)
+    .not('empleabilidad_1er_anio', 'is', null)
+    .not('ingreso_promedio_4to_anio', 'is', null)
+    .order('empleabilidad_1er_anio', { ascending: false })
+    .limit(25),
+  // Socias por institución (consultas separadas para garantizar presencia de ambas)
+  supabaseBuild.from('carreras').select(CAMPOS_CARRERA)
+    .ilike('instituciones.nombre', '%aut_noma%')
+    .limit(8),
+  supabaseBuild.from('carreras').select(CAMPOS_CARRERA)
+    .ilike('instituciones.nombre', '%ipg%')
+    .limit(8),
+  supabaseBuild.from('noticias')
+    .select('id, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada')
+    .order('created_at', { ascending: false })
+    .limit(12),
+]);
+
+// Combinar: top orgánicas + U. Autónoma + IPG (procesarCarreras fija el orden final)
+const carrerasIniciales = [...(carrerasTop || []), ...(carrerasUA || []), ...(carrerasIPG || [])];
 
 // FAQ de marca: refuerza el SEO y, sobre todo, el GEO (respuestas que los
 // motores de IA pueden citar directamente).
@@ -54,12 +88,12 @@ const featuredEvent = {
   <main class="bg-[#F4F5F9] overflow-x-hidden">
     <Hero client:load />
 
-    <CarrerasDestacadas client:visible />
+    <CarrerasDestacadas datosIniciales={carrerasIniciales ?? []} client:visible />
 
     <FeaturedEventBanner event={featuredEvent} client:visible />
 
     <ToolsSection client:visible />
 
-    <NoticiasDestacadas client:visible />
+    <NoticiasDestacadas datosIniciales={noticiasIniciales ?? []} client:visible />
   </main>
 </Layout>
