@@ -6,7 +6,7 @@ import {
   User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3,
   ArrowLeft, Landmark, ShieldCheck, GraduationCap,
   Star, Sparkles,
-  Instagram, Facebook, Linkedin, Youtube, Twitter, Globe, CalendarDays, Building2
+  Instagram, Facebook, Linkedin, Youtube, Twitter
 } from 'lucide-react';
 
 // Formateador y Generador de Logo (Idéntico al de carreras)
@@ -593,10 +593,26 @@ function DataPoint({ label, value }: any) {
 }
 
 // ============================================================================
-// DETALLES ENRIQUECIDOS — datos extraídos del sitio oficial vía Firecrawl.
+// DETALLES ENRIQUECIDOS — diseño "label → valor", limpio y separado.
+// Datos extraídos del sitio oficial vía Firecrawl (columna JSONB `detalles`).
 // Render 100% resiliente: cada campo es opcional; si no hay datos, no renderiza.
-// Los datos viven en la columna JSONB `detalles` de `instituciones`.
 // ============================================================================
+function FilaContacto({ label, value, href }: { label: string; value: string; href: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 shrink-0">{label}</span>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm font-semibold text-[#6544FF] hover:underline truncate text-right"
+      >
+        {value}
+      </a>
+    </div>
+  );
+}
+
 function DetallesEnriquecidos({ detalles, sitioWeb }: { detalles?: any; sitioWeb?: string | null }) {
   const d = detalles || {};
 
@@ -609,12 +625,11 @@ function DetallesEnriquecidos({ detalles, sitioWeb }: { detalles?: any; sitioWeb
   const eslogan = typeof d.eslogan === 'string' ? d.eslogan.trim() : '';
   const web = typeof sitioWeb === 'string' && sitioWeb.startsWith('http') ? sitioWeb : '';
 
-  const stats = [
-    fundacion ? { label: 'Fundación', value: String(fundacion), Icon: CalendarDays } : null,
-    sedes ? { label: sedes === 1 ? 'Sede' : 'Sedes', value: String(sedes), Icon: Building2 } : null,
-    modalidades.length ? { label: 'Modalidad', value: modalidades.join(' · '), Icon: GraduationCap } : null,
-    ciudades.length ? { label: ciudades.length === 1 ? 'Ciudad' : 'Ciudades', value: ciudades.join(' · '), Icon: MapPin } : null,
-  ].filter(Boolean) as { label: string; value: string; Icon: any }[];
+  const facts = [
+    fundacion ? { label: 'Fundación', value: String(fundacion) } : null,
+    sedes ? { label: sedes === 1 ? 'Sede' : 'Sedes', value: String(sedes) } : null,
+    modalidades.length ? { label: 'Modalidad', value: modalidades.join(' · ') } : null,
+  ].filter(Boolean) as { label: string; value: string }[];
 
   const socials = [
     { url: d.instagram, Icon: Instagram, label: 'Instagram' },
@@ -625,65 +640,73 @@ function DetallesEnriquecidos({ detalles, sitioWeb }: { detalles?: any; sitioWeb
   ].filter(s => typeof s.url === 'string' && s.url.startsWith('http')) as { url: string; Icon: any; label: string }[];
 
   const contactos = [
-    web ? { href: web, Icon: Globe, label: 'Sitio web' } : null,
-    tel ? { href: `tel:${tel.replace(/\s+/g, '')}`, Icon: Phone, label: tel } : null,
-    email ? { href: `mailto:${email}`, Icon: Mail, label: email } : null,
-  ].filter(Boolean) as { href: string; Icon: any; label: string }[];
+    web ? { href: web, label: 'Sitio web', value: web.replace(/^https?:\/\//, '').replace(/\/$/, '') } : null,
+    tel ? { href: `tel:${tel.replace(/\s+/g, '')}`, label: 'Teléfono admisión', value: tel } : null,
+    email ? { href: `mailto:${email}`, label: 'Email admisión', value: email } : null,
+  ].filter(Boolean) as { href: string; label: string; value: string }[];
 
-  if (!stats.length && !socials.length && !contactos.length && !eslogan) return null;
+  if (!facts.length && !socials.length && !contactos.length && !eslogan && !ciudades.length) return null;
 
   return (
-    <div className="mb-8 p-6 bg-gradient-to-br from-[#6544FF]/[0.04] to-[#3B82F6]/[0.04] rounded-3xl border border-[#6544FF]/10">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-[#6544FF] mb-4 flex items-center gap-2">
-        <Sparkles className="w-4 h-4" /> Detalles destacados
-      </h4>
+    <div className="mb-8 rounded-3xl border border-[#6544FF]/10 bg-white p-7 md:p-8 shadow-[0_4px_30px_rgba(101,68,255,0.05)]">
+      {/* Eyebrow — un solo acento de color */}
+      <div className="flex items-center gap-2.5 mb-6">
+        <span className="h-2 w-2 rounded-full bg-[#6544FF]" aria-hidden="true" />
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#6544FF]">La institución</p>
+      </div>
 
-      {eslogan && (
-        <p className="text-sm md:text-base font-semibold text-[#1A1528] italic mb-5 leading-snug">
-          “{eslogan}”
-        </p>
-      )}
+      {/* Secciones separadas por divisores para respirar */}
+      <div className="divide-y divide-gray-100">
+        {eslogan && (
+          <p className="py-6 first:pt-0 last:pb-0 text-[15px] md:text-[17px] text-gray-700 italic leading-relaxed font-medium">
+            “{eslogan}”
+          </p>
+        )}
 
-      {stats.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          {stats.map(({ label, value, Icon }) => (
-            <div key={label} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm flex flex-col gap-1">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#6544FF]/70">
-                <Icon className="w-3.5 h-3.5" /> {label}
-              </span>
-              <span className="text-sm font-bold text-[#0A0518] leading-tight">{value}</span>
+        {facts.length > 0 && (
+          <div className="py-6 first:pt-0 last:pb-0 grid grid-cols-3 gap-6">
+            {facts.map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+                <p className="text-base font-black text-[#1A1528] leading-tight">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {ciudades.length > 0 && (
+          <div className="py-6 first:pt-0 last:pb-0">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2">Presencia nacional</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{ciudades.join(' · ')}</p>
+          </div>
+        )}
+
+        {contactos.length > 0 && (
+          <div className="py-6 first:pt-0 last:pb-0 space-y-3">
+            {contactos.map((c) => <FilaContacto key={c.label} label={c.label} value={c.value} href={c.href} />)}
+          </div>
+        )}
+
+        {socials.length > 0 && (
+          <div className="py-6 first:pt-0 last:pb-0 flex items-center gap-3 flex-wrap">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Síguela en</span>
+            <div className="flex gap-2">
+              {socials.map(({ url, Icon, label }) => (
+                <a
+                  key={label}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-sm text-[#6544FF] hover:bg-[#6544FF] hover:text-white transition-colors"
+                >
+                  <Icon className="w-4 h-4" />
+                </a>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {(contactos.length > 0 || socials.length > 0) && (
-        <div className="flex flex-wrap items-center gap-2">
-          {contactos.map(({ href, Icon, label }) => (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-white text-[#1A1528] text-xs font-semibold px-3 py-2 rounded-xl border border-gray-100 shadow-sm hover:border-[#6544FF]/30 hover:text-[#6544FF] transition-colors max-w-full"
-            >
-              <Icon className="w-4 h-4 text-[#6544FF] shrink-0" /> <span className="truncate">{label}</span>
-            </a>
-          ))}
-          {socials.map(({ url, Icon, label }) => (
-            <a
-              key={label}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={label}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-sm text-[#6544FF] hover:bg-[#6544FF] hover:text-white transition-colors"
-            >
-              <Icon className="w-4 h-4" />
-            </a>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

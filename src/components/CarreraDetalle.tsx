@@ -4,8 +4,7 @@ import MapaOSM from './MapaOSM';
 import { trackEvent } from '../lib/analytics';
 import {
   MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building,
-  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award,
-  Target, GraduationCap, Lightbulb, BookOpen
+  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award
 } from 'lucide-react';
 import GenerandoLoader from './GenerandoLoader';
 
@@ -712,28 +711,27 @@ function DataPoint({ label, value }: DataPointProps) {
 }
 
 // ============================================================================
-// DETALLES ENRIQUECIDOS DE LA CARRERA — investigados en la web pública con
-// Firecrawl (perfil de egreso, campo laboral, qué aprenderás, etc.).
+// DETALLES ENRIQUECIDOS DE LA CARRERA — diseño "título → descripción", limpio
+// y separado para lectura cómoda. Datos investigados en la web con Firecrawl.
 // Render 100% resiliente: cada campo es opcional; si no hay datos, no renderiza.
 // ============================================================================
-function ChipsCarrera({ items }: { items: string[] }) {
+function ListaCarrera({ items }: { items: string[] }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <ul className="grid sm:grid-cols-2 gap-x-10 gap-y-2.5 mt-2.5">
       {items.map((x, i) => (
-        <span key={i} className="bg-white border border-gray-100 shadow-sm text-[#1A1528] text-xs font-semibold px-3 py-1.5 rounded-xl">
-          {x}
-        </span>
+        <li key={i} className="flex gap-3 text-[13.5px] text-gray-600 leading-snug">
+          <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[#6544FF]/50 shrink-0" aria-hidden="true" />
+          <span>{x}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
-function BloqueCarrera({ icon: Icon, titulo, children }: any) {
+function CampoCarrera({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div>
-      <h5 className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-[#6544FF]/80 mb-2">
-        <Icon className="w-4 h-4" /> {titulo}
-      </h5>
+    <div className="py-6 first:pt-0 last:pb-0">
+      <h5 className="text-[13px] font-black uppercase tracking-wide text-[#1A1528] mb-1.5">{titulo}</h5>
       {children}
     </div>
   );
@@ -751,46 +749,46 @@ function DetallesCarrera({ detalles }: { detalles?: any }) {
   if (!resumen && !perfil && !titulo && !campo.length && !aprende.length && !habilidades.length) return null;
 
   return (
-    <div className="mb-8 rounded-3xl border border-[#6544FF]/10 bg-gradient-to-br from-[#6544FF]/[0.04] to-[#3B82F6]/[0.04] p-6 md:p-7">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-[#6544FF] mb-4 flex items-center gap-2">
-        <Sparkles className="w-4 h-4" /> Perfil profesional
-      </h4>
+    <div className="mb-8 rounded-3xl border border-[#6544FF]/10 bg-white p-7 md:p-9 shadow-[0_4px_30px_rgba(101,68,255,0.05)]">
+      {/* Eyebrow de sección — un solo acento de color, sin saturar de iconos */}
+      <div className="flex items-center gap-2.5 mb-6">
+        <span className="h-2 w-2 rounded-full bg-[#6544FF]" aria-hidden="true" />
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#6544FF]">Perfil profesional</p>
+      </div>
 
+      {/* Resumen como entrada (lead), separado del resto */}
       {resumen && (
-        <p className="text-gray-700 text-sm md:text-base leading-relaxed mb-5 font-medium">{resumen}</p>
+        <p className="text-[15px] md:text-[17px] text-gray-700 leading-relaxed font-medium mb-7 pb-7 border-b border-gray-100">
+          {resumen}
+        </p>
       )}
 
-      <div className="space-y-5">
+      {/* Bloques título → descripción, separados por divisores para respirar */}
+      <div className="divide-y divide-gray-100">
         {perfil && (
-          <BloqueCarrera icon={Target} titulo="Perfil de egreso">
-            <p className="text-gray-600 text-sm leading-relaxed">{perfil}</p>
-          </BloqueCarrera>
+          <CampoCarrera titulo="Perfil de egreso">
+            <p className="text-[13.5px] text-gray-600 leading-relaxed">{perfil}</p>
+          </CampoCarrera>
         )}
         {campo.length > 0 && (
-          <BloqueCarrera icon={Briefcase} titulo="Campo laboral">
-            <ChipsCarrera items={campo} />
-          </BloqueCarrera>
+          <CampoCarrera titulo="Dónde podrás trabajar">
+            <ListaCarrera items={campo} />
+          </CampoCarrera>
         )}
         {aprende.length > 0 && (
-          <BloqueCarrera icon={BookOpen} titulo="Qué aprenderás">
-            <ul className="grid sm:grid-cols-2 gap-x-5 gap-y-1.5">
-              {aprende.map((x, i) => (
-                <li key={i} className="text-sm text-gray-600 flex gap-2">
-                  <span className="text-[#6544FF] mt-0.5">•</span><span>{x}</span>
-                </li>
-              ))}
-            </ul>
-          </BloqueCarrera>
+          <CampoCarrera titulo="Qué aprenderás">
+            <ListaCarrera items={aprende} />
+          </CampoCarrera>
         )}
         {habilidades.length > 0 && (
-          <BloqueCarrera icon={Lightbulb} titulo="Habilidades que desarrollas">
-            <ChipsCarrera items={habilidades} />
-          </BloqueCarrera>
+          <CampoCarrera titulo="Habilidades que desarrollarás">
+            <ListaCarrera items={habilidades} />
+          </CampoCarrera>
         )}
         {titulo && (
-          <BloqueCarrera icon={GraduationCap} titulo="Título que obtienes">
-            <p className="text-sm font-semibold text-[#1A1528]">{titulo}</p>
-          </BloqueCarrera>
+          <CampoCarrera titulo="Título que obtienes">
+            <p className="text-[15px] font-bold text-[#6544FF]">{titulo}</p>
+          </CampoCarrera>
         )}
       </div>
     </div>
