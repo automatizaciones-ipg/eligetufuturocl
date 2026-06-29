@@ -514,19 +514,19 @@ export default function DirectorioInstituciones() {
                             1. FILA SUPERIOR: LOGO + BADGES
                         ============================================ */}
                         <div className="relative z-10 flex items-center gap-4 mb-5">
-                          {/* Logo institucional */}
-                          <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border border-gray-100 shrink-0 group-hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] group-hover:-translate-y-0.5 transition-all duration-500">
+                          {/* Logo institucional — protagonista */}
+                          <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-[0_6px_20px_rgba(0,0,0,0.07)] border border-gray-100 shrink-0 group-hover:shadow-[0_10px_30px_rgba(101,68,255,0.12)] group-hover:-translate-y-0.5 transition-all duration-500">
                             {erroresLogos.includes(inst.codigo_institucion) ? (
                               <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${inst.color}`}>
-                                <span className="text-white font-black text-base tracking-tighter">
+                                <span className="text-white font-black text-2xl tracking-tighter">
                                   {obtenerSiglas(inst.nombre)}
                                 </span>
                               </div>
                             ) : (
-                              <img 
-                                src={inst.logoUrl} 
-                                alt={inst.nombre} 
-                                className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500 ease-out" 
+                              <img
+                                src={inst.logoUrl}
+                                alt={inst.nombre}
+                                className="w-full h-full object-contain p-2.5 group-hover:scale-110 transition-transform duration-500 ease-out"
                                 onError={() => handleLogoError(inst.codigo_institucion)} 
                               />
                             )}

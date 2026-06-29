@@ -65,8 +65,9 @@ PROMPT = (
 )
 
 # Dominios preferidos (info confiable de carreras en Chile) y a evitar.
-DOMINIOS_PREF = ("mifuturo.cl", "mineduc.cl", ".edu", "universidad", "uchile", "duoc", "inacap", "santotomas", "aiep")
-DOMINIOS_EVITAR = ("facebook.", "instagram.", "youtube.", "tiktok.", "linkedin.", "twitter.", "x.com")
+DOMINIOS_PREF = ("mifuturo.cl", "mineduc.cl", ".edu", ".cl", "universidad", "uchile", "duoc", "inacap", "santotomas", "aiep", "ip", "cft")
+DOMINIOS_EVITAR = ("facebook.", "instagram.", "youtube.", "tiktok.", "linkedin.", "twitter.", "x.com",
+                   "reddit.", "quora.", "wikipedia.", "pinterest.", "scribd.")
 
 
 def norm(s: str) -> str:
@@ -228,16 +229,25 @@ def main():
         ncarreras = len(g["codigos"])
         print(f"[{i}/{len(pendientes)}] {nombre[:48]} (x{ncarreras})…", end=" ", flush=True)
 
-        urls = elegir_urls(firecrawl_search(
-            f"{nombre} carrera educación superior Chile perfil de egreso campo laboral", fc_key))
-        time.sleep(PAUSA_SEG)
+        # Búsqueda con varias estrategias hasta encontrar fuentes útiles
+        urls = []
+        for consulta in (
+            f"{nombre} carrera Chile perfil de egreso campo laboral",
+            f"que es la carrera de {nombre} en Chile y campo laboral",
+            f"{nombre} mifuturo.cl",
+        ):
+            urls = elegir_urls(firecrawl_search(consulta, fc_key))
+            time.sleep(PAUSA_SEG)
+            if urls:
+                break
+
         if not urls:
             print("⏩ sin fuentes")
             stats["sin_fuente"] += 1
             continue
 
         detalles = {}
-        for u in urls[:2]:   # intenta las 2 mejores fuentes
+        for u in urls[:3]:   # intenta las 3 mejores fuentes
             try:
                 crudo = firecrawl_extraer(u, fc_key)
             except Exception:

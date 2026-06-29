@@ -492,7 +492,7 @@ export default function CarrerasDestacadas({ datosIniciales }: { datosIniciales?
                       <div className="relative shrink-0">
                         <div className={`absolute inset-0 ${carrera.tema.barGradient} rounded-xl blur-md opacity-0 group-hover/inst:opacity-30 transition-opacity duration-500`}></div>
                         
-                        <div className="relative w-14 h-14 bg-white rounded-xl p-1.5 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover/inst:scale-[1.03]">
+                        <div className="relative w-[72px] h-[72px] bg-white rounded-2xl p-2 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover/inst:scale-[1.03]">
                           {/* MEJORA SEO: Atributo alt semántico, lazy loading */}
                           <img 
                             src={carrera.logoInst} 

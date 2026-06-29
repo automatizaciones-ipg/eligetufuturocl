@@ -609,10 +609,10 @@ export default function MercadoLaboral() {
                         <div className="relative shrink-0">
                           <div className={`absolute inset-0 ${carrera.tema.barGradient} rounded-xl blur-md opacity-0 group-hover:opacity-30 transition-opacity duration-500`}></div>
                           
-                          <div className="relative w-11 h-11 bg-white rounded-xl p-1.5 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover:scale-[1.03]">
+                          <div className="relative w-16 h-16 bg-white rounded-2xl p-2 flex items-center justify-center border border-gray-200 shadow-sm overflow-hidden z-10 transition-transform duration-500 group-hover:scale-[1.03]">
                             {erroresLogos.includes(carrera.id) ? (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-500 rounded-lg">
-                                <span className="text-white font-black text-xs tracking-tighter">
+                                <span className="text-white font-black text-lg tracking-tighter">
                                   {carrera.sigla}
                                 </span>
                               </div>
