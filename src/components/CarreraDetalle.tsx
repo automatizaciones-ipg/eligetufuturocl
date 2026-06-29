@@ -4,7 +4,8 @@ import MapaOSM from './MapaOSM';
 import { trackEvent } from '../lib/analytics';
 import {
   MapPin, DollarSign, Clock, Briefcase, TrendingUp, Building,
-  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award
+  ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award,
+  Target, GraduationCap, Lightbulb, BookOpen
 } from 'lucide-react';
 import GenerandoLoader from './GenerandoLoader';
 
@@ -28,6 +29,7 @@ interface CarreraData {
   sede?: string;
   jornada?: string;
   descripcion?: string;
+  detalles?: any;
 }
 
 interface CarreraDetalleProps {
@@ -410,6 +412,10 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
                 <DataPoint label="Jornada" value={carrera?.jornada ? formatearTitulo(carrera.jornada) : "No informada"} />
               </div>
 
+              {/* Detalles enriquecidos de la carrera (Firecrawl): perfil de egreso,
+                  campo laboral, qué aprenderás, etc. — investigados de la web pública */}
+              <DetallesCarrera detalles={carrera?.detalles} />
+
               {carrera?.descripcion && (
                 <div className="mb-8 p-6 bg-[#7C3AED]/5 rounded-3xl border border-[#7C3AED]/10 relative overflow-hidden group/desc">
                   <div className="absolute -top-6 -right-6 p-4 opacity-[0.04] text-[#7C3AED] transition-transform duration-700 group-hover/desc:scale-125" aria-hidden="true">
@@ -701,6 +707,92 @@ function DataPoint({ label, value }: DataPointProps) {
     <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-gray-100/80">
       <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-widest">{label}</p>
       <p className="text-lg font-bold text-[#0A0518]">{value}</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// DETALLES ENRIQUECIDOS DE LA CARRERA — investigados en la web pública con
+// Firecrawl (perfil de egreso, campo laboral, qué aprenderás, etc.).
+// Render 100% resiliente: cada campo es opcional; si no hay datos, no renderiza.
+// ============================================================================
+function ChipsCarrera({ items }: { items: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((x, i) => (
+        <span key={i} className="bg-white border border-gray-100 shadow-sm text-[#1A1528] text-xs font-semibold px-3 py-1.5 rounded-xl">
+          {x}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function BloqueCarrera({ icon: Icon, titulo, children }: any) {
+  return (
+    <div>
+      <h5 className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-[#6544FF]/80 mb-2">
+        <Icon className="w-4 h-4" /> {titulo}
+      </h5>
+      {children}
+    </div>
+  );
+}
+
+function DetallesCarrera({ detalles }: { detalles?: any }) {
+  const d = detalles || {};
+  const resumen = typeof d.resumen === 'string' ? d.resumen.trim() : '';
+  const perfil = typeof d.perfil_egreso === 'string' ? d.perfil_egreso.trim() : '';
+  const titulo = typeof d.titulo === 'string' ? d.titulo.trim() : '';
+  const campo: string[] = Array.isArray(d.campo_laboral) ? d.campo_laboral.filter(Boolean) : [];
+  const aprende: string[] = Array.isArray(d.que_aprenderas) ? d.que_aprenderas.filter(Boolean) : [];
+  const habilidades: string[] = Array.isArray(d.habilidades) ? d.habilidades.filter(Boolean) : [];
+
+  if (!resumen && !perfil && !titulo && !campo.length && !aprende.length && !habilidades.length) return null;
+
+  return (
+    <div className="mb-8 rounded-3xl border border-[#6544FF]/10 bg-gradient-to-br from-[#6544FF]/[0.04] to-[#3B82F6]/[0.04] p-6 md:p-7">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-[#6544FF] mb-4 flex items-center gap-2">
+        <Sparkles className="w-4 h-4" /> Perfil profesional
+      </h4>
+
+      {resumen && (
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed mb-5 font-medium">{resumen}</p>
+      )}
+
+      <div className="space-y-5">
+        {perfil && (
+          <BloqueCarrera icon={Target} titulo="Perfil de egreso">
+            <p className="text-gray-600 text-sm leading-relaxed">{perfil}</p>
+          </BloqueCarrera>
+        )}
+        {campo.length > 0 && (
+          <BloqueCarrera icon={Briefcase} titulo="Campo laboral">
+            <ChipsCarrera items={campo} />
+          </BloqueCarrera>
+        )}
+        {aprende.length > 0 && (
+          <BloqueCarrera icon={BookOpen} titulo="Qué aprenderás">
+            <ul className="grid sm:grid-cols-2 gap-x-5 gap-y-1.5">
+              {aprende.map((x, i) => (
+                <li key={i} className="text-sm text-gray-600 flex gap-2">
+                  <span className="text-[#6544FF] mt-0.5">•</span><span>{x}</span>
+                </li>
+              ))}
+            </ul>
+          </BloqueCarrera>
+        )}
+        {habilidades.length > 0 && (
+          <BloqueCarrera icon={Lightbulb} titulo="Habilidades que desarrollas">
+            <ChipsCarrera items={habilidades} />
+          </BloqueCarrera>
+        )}
+        {titulo && (
+          <BloqueCarrera icon={GraduationCap} titulo="Título que obtienes">
+            <p className="text-sm font-semibold text-[#1A1528]">{titulo}</p>
+          </BloqueCarrera>
+        )}
+      </div>
     </div>
   );
 }
