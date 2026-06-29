@@ -15,6 +15,9 @@ interface Institucion {
   nombre?: string;
   tipo?: string;
   logo_url?: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  direccion?: string | null;
 }
 
 interface CarreraData {
@@ -429,7 +432,14 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
                 </div>
               )}
 
-              <MapaOSM query={mapaQuery} altura="h-72" />
+              <MapaOSM
+                lat={carrera?.instituciones?.latitud}
+                lng={carrera?.instituciones?.longitud}
+                nombre={institucionNombre}
+                direccion={carrera?.instituciones?.direccion}
+                query={mapaQuery}
+                altura="h-72"
+              />
             </section>
           </div>
 

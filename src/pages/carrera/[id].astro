@@ -41,9 +41,12 @@ const { data: carrera, error } = await supabase
     `
     *,
     instituciones (
-      nombre, 
+      nombre,
       tipo,
-      logo_url
+      logo_url,
+      latitud,
+      longitud,
+      direccion
     )
   `,
   )

@@ -137,6 +137,51 @@ const formatRegionLabel = (region: string): string => {
   return `Región de ${region}`;
 };
 
+// Campos comunes para la consulta de carreras
+const CAMPOS_BUSCADOR = `codigo_carrera, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)`;
+
+// Mezcla aleatoria (Fisher-Yates) para el modo explorar
+function barajar<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Adapta filas de Supabase a la UI (reutilizado por búsqueda y modo explorar)
+function adaptarBD(bdData: any[]): CarreraUI[] {
+  return bdData.map((item, index) => {
+    const instObj = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
+    const instNombre = instObj?.nombre || "Institución Desconocida";
+    const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+    let logoUrl = "";
+    const rawLogo = instObj?.logo_url;
+    if (rawLogo) {
+      if (rawLogo.startsWith("http")) {
+        logoUrl = rawLogo;
+      } else {
+        // @ts-ignore - import.meta.env es provisto por Astro
+        const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+        logoUrl = baseUrl ? `${baseUrl}/storage/v1/object/public/logos_instituciones/${rawLogo}` : "";
+      }
+    }
+    return {
+      id: item.codigo_carrera,
+      nombre: formatearTitulo(item.nombre_carrera),
+      sigla: generarSiglaInstitucion(instNombre),
+      institucion: formatearTitulo(instNombre),
+      tipoInst: generarTipoInst(instObj?.tipo || null),
+      region: item.region || "No informada",
+      puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "Arancel no informado",
+      duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "Duración no informada",
+      color: PALETA_COLORES[index % PALETA_COLORES.length],
+      logoUrl: logoUrl || fallbackLogo
+    };
+  });
+}
+
 // ============================================================================
 // 4. COMPONENTE PRINCIPAL
 // ============================================================================
@@ -199,6 +244,57 @@ export default function BuscadorCarreras() {
   const fetchCarreras = useCallback(async () => {
     setCargando(true);
     try {
+      // ====================================================================
+      // MODO EXPLORAR: sin búsqueda ni filtros activos → orden ALEATORIO,
+      // pero SIEMPRE con carreras de IPG y U. Autónoma primero en las
+      // primeras páginas (regla de negocio).
+      // ====================================================================
+      const modoExplorar =
+        busqueda.length < 3 &&
+        tipoFiltro === "Todos" &&
+        regionFiltro === "todas" &&
+        institucionFiltro === "todas" &&
+        orden === "nombre_asc";
+
+      if (modoExplorar) {
+        const { count } = await supabase
+          .from('carreras')
+          .select('codigo_carrera', { count: 'exact', head: true });
+        const total = count || 0;
+        setTotalResultados(total);
+
+        const vistos = new Set<string | number>();
+        const acumulado: any[] = [];
+
+        // En las 2 primeras páginas: garantizar 3 de IPG + 3 de U. Autónoma
+        if (paginaActual <= 2) {
+          const [{ data: ipg }, { data: ua }] = await Promise.all([
+            supabase.from('carreras').select(CAMPOS_BUSCADOR).ilike('instituciones.nombre', '%ipg%').limit(30),
+            supabase.from('carreras').select(CAMPOS_BUSCADOR).ilike('instituciones.nombre', '%aut_noma%').limit(30),
+          ]);
+          const muestra = (arr: any[] | null, n: number) => barajar(arr || []).slice(0, n);
+          for (const it of [...muestra(ipg, 3), ...muestra(ua, 3)]) {
+            if (it && !vistos.has(it.codigo_carrera)) { vistos.add(it.codigo_carrera); acumulado.push(it); }
+          }
+        }
+
+        // Rellenar con carreras al azar (offset aleatorio para variar en cada carga)
+        const maxOffset = Math.max(0, total - RESULTADOS_POR_PAGINA * 3);
+        const offset = Math.floor(Math.random() * (maxOffset + 1));
+        const { data: generales } = await supabase
+          .from('carreras').select(CAMPOS_BUSCADOR)
+          .order('codigo_carrera')
+          .range(offset, offset + RESULTADOS_POR_PAGINA * 3 - 1);
+        for (const it of barajar(generales || [])) {
+          if (acumulado.length >= RESULTADOS_POR_PAGINA) break;
+          if (!vistos.has(it.codigo_carrera)) { vistos.add(it.codigo_carrera); acumulado.push(it); }
+        }
+
+        setCarreras(adaptarBD(acumulado));
+        setCargando(false);
+        return;
+      }
+
       let query = supabase
         .from('carreras')
         .select(`
@@ -262,48 +358,7 @@ export default function BuscadorCarreras() {
       }
 
       if (data) {
-        const bdData = data as unknown as SupabaseCarreraJoin[];
-        const resultadosAdaptados: CarreraUI[] = bdData.map((item, index) => {
-          const instObj = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
-          const instNombre = instObj?.nombre || "Institución Desconocida";
-          const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
-          
-          // ============================================================
-          // 🔧 AJUSTE PRECISO PARA CARGAR LOGOS DESDE SUPABASE STORAGE
-          // ============================================================
-          let logoUrl = "";
-          const rawLogo = instObj?.logo_url;
-          if (rawLogo) {
-            if (rawLogo.startsWith("http")) {
-              logoUrl = rawLogo;
-            } else {
-              const bucket = "logos_instituciones";
-              // Usar variable pública de Astro (PUBLIC_SUPABASE_URL)
-              // @ts-ignore - import.meta.env es provisto por Astro
-              const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-              if (!baseUrl) {
-                console.error("⚠️ No se encontró la URL pública de Supabase. Define PUBLIC_SUPABASE_URL en tu .env");
-                logoUrl = ""; // Forzará el fallback
-              } else {
-                logoUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${rawLogo}`;
-              }
-            }
-          }
-          
-          return {
-            id: item.codigo_carrera,
-            nombre: formatearTitulo(item.nombre_carrera),
-            sigla: generarSiglaInstitucion(instNombre),
-            institucion: formatearTitulo(instNombre),
-            tipoInst: generarTipoInst(instObj?.tipo || null),
-            region: item.region || "No informada",
-            puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "Arancel no informado",
-            duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "Duración no informada",
-            color: PALETA_COLORES[index % PALETA_COLORES.length],
-            logoUrl: logoUrl || fallbackLogo
-          };
-        });
-        setCarreras(resultadosAdaptados);
+        setCarreras(adaptarBD(data as unknown as any[]));
       }
     } catch (err) {
       console.error("Error consultando Supabase:", err);
