@@ -52,7 +52,7 @@ const OPCIONES_ORDEN = [
   { id: "arancel_4", label: "Arancel $5.000.000 o más", min: 5000001, max: 99999999 }
 ];
 
-const PALETA_COLORES = [
+export const PALETA_COLORES = [
   "from-[#15803d] to-emerald-400",
   "from-[#6544FF] to-[#947BFF]",
   "from-orange-500 to-amber-400",
@@ -84,11 +84,11 @@ const generarSiglaInstitucion = (nombre: string): string => {
   return nombre.substring(0, 3).toUpperCase();
 };
 
-const quitarAcentos = (str: string): string => {
+export const quitarAcentos = (str: string): string => {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
-const formatearTitulo = (texto: string): string => {
+export const formatearTitulo = (texto: string): string => {
   if (!texto) return "";
   const conectores = ['de', 'en', 'el', 'la', 'los', 'las', 'y', 'del', 'a', 'por', 'con', 'para'];
   
@@ -141,7 +141,7 @@ const formatRegionLabel = (region: string): string => {
 const CAMPOS_BUSCADOR = `codigo_carrera, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)`;
 
 // Mezcla aleatoria (Fisher-Yates) para el modo explorar
-function barajar<T>(arr: T[]): T[] {
+export function barajar<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

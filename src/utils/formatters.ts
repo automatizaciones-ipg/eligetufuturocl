@@ -1,4 +1,18 @@
 // src/utils/formatters.ts
+
+/**
+ * Valida que un código (codigo_carrera / codigo_institucion) sea apto para usarse
+ * como segmento de URL. Descarta datos basura que se cuelan en la ingesta —p.ej.
+ * notas al pie como "FUENTE: Portal mifuturo.cl..."— que rompen el build en
+ * Windows (`:` ilegal en carpetas) y generan URLs basura en producción/sitemap.
+ * Los códigos válidos del SIES son cortos y sin espacios ni puntuación.
+ */
+export const esCodigoRutaValido = (code: unknown): boolean => {
+  if (code === null || code === undefined) return false;
+  const s = String(code).trim();
+  return s.length > 0 && s.length <= 40 && /^[A-Za-z0-9_-]+$/.test(s);
+};
+
 export const generarTipoInst = (tipoBD: string | null) => {
     if (!tipoBD) return "N/A";
     if (tipoBD.includes("Universidades")) return "U";
