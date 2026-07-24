@@ -5,7 +5,8 @@ import {
   Star,
   ArrowRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 import GenerandoLoader from "./GenerandoLoader";
 import { supabase } from "../../lib/supabase";

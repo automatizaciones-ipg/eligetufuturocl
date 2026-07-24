@@ -30,7 +30,9 @@ const CLARITY_ID = import.meta.env.PUBLIC_CLARITY_PROJECT_ID;
         function gtag(){dataLayer.push(arguments);}
         window.gtag = gtag;
         gtag('js', new Date());
-        gtag('config', '${GA_ID}', { send_page_view: true, anonymize_ip: true });
+        // send_page_view:false → el page_view inicial lo envía el listener de
+        // astro:page-load (más abajo). Así evitamos contar DOBLE la primera vista.
+        gtag('config', '${GA_ID}', { send_page_view: false, anonymize_ip: true });
         window.__gaId = '${GA_ID}';
       `} />
       {/* Reenvía page_view en cada navegación SPA (View Transitions) */}

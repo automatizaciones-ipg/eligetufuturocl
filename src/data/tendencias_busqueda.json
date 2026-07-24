@@ -1,0 +1,39 @@
+{
+  "_comentario": "Datos de demanda de búsqueda (Google Autocomplete, Chile). POR MIENTRAS estático; luego lo reemplaza el scraper en vivo con este mismo esquema.",
+  "generado": "2026-06-29",
+  "fuente": "google_autocomplete_cl",
+  "carreras": [
+    { "nombre": "Psicología", "slug_busqueda": "psicología", "demanda": 100, "nivel": "Muy buscada", "ejemplos": ["estudiar psicología online", "psicología mejor pagada"] },
+    { "nombre": "Derecho", "slug_busqueda": "derecho", "demanda": 89, "nivel": "Muy buscada", "ejemplos": ["estudiar derecho online", "derecho en chile"] },
+    { "nombre": "Veterinaria", "slug_busqueda": "veterinaria", "demanda": 82, "nivel": "Muy buscada", "ejemplos": ["estudiar veterinaria en chile", "veterinaria online"] },
+    { "nombre": "Enfermería", "slug_busqueda": "enfermería", "demanda": 81, "nivel": "Muy buscada", "ejemplos": ["estudiar enfermería online", "enfermería en chile"] },
+    { "nombre": "Logística", "slug_busqueda": "logística", "demanda": 81, "nivel": "Muy buscada", "ejemplos": ["técnico en logística", "ingeniería en logística"] },
+    { "nombre": "Kinesiología", "slug_busqueda": "kinesiología", "demanda": 67, "nivel": "Buscada", "ejemplos": ["estudiar kinesiología", "kinesiología en chile"] },
+    { "nombre": "Gastronomía", "slug_busqueda": "gastronomía", "demanda": 60, "nivel": "Buscada", "ejemplos": ["estudiar gastronomía en chile", "gastronomía online"] },
+    { "nombre": "Historia", "slug_busqueda": "historia", "demanda": 57, "nivel": "Buscada", "ejemplos": ["estudiar historia", "pedagogía en historia"] },
+    { "nombre": "Odontología", "slug_busqueda": "odontología", "demanda": 57, "nivel": "Buscada", "ejemplos": ["estudiar odontología", "odontología en chile"] },
+    { "nombre": "Contabilidad", "slug_busqueda": "contabilidad", "demanda": 57, "nivel": "Buscada", "ejemplos": ["estudiar contabilidad online", "contador auditor"] },
+    { "nombre": "Nutrición", "slug_busqueda": "nutrición", "demanda": 54, "nivel": "Buscada", "ejemplos": ["estudiar nutrición", "nutrición online"] },
+    { "nombre": "Marketing Digital", "slug_busqueda": "marketing digital", "demanda": 54, "nivel": "Buscada", "ejemplos": ["estudiar marketing digital", "marketing digital online"] },
+    { "nombre": "Recursos Humanos", "slug_busqueda": "recursos humanos", "demanda": 49, "nivel": "Buscada", "ejemplos": ["técnico en recursos humanos", "recursos humanos online"] },
+    { "nombre": "Cosmetología", "slug_busqueda": "cosmetología", "demanda": 46, "nivel": "Buscada", "ejemplos": ["estudiar cosmetología", "técnico en cosmetología"] },
+    { "nombre": "Administración de Empresas", "slug_busqueda": "administración de empresas", "demanda": 56, "nivel": "Buscada", "ejemplos": ["técnico en administración de empresas", "administración online"] },
+    { "nombre": "Medicina", "slug_busqueda": "medicina", "demanda": 46, "nivel": "Buscada", "ejemplos": ["estudiar medicina", "medicina en chile"] }
+  ],
+  "intenciones": [
+    { "etiqueta": "Online", "conteo": 521, "nota": "La mayoría busca estudiar a distancia." },
+    { "etiqueta": "Mejor pagada", "conteo": 389, "nota": "El sueldo es decisivo al elegir." },
+    { "etiqueta": "Gratis / con beca", "conteo": 86, "nota": "Gratuidad y becas pesan mucho." },
+    { "etiqueta": "A distancia", "conteo": 22, "nota": "Flexibilidad horaria." },
+    { "etiqueta": "Vespertino", "conteo": 14, "nota": "Para quienes trabajan." },
+    { "etiqueta": "Sin matemáticas", "conteo": 8, "nota": "Buscan carreras sin matemática." }
+  ],
+  "preguntas": [
+    { "pregunta": "¿Qué estudiar para trabajar en un banco?", "respuesta": "Carreras como Contador Auditor, Ingeniería Comercial y Administración tienen alta inserción en banca. Compáralas por empleabilidad e ingreso en nuestro buscador de carreras." },
+    { "pregunta": "¿Qué estudiar para trabajar desde casa?", "respuesta": "Áreas como Marketing Digital, Análisis de Datos, Diseño y Desarrollo de Software permiten trabajo remoto. Muchas se imparten en modalidad online en Chile." },
+    { "pregunta": "¿Dónde estudiar Gastronomía en Chile?", "respuesta": "Varios IP y CFT ofrecen Gastronomía a lo largo del país. Filtra por región, arancel y empleabilidad en el buscador de carreras de Elige Tu Futuro." },
+    { "pregunta": "¿Dónde estudiar Psicología en Chile?", "respuesta": "Psicología se imparte en numerosas universidades en todas las regiones. Compara aranceles, acreditación y empleabilidad antes de decidir." },
+    { "pregunta": "¿Se puede estudiar online en Chile?", "respuesta": "Sí. Muchas carreras técnicas y profesionales tienen modalidad online o a distancia. Es lo que más buscan los estudiantes en 2026." },
+    { "pregunta": "¿Cuáles son las carreras mejor pagadas en Chile?", "respuesta": "Suelen liderar las del área de la salud e ingenierías. Revisa el ingreso promedio al 4° año por carrera en nuestro buscador con datos del SIES/MINEDUC." }
+  ]
+}

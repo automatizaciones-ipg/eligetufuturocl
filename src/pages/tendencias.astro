@@ -1,0 +1,166 @@
+---
+// src/pages/tendencias.astro
+// Página de "Carreras en tendencia" basada en demanda REAL de búsqueda (Google
+// Autocomplete CL + Google Trends). Los datos vienen de Supabase (tablas
+// scraping_*), alimentadas por el panel admin oculto en /admin/tendencias.
+// Solo se lee la corrida marcada como "publicada" (tendencias_config), vía
+// RLS con el cliente anon — ver supabase/migrations/0001_scraping_tendencias.sql.
+export const prerender = false;
+
+import Layout from "../layouts/Layout.astro";
+import { faqSchema, breadcrumbSchema } from "../lib/seo";
+import { supabase } from "../../lib/supabase";
+
+type Carrera = { nombre: string; slug_busqueda: string; demanda: number; nivel: string; ejemplos: string[] };
+type Intencion = { etiqueta: string; conteo: number; nota: string | null };
+type Pregunta = { pregunta: string; respuesta: string };
+
+let carreras: Carrera[] = [];
+let intenciones: Intencion[] = [];
+let preguntas: Pregunta[] = [];
+let generado = new Date().toISOString();
+
+const { data: config } = await supabase
+  .from("tendencias_config")
+  .select("published_run_id")
+  .eq("id", 1)
+  .single();
+const runId = config?.published_run_id as string | undefined;
+
+if (runId) {
+  const [{ data: run }, { data: careerRows }, { data: intRows }, { data: qRows }] = await Promise.all([
+    supabase.from("scraping_runs").select("started_at").eq("id", runId).single(),
+    supabase
+      .from("scraping_careers")
+      .select("nombre_display,slug_busqueda,demanda,nivel,ejemplos")
+      .eq("run_id", runId)
+      .order("orden"),
+    supabase
+      .from("scraping_intenciones")
+      .select("etiqueta_display,conteo,nota")
+      .eq("run_id", runId)
+      .order("orden"),
+    // RLS ya filtra a preguntas aprobadas y con respuesta — todo lo que vuelve es publicable.
+    supabase.from("scraping_preguntas").select("pregunta,respuesta").eq("run_id", runId).order("orden"),
+  ]);
+
+  generado = run?.started_at ?? generado;
+  carreras = (careerRows ?? []).map((r) => ({
+    nombre: r.nombre_display,
+    slug_busqueda: r.slug_busqueda,
+    demanda: r.demanda,
+    nivel: r.nivel,
+    ejemplos: (r.ejemplos as string[]) ?? [],
+  }));
+  intenciones = (intRows ?? []).map((r) => ({
+    etiqueta: r.etiqueta_display,
+    conteo: r.conteo,
+    nota: r.nota,
+  }));
+  preguntas = (qRows ?? [])
+    .filter((r): r is { pregunta: string; respuesta: string } => Boolean(r.respuesta))
+    .map((r) => ({ pregunta: r.pregunta, respuesta: r.respuesta }));
+}
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Carreras en tendencia", url: "/tendencias" },
+  ]),
+  ...(preguntas.length
+    ? [faqSchema(preguntas.map((p) => ({ question: p.pregunta, answer: p.respuesta })))]
+    : []),
+];
+
+const title = "Carreras en tendencia en Chile 2026: las más buscadas";
+const description =
+  "Las carreras más buscadas en Chile 2026 según datos reales de búsqueda: psicología, derecho, enfermería, online y mejor pagadas. Compara dónde estudiar, aranceles y empleabilidad.";
+
+const buscar = (q: string) => `/herramientas/buscador?q=${encodeURIComponent(q)}`;
+const fechaFmt = new Date(generado).toLocaleDateString("es-CL", { month: "long", year: "numeric" });
+---
+
+<Layout title={title} description={description} canonical="/tendencias" type="website" jsonLd={jsonLd}>
+  <main class="mx-auto max-w-6xl px-4 py-10">
+
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-base-content/60 mb-4" aria-label="Migas de pan">
+      <a href="/" class="hover:text-primary">Inicio</a> <span class="mx-1">/</span>
+      <span class="text-base-content">Carreras en tendencia</span>
+    </nav>
+
+    <!-- Hero -->
+    <header class="mb-8">
+      <span class="inline-block text-xs font-semibold uppercase tracking-wide text-primary bg-primary/10 px-3 py-1 rounded-full">Datos de búsqueda · {fechaFmt}</span>
+      <h1 class="mt-3 text-3xl md:text-4xl font-extrabold text-base-content">Carreras en tendencia en Chile 2026</h1>
+      <p class="mt-3 text-base-content/70 max-w-2xl">
+        Esto es lo que <strong>más buscan los estudiantes en Chile</strong> según datos reales de búsqueda.
+        Compara cada carrera por <strong>dónde estudiar</strong>, arancel y empleabilidad con datos del SIES/MINEDUC.
+      </p>
+    </header>
+
+    <!-- Ranking de carreras -->
+    <section aria-labelledby="ranking" class="mb-12">
+      <h2 id="ranking" class="text-xl font-bold mb-4">🔥 Las carreras más buscadas</h2>
+      {carreras.length === 0 && (
+        <p class="text-base-content/60 text-sm">Estamos calculando las tendencias. Vuelve pronto.</p>
+      )}
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {carreras.map((c: any, i: number) => (
+          <a href={buscar(c.slug_busqueda)} class="group block rounded-2xl border border-base-300 bg-base-200/40 p-5 hover:border-primary hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+              <span class="text-xs text-base-content/50">#{i + 1}</span>
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{c.nivel}</span>
+            </div>
+            <h3 class="mt-1 text-lg font-bold group-hover:text-primary">{c.nombre}</h3>
+            <div class="mt-3">
+              <div class="flex justify-between text-[11px] text-base-content/50 mb-1"><span>Demanda de búsqueda</span><span>{c.demanda}/100</span></div>
+              <div class="h-2 bg-base-300 rounded-full overflow-hidden"><div class="h-full bg-primary" style={`width:${c.demanda}%`}></div></div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-1">
+              {c.ejemplos.map((e: string) => (<span class="text-[10px] bg-base-300/60 text-base-content/70 px-2 py-0.5 rounded-full">{e}</span>))}
+            </div>
+            <p class="mt-3 text-sm font-medium text-primary">Ver dónde estudiar →</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <!-- Intención -->
+    <section aria-labelledby="intencion" class="mb-12">
+      <h2 id="intencion" class="text-xl font-bold mb-1">🎯 Qué les importa al elegir</h2>
+      <p class="text-base-content/60 text-sm mb-4">Lo que más acompaña a las búsquedas de carreras en Chile.</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {intenciones.map((m: any) => (
+          <div class="rounded-xl border border-base-300 bg-base-200/40 p-4">
+            <div class="flex items-baseline justify-between"><span class="font-semibold">{m.etiqueta}</span><span class="text-xs text-base-content/40">{m.conteo} señales</span></div>
+            <p class="text-sm text-base-content/60 mt-1">{m.nota}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section aria-labelledby="faq" class="mb-12">
+      <h2 id="faq" class="text-xl font-bold mb-4">❓ Preguntas frecuentes</h2>
+      <div class="space-y-2">
+        {preguntas.map((p: any) => (
+          <details class="rounded-xl border border-base-300 bg-base-200/40 p-4">
+            <summary class="font-semibold cursor-pointer">{p.pregunta}</summary>
+            <p class="mt-2 text-base-content/70 text-sm">{p.respuesta}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="rounded-2xl bg-primary/10 border border-primary/20 p-6 text-center">
+      <h2 class="text-lg font-bold">¿No sabes qué estudiar?</h2>
+      <p class="text-base-content/70 text-sm mt-1 mb-4">Haz el test vocacional gratuito o explora todas las carreras e instituciones.</p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <a href="/herramientas/test-vocacional" class="btn btn-primary">Test vocacional gratis</a>
+        <a href="/herramientas/buscador" class="btn btn-outline">Buscar carreras</a>
+      </div>
+    </section>
+  </main>
+</Layout>

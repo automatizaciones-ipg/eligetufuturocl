@@ -13,7 +13,8 @@ import {
   BookOpen,
   Sparkles,
   Flame,
-  Trophy
+  Trophy,
+  Loader2
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import GenerandoLoader from "./GenerandoLoader";

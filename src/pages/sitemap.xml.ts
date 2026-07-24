@@ -7,6 +7,7 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
 import { SITE_URL } from "../lib/seo";
+import { esCodigoRutaValido } from "../utils/formatters";
 
 export const prerender = true;
 
@@ -45,7 +46,7 @@ async function fetchAll(table: string, column: string): Promise<string[]> {
       .select(column)
       .range(page * limit, (page + 1) * limit - 1);
     if (error || !data || data.length === 0) break;
-    for (const row of data as Record<string, unknown>[]) {
+    for (const row of data as unknown as Record<string, unknown>[]) {
       const v = row[column];
       if (v != null) out.push(String(v));
     }
@@ -72,9 +73,9 @@ export const GET: APIRoute = async () => {
       fetchAll("instituciones", "codigo_institucion"),
     ]);
 
-    for (const id of carreras)
+    for (const id of carreras.filter(esCodigoRutaValido))
       entries.push({ loc: `/carrera/${id}`, changefreq: "monthly", priority: 0.7 });
-    for (const id of instituciones)
+    for (const id of instituciones.filter(esCodigoRutaValido))
       entries.push({ loc: `/institucion/${id}`, changefreq: "monthly", priority: 0.6 });
   } catch {
     // Si Supabase no responde en build, igual emitimos las rutas estáticas.

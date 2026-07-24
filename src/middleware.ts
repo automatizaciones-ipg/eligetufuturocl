@@ -1,4 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
+import { ADMIN_SESSION_COOKIE, isValidSessionToken } from "./lib/admin/session";
 
 // ── Rate Limiter ──────────────────────────────────────────────────────────────
 // Límite: 10 peticiones POST a /api/ por IP por ventana de 1 minuto.
@@ -89,8 +90,33 @@ function applySecurityHeaders(response: Response): void {
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
+// ── Gate del panel admin oculto ─────────────────────────────────────────────
+// Protege /admin/** (páginas) y /api/admin/** (rutas) con una cookie de sesión
+// firmada. /admin/login y /api/admin/login quedan abiertas (son el propio
+// formulario de acceso). Ver src/lib/admin/session.ts.
+
+function isProtectedAdminRoute(pathname: string): boolean {
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAdminApi = pathname.startsWith("/api/admin/");
+  const isPublicAdminRoute = pathname === "/admin/login" || pathname === "/api/admin/login";
+  return (isAdminPage || isAdminApi) && !isPublicAdminRoute;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
+
+  if (isProtectedAdminRoute(url.pathname)) {
+    const token = context.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    if (!isValidSessionToken(token)) {
+      if (url.pathname.startsWith("/api/admin/")) {
+        return new Response(JSON.stringify({ ok: false, message: "No autorizado." }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return context.redirect("/admin/login");
+    }
+  }
 
   // Aplicar rate limiting solo a peticiones POST a /api/
   if (request.method === "POST" && url.pathname.startsWith("/api/")) {

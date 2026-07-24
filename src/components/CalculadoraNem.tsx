@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
-  Calculator, BookOpen, ChevronDown, Info, ArrowLeft, Search,
+  Calculator, ChevronDown, Info, ArrowLeft, Search,
   Scale, Loader2, GraduationCap, MapPin, Building, X, CheckCircle2,
-  AlertTriangle, Trash2, Landmark
+  AlertTriangle, Trash2, Landmark, XCircle
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { generarTipoInst, generarSiglaInstitucion, esCodigoRutaValido } from "../utils/formatters";
@@ -141,6 +141,8 @@ interface CarreraSimuladorUI {
   logoUrl: string;
   color: string;
   puntaje: PuntajeCalculado;
+  veredicto: Veredicto;              // v1: vs promedio de admitidos (SIES)
+  veredictoCorte: VeredictoCorte | null;  // Parte 2: vs corte real (DEMRE)
 }
 
 interface PuntajesEntrada {
@@ -151,6 +153,126 @@ interface PuntajesEntrada {
   matematica2?: number;
   historia?: number;
   ciencias?: number;
+}
+
+// Referencia de ingreso del cohorte 2025 (promedios de matrícula oficiales
+// SIES/MINEDUC), resuelta contra /data/referencia_ingreso.json. Join DIRECTO por
+// codigo_carrera (a diferencia de las ponderaciones, que cruzan por texto).
+// OJO: es un PROMEDIO de los admitidos, NO el corte / último seleccionado — por
+// eso el veredicto v1 dice "sobre/bajo el promedio", nunca "no alcanzas" (el
+// rojo "te faltan X pts" llega con el corte DEMRE, ver plan Parte 2).
+interface ReferenciaIngreso {
+  promedio_paes?: number;
+  promedio_nem?: number;   // escala 1-7 (nota), comparable al promedio de media del alumno
+  pct_paes?: string;
+}
+type MapaReferencia = Record<string, ReferenciaIngreso>;
+
+// Veredicto "¿cómo te comparás con los admitidos 2025?" por carrera.
+type EstadoVeredicto = "sobre" | "bajo" | "pendiente" | "sin_ref";
+interface Veredicto {
+  estado: EstadoVeredicto;
+  metric: "paes" | "nem" | null;   // qué señal se comparó
+  refValor: number | null;         // valor de referencia (promedio de admitidos)
+  tuValor: number | null;          // tu valor comparable
+  brecha: number | null;           // cuánto te falta para el promedio (>0), 0 si estás sobre
+}
+
+// Promedio simple de las PAES que el alumno realmente ingresó (las presentes en
+// puntajesEntrada según los switches activos). null si no ingresó ninguna.
+function promedioPaesAlumno(p: PuntajesEntrada): number | null {
+  const vals = [p.lenguaje, p.matematica, p.matematica2, p.historia, p.ciencias]
+    .filter((v): v is number => typeof v === "number" && v > 0);
+  if (vals.length === 0) return null;
+  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+}
+
+// Compara al alumno con la referencia de admitidos. Prefiere PAES (más
+// discriminante); si no hay PAES comparable, cae a NEM (nota 1-7). Nunca marca
+// "no alcanzas" — es un promedio, no un corte (ver ReferenciaIngreso).
+function computarVeredicto(
+  ref: ReferenciaIngreso | undefined,
+  tuPaes: number | null,
+  promedioMedia: number,
+): Veredicto {
+  if (!ref) return { estado: "sin_ref", metric: null, refValor: null, tuValor: null, brecha: null };
+
+  if (tuPaes !== null && typeof ref.promedio_paes === "number") {
+    const brecha = Math.round((ref.promedio_paes - tuPaes) * 10) / 10;
+    return { estado: brecha <= 0 ? "sobre" : "bajo", metric: "paes", refValor: ref.promedio_paes, tuValor: tuPaes, brecha: brecha > 0 ? brecha : 0 };
+  }
+  if (promedioMedia > 0 && typeof ref.promedio_nem === "number") {
+    const brecha = Math.round((ref.promedio_nem - promedioMedia) * 100) / 100;
+    return { estado: brecha <= 0 ? "sobre" : "bajo", metric: "nem", refValor: ref.promedio_nem, tuValor: promedioMedia, brecha: brecha > 0 ? brecha : 0 };
+  }
+  // Hay referencia, pero el alumno aún no ingresó un dato comparable.
+  return { estado: "pendiente", metric: null, refValor: ref.promedio_paes ?? ref.promedio_nem ?? null, tuValor: null, brecha: null };
+}
+
+// ============================================================================
+// CORTE DEMRE (último seleccionado ponderado) — Parte 2
+// ============================================================================
+// A diferencia de la referencia SIES (que es un PROMEDIO), el corte es el
+// puntaje del ÚLTIMO seleccionado del cohorte = el mínimo ponderado con que se
+// entró. Por eso acá SÍ corresponde el veredicto duro "te alcanza / no alcanza,
+// te faltan X pts" en rojo. Se resuelve contra /data/cortes_carreras.json con
+// el MISMO match difuso de 2 niveles que las ponderaciones (institución +
+// carrera [+ jornada + sede]), porque el dato DEMRE se cruza por texto.
+// Años que trackeamos para el histórico (del más viejo al más nuevo).
+const ANIOS_CORTE = [2024, 2025, 2026] as const;
+
+interface CorteCarrera {
+  corte_2024?: number | null;
+  corte_2025?: number | null;
+  corte_2026?: number | null;
+}
+interface MapaCortes {
+  preciso: Record<string, CorteCarrera>;
+  respaldo: Record<string, CorteCarrera>;
+}
+
+// Veredicto duro contra el corte real (rojo/verde). null cuando no hay corte
+// para la carrera o el alumno todavía no tiene un ponderado calculable.
+interface VeredictoCorte {
+  alcanza: boolean;
+  anioReciente: number;
+  corteReciente: number;
+  faltan: number;   // >0 si no alcanza el corte más reciente
+  parcial: boolean; // el ponderado del alumno aún está incompleto (faltan puntajes)
+  historico: { anio: number; corte: number; alcanza: boolean }[];
+}
+
+function resolverCorte(item: CarreraSupabaseRaw, mapa: MapaCortes | null): CorteCarrera | null {
+  if (!mapa || item.codigo_institucion === null) return null;
+  const nombreClean = limpiarTextoMatch(item.nombre_carrera);
+  const keyRespaldo = `${item.codigo_institucion}_${nombreClean}`;
+  const keyPreciso = `${keyRespaldo}_${limpiarTextoMatch(item.jornada)}_${limpiarTextoMatch(item.sede)}`;
+  return mapa.preciso[keyPreciso] ?? mapa.respaldo[keyRespaldo] ?? null;
+}
+
+// Compara el ponderado del alumno contra el corte real por año.
+function computarVeredictoCorte(
+  corte: CorteCarrera | null,
+  puntaje: PuntajeCalculado,
+): VeredictoCorte | null {
+  if (!corte || puntaje.sinFormula || puntaje.total <= 0) return null;
+  const historico: { anio: number; corte: number; alcanza: boolean }[] = [];
+  for (const anio of ANIOS_CORTE) {
+    const c = corte[`corte_${anio}` as keyof CorteCarrera];
+    if (typeof c === "number") {
+      historico.push({ anio, corte: c, alcanza: puntaje.total >= c });
+    }
+  }
+  if (historico.length === 0) return null;
+  const reciente = historico[historico.length - 1];
+  return {
+    alcanza: reciente.alcanza,
+    anioReciente: reciente.anio,
+    corteReciente: reciente.corte,
+    faltan: reciente.alcanza ? 0 : Math.round(reciente.corte - puntaje.total),
+    parcial: puntaje.parcial,
+    historico,
+  };
 }
 
 // ============================================================================
@@ -189,8 +311,17 @@ function calcularPuntajePonderado(
   return { total: Math.round(total), parcial, faltantes, otrosPct: carrera.ponderacion_otros || 0, sinFormula };
 }
 
-// Adapta una fila de Supabase a la UI del simulador
-function adaptarCarrera(item: CarreraPonderadaDB, puntajes: PuntajesEntrada, index: number): CarreraSimuladorUI {
+// Adapta una fila de Supabase a la UI del simulador. `referencia` y
+// `promedioMedia` alimentan el veredicto "¿cómo te comparás con los admitidos?".
+function adaptarCarrera(
+  item: CarreraPonderadaDB,
+  puntajes: PuntajesEntrada,
+  index: number,
+  referencia?: ReferenciaIngreso,
+  promedioMedia: number = 0,
+  corte?: CorteCarrera | null,
+): CarreraSimuladorUI {
+  const puntajeCalc = calcularPuntajePonderado(item, puntajes);
   const instObj = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
   const instNombre = instObj?.nombre || "Institución Desconocida";
   const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
@@ -216,14 +347,18 @@ function adaptarCarrera(item: CarreraPonderadaDB, puntajes: PuntajesEntrada, ind
     region: item.region || "No informada",
     arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "No informado",
     duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "No informada",
-    empleabilidad: item.empleabilidad_1er_anio ? `${item.empleabilidad_1er_anio}%` : "No informada",
+    // La BD guarda empleabilidad como fracción (0.898...) — misma convención
+    // de formato que formatoPorcentaje en CarreraDetalle.tsx.
+    empleabilidad: item.empleabilidad_1er_anio ? `${(item.empleabilidad_1er_anio * 100).toFixed(1)}%` : "No informada",
     acreditacion: item.acreditacion_carrera || "No informada",
     requisitoIngreso: item.requisito_ingreso,
     usaDemre: item.usa_demre,
     corteReferencial: item.puntaje_corte_referencial,
     logoUrl: logoUrl || fallbackLogo,
     color: PALETA_COLORES[index % PALETA_COLORES.length],
-    puntaje: calcularPuntajePonderado(item, puntajes),
+    puntaje: puntajeCalc,
+    veredicto: computarVeredicto(referencia, promedioPaesAlumno(puntajes), promedioMedia),
+    veredictoCorte: computarVeredictoCorte(corte ?? null, puntajeCalc),
   };
 }
 
@@ -241,19 +376,215 @@ const CAMPOS_SIMULADOR = `
 
 const RESULTADOS_INICIALES = 9;
 const RESULTADOS_INCREMENTO = 9;
+// Paginación de resultados: siempre se muestran 9 tarjetas por página (en vez
+// de acumular hacia abajo con "Cargar más"). `limite` sigue siendo el tamaño
+// de la ventana cruda que se trae de Supabase; la página visible es un slice
+// cliente-side de la lista ya filtrada/ordenada.
+const RESULTADOS_POR_PAGINA = 9;
 // Apenas el usuario tiene un NEM calculable, el orden por puntaje deja de ser
 // "reordenar los mismos 9 alfabéticos" y pasa a traer un universo más
 // representativo (ej. todas las variantes de "Enfermería" que matcheen el
 // filtro activo) para que el reordenamiento instantáneo tenga sentido real.
 const RESULTADOS_MINIMO_ORDENADO = 30;
 
+// Números de página a mostrar en la barra de paginación: primera, última y
+// una ventana alrededor de la actual, con "..." donde se salta un tramo.
+function rangoPaginas(actual: number, total: number): (number | "...")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const nums = new Set<number>([1, total, actual - 1, actual, actual + 1]);
+  const orden = [...nums].filter(n => n >= 1 && n <= total).sort((a, b) => a - b);
+  const salida: (number | "...")[] = [];
+  let previo = 0;
+  for (const n of orden) {
+    if (previo && n - previo > 1) salida.push("...");
+    salida.push(n);
+    previo = n;
+  }
+  return salida;
+}
+
+// Extrae el número de un string ya formateado para la UI ("$1.234.567",
+// "85%", "10 Semestres") — usado por el comparador para destacar el mejor
+// valor de cada fila. "No informado"/"No informada" → null (no comparable).
+function numeroDe(txt: string): number | null {
+  const digitos = txt.replace(/\D/g, "");
+  return digitos ? Number(digitos) : null;
+}
+
+// Estado de los 5 puntajes PAES (strings tal cual los tipea el usuario).
+type PaesState = { lenguaje: string; matematica: string; matematica2: string; historia: string; ciencias: string };
+type PaesKey = keyof PaesState;
+
+// Sección opcional de puntajes PAES con switch on/off. Definida a nivel de
+// módulo (no dentro del componente) para que su identidad sea estable y React
+// no la remonte en cada render — si no, los inputs perderían el foco al tipear.
+function SeccionPaes({
+  numero, titulo, subtitulo, activo, onToggle, campos, paes, onInput,
+}: {
+  numero: number;
+  titulo: string;
+  subtitulo: string;
+  activo: boolean;
+  onToggle: () => void;
+  campos: { id: PaesKey; label: string }[];
+  paes: PaesState;
+  onInput: (e: React.ChangeEvent<HTMLInputElement>, key: PaesKey) => void;
+}) {
+  return (
+    <section className={`bg-white rounded-[2rem] shadow-sm border overflow-hidden transition-colors ${activo ? 'border-[#6544FF]/30' : 'border-gray-100'}`}>
+      <div className="p-6 flex items-start gap-4">
+        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 font-black text-lg transition-colors ${activo ? 'bg-[#6544FF] text-white shadow-sm' : 'bg-gray-100 text-gray-400'}`}>{numero}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl md:text-2xl font-bold text-[#1A1528]">{titulo}</h2>
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Opcional</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">{subtitulo}</p>
+        </div>
+        {/* Switch */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={activo}
+          aria-label={`Activar ${titulo}`}
+          onClick={onToggle}
+          className={`relative w-12 h-7 rounded-full shrink-0 mt-1 transition-colors cursor-pointer ${activo ? 'bg-[#6544FF]' : 'bg-gray-300'}`}
+        >
+          <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${activo ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+
+      {activo && (
+        <div className="px-6 pb-6 border-t border-gray-100 bg-[#fafafa]/50">
+          <p className="text-xs text-gray-400 my-4">
+            Ingresa solo los puntajes que ya tengas (100 a 1000 pts). Los que dejes vacíos se marcan como pendientes.
+          </p>
+          <div className={`grid grid-cols-2 ${campos.length > 2 ? 'md:grid-cols-3' : ''} gap-4`}>
+            {campos.map((p) => (
+              <div key={p.id} className="space-y-2">
+                <label className="text-xs font-semibold text-gray-700 ml-1">{p.label}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={paes[p.id]}
+                  onChange={(e) => onInput(e, p.id)}
+                  placeholder="Ej: 650"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 font-bold text-[#1A1528] focus:outline-none focus:ring-2 focus:ring-[#6544FF]/50 placeholder:font-normal placeholder:text-gray-300"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Badge "¿cómo te comparás con los admitidos 2025?" que va en cada tarjeta.
+// v1 (base SIES): compara contra el PROMEDIO de matrícula, así que usa verde
+// (sobre) / ámbar (bajo) — NUNCA rojo "no alcanzas", porque un promedio no es
+// un corte. El rojo llega en la Parte 2 con el corte real DEMRE.
+function VeredictoBadge({ v }: { v: Veredicto }) {
+  if (v.estado === "sin_ref") {
+    return (
+      <p className="text-[11px] text-gray-400 font-medium mb-4 flex items-center gap-1.5">
+        <Info className="w-3.5 h-3.5 shrink-0" />
+        Sin referencia de ingreso 2025 para esta carrera.
+      </p>
+    );
+  }
+
+  const esPaes = v.metric === "paes";
+  // "promedio de notas" (no "NEM") para el metric de nota: evita confundir con
+  // el "Puntaje NEM" 100-1000 que muestra el panel de resultados de arriba.
+  const queMetrica = esPaes ? "promedio PAES" : "promedio de notas";
+  const fmtRef = esPaes ? v.refValor?.toFixed(0) : v.refValor?.toFixed(1);
+  const fmtTu = esPaes ? v.tuValor?.toFixed(0) : v.tuValor?.toFixed(1);
+
+  if (v.estado === "pendiente") {
+    return (
+      <div className="rounded-xl px-3 py-2.5 mb-4 bg-slate-50 border border-slate-200">
+        <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+          Admitidos 2025 · {queMetrica} {fmtRef}
+        </p>
+        <p className="text-[10px] text-slate-400 mt-0.5">Ingresa tus puntajes arriba para compararte.</p>
+      </div>
+    );
+  }
+
+  if (v.estado === "sobre") {
+    return (
+      <div className="rounded-xl px-3 py-2.5 mb-4 bg-emerald-50 border border-emerald-200">
+        <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          Sobre el promedio de admitidos
+        </p>
+        <p className="text-[10px] text-emerald-600/90 mt-0.5">
+          Tu {queMetrica} {fmtTu} · admitidos 2025 {fmtRef}
+        </p>
+      </div>
+    );
+  }
+
+  // estado "bajo"
+  const brechaTxt = esPaes ? `${v.brecha?.toFixed(0)} pts` : `${v.brecha?.toFixed(1)} de nota`;
+  return (
+    <div className="rounded-xl px-3 py-2.5 mb-4 bg-amber-50 border border-amber-200">
+      <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        Bajo el promedio de admitidos
+      </p>
+      <p className="text-[10px] text-amber-600/90 mt-0.5">
+        Te faltan {brechaTxt} · tu {queMetrica} {fmtTu} vs {fmtRef}
+      </p>
+    </div>
+  );
+}
+
+// Veredicto DURO contra el corte real DEMRE (Parte 2): rojo si no alcanzas el
+// último seleccionado, verde si sí, + histórico por año coloreado. Se muestra
+// en vez del badge de promedio cuando hay corte para la carrera.
+function VeredictoCorteBadge({ v, tuPuntaje }: { v: VeredictoCorte; tuPuntaje: number }) {
+  const alcanza = v.alcanza;
+  return (
+    <div className={`rounded-xl px-3 py-3 mb-4 border ${alcanza ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+      <div className="flex items-start gap-1.5">
+        {alcanza
+          ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+          : <XCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />}
+        <div className="min-w-0">
+          <p className={`text-xs font-bold ${alcanza ? "text-emerald-700" : "text-rose-700"}`}>
+            {alcanza ? "Te alcanza" : `No alcanzas — te faltan ${v.faltan} pts`}
+          </p>
+          <p className={`text-[10px] mt-0.5 ${alcanza ? "text-emerald-600/90" : "text-rose-600/90"}`}>
+            Tu {tuPuntaje} vs último seleccionado {v.corteReciente} (Adm. {v.anioReciente}){v.parcial ? " · estimado, faltan puntajes" : ""}
+          </p>
+        </div>
+      </div>
+      {/* Histórico de cortes por año, coloreado según si tu puntaje alcanzaba */}
+      <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+        {v.historico.map((h) => (
+          <div key={h.anio} className={`rounded-lg text-center py-1 border-t-2 ${h.alcanza ? "border-emerald-400 bg-emerald-50/60" : "border-rose-400 bg-rose-50/60"}`}>
+            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Adm. {h.anio}</div>
+            <div className={`text-xs font-black ${h.alcanza ? "text-emerald-700" : "text-rose-700"}`}>{h.corte}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CalculadoraNem() {
   // --- NOTAS / NEM / RANKING (existente) ---
   const [notas, setNotas] = useState({ n1: "", n2: "", n3: "", n4: "" });
   const [resultados, setResultados] = useState({ promedio: 0, nem: 0, ranking: 0 });
 
-  // --- PAES (opcional) ---
-  const [paesActivo, setPaesActivo] = useState(false);
+  // --- PAES (opcional, dos secciones con switch independiente) ---
+  // Sección 2: pruebas obligatorias del sistema (Comp. Lectora + Matemática 1).
+  // Sección 3: pruebas electivas (Matemática 2 + Historia + Ciencias).
+  const [paesObligatoriasActivo, setPaesObligatoriasActivo] = useState(false);
+  const [paesElectivasActivo, setPaesElectivasActivo] = useState(false);
   const [paes, setPaes] = useState({ lenguaje: "", matematica: "", matematica2: "", historia: "", ciencias: "" });
 
   // --- BUSCADOR DE CARRERAS ---
@@ -263,6 +594,17 @@ export default function CalculadoraNem() {
   const [listaRegiones, setListaRegiones] = useState<string[]>([]);
   const [dropdownRegionAbierto, setDropdownRegionAbierto] = useState(false);
   const [limite, setLimite] = useState(RESULTADOS_INICIALES);
+  // Página visible (1-based). Cambiar de búsqueda/filtro siempre vuelve a la 1.
+  const [pagina, setPagina] = useState(1);
+  // Filtro por cohorte: muestra solo carreras donde el alumno está SOBRE el
+  // promedio de admitidos 2025 (veredicto === "sobre"). Se aplica cliente-side
+  // sobre la lista ya adaptada; la auto-carga de abajo rellena si queda corta.
+  const [soloAlcanzo, setSoloAlcanzo] = useState(false);
+  // Filtro "solo carreras con corte real": la búsqueda normal trae ~limite
+  // carreras por nombre y las universidades con corte (pocas) pueden no
+  // surfacear. Este toggle consulta Supabase restringido a las instituciones
+  // que SÍ tienen corte, para que sus veredictos rojo/verde se vean.
+  const [soloConCorte, setSoloConCorte] = useState(false);
   // Datos crudos de Supabase para la búsqueda/página actual (solo cambian por
   // búsqueda/filtro/paginación, NUNCA por notas o PAES — el puntaje se calcula
   // 100% en el cliente para que se sienta instantáneo mientras escribes).
@@ -271,7 +613,10 @@ export default function CalculadoraNem() {
   // usuario ya agregó al comparador aunque cambie de búsqueda después.
   const [rawPorId, setRawPorId] = useState<Map<number, CarreraSupabaseRaw>>(new Map());
   const [totalResultados, setTotalResultados] = useState(0);
-  const [cargando, setCargando] = useState(false);
+  // Parte en true: la primera consulta SIEMPRE corre al montar, y así el HTML
+  // estático (SSR/pre-hidratación) muestra el spinner en vez de un "No
+  // encontramos carreras" falso mientras llegan los primeros datos.
+  const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(false);
   // IDs de las carreras IPG/U. Autónoma priorizadas por MODO EXPLORAR (ver
   // buscarCarreras). Muchas de estas no matchean con el JSON de ponderaciones
@@ -282,6 +627,14 @@ export default function CalculadoraNem() {
   // STOPGAP: JSON de ponderaciones SIES (ver arriba). null mientras carga o
   // si no está disponible — resolverPonderacion degrada a "sin fórmula".
   const [ponderacionesMapa, setPonderacionesMapa] = useState<MapaPonderaciones | null>(null);
+  // Referencia de ingreso 2025 (promedios de matrícula SIES), keyed por
+  // codigo_carrera. null mientras carga o si falla — el veredicto degrada a
+  // "sin referencia".
+  const [referenciaMapa, setReferenciaMapa] = useState<MapaReferencia | null>(null);
+  // Cortes DEMRE (último seleccionado ponderado por año), match difuso
+  // institución+carrera. null mientras carga o si no existe el JSON todavía —
+  // el veredicto de corte degrada y cae al de promedio SIES.
+  const [cortesMapa, setCortesMapa] = useState<MapaCortes | null>(null);
 
   // --- COMPARADOR (máx. 3, guarda solo el id — el resto se recalcula en vivo) ---
   const [comparandoIds, setComparandoIds] = useState<number[]>([]);
@@ -353,13 +706,13 @@ export default function CalculadoraNem() {
   const puntajesEntrada: PuntajesEntrada = useMemo(() => ({
     nem: resultados.nem,
     ranking: resultados.ranking,
-    lenguaje: paesActivo ? parsePuntajePaes(paes.lenguaje) : undefined,
-    matematica: paesActivo ? parsePuntajePaes(paes.matematica) : undefined,
-    matematica2: paesActivo ? parsePuntajePaes(paes.matematica2) : undefined,
-    historia: paesActivo ? parsePuntajePaes(paes.historia) : undefined,
-    ciencias: paesActivo ? parsePuntajePaes(paes.ciencias) : undefined,
+    lenguaje: paesObligatoriasActivo ? parsePuntajePaes(paes.lenguaje) : undefined,
+    matematica: paesObligatoriasActivo ? parsePuntajePaes(paes.matematica) : undefined,
+    matematica2: paesElectivasActivo ? parsePuntajePaes(paes.matematica2) : undefined,
+    historia: paesElectivasActivo ? parsePuntajePaes(paes.historia) : undefined,
+    ciencias: paesElectivasActivo ? parsePuntajePaes(paes.ciencias) : undefined,
   }), [
-    resultados.nem, resultados.ranking, paesActivo,
+    resultados.nem, resultados.ranking, paesObligatoriasActivo, paesElectivasActivo,
     paes.lenguaje, paes.matematica, paes.matematica2, paes.historia, paes.ciencias,
   ]);
 
@@ -404,10 +757,56 @@ export default function CalculadoraNem() {
     return () => { cancelado = true; };
   }, []);
 
+  // Carga UNA vez la referencia de ingreso 2025 (promedios de matrícula SIES,
+  // ver src/datos_et/exportar_referencia_ingreso_json.py). Keyed por
+  // codigo_carrera → lookup directo. No bloqueante; si falla, el veredicto
+  // degrada a "sin referencia".
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/data/referencia_ingreso.json')
+      .then(r => (r.ok ? r.json() : null))
+      .then((mapa: MapaReferencia | null) => {
+        if (!cancelado && mapa) setReferenciaMapa(mapa);
+      })
+      .catch(() => { /* sin referencia — degrada con gracia */ });
+    return () => { cancelado = true; };
+  }, []);
+
+  // Carga UNA vez los cortes DEMRE (último seleccionado por año). El JSON puede
+  // no existir todavía (Parte 2 aún sin poblar) → 404 → degrada al veredicto de
+  // promedio SIES. Ver src/datos_et/exportar_cortes_json.py.
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/data/cortes_carreras.json')
+      .then(r => (r.ok ? r.json() : null))
+      .then((mapa: MapaCortes | null) => {
+        if (!cancelado && mapa) setCortesMapa(mapa);
+      })
+      .catch(() => { /* sin cortes — usa el veredicto de promedio */ });
+    return () => { cancelado = true; };
+  }, []);
+
+  // Códigos de institución que tienen AL MENOS un corte (derivados del JSON de
+  // cortes). Alimenta el toggle "solo con corte" para restringir la consulta.
+  const institucionesConCorte = useMemo(() => {
+    const set = new Set<number>();
+    if (cortesMapa) {
+      for (const key of [...Object.keys(cortesMapa.preciso), ...Object.keys(cortesMapa.respaldo)]) {
+        const cod = Number(key.split("_")[0]);
+        if (!Number.isNaN(cod)) set.add(cod);
+      }
+    }
+    return set;
+  }, [cortesMapa]);
+
   // Solo consulta Supabase por búsqueda/filtro/región/paginación — las notas y
   // los puntajes PAES NUNCA disparan una consulta nueva, se recalculan en el
   // cliente (ver `carreras` más abajo) para que la respuesta sea instantánea.
   const buscarCarrerasSeq = useRef(0);
+  // Última ventana (`limite`) cuyo fetch YA terminó. Permite distinguir "los
+  // datos en pantalla corresponden al limite actual" de "hay un fetch en
+  // camino por un limite recién subido" (ver ventanaCompleta más abajo).
+  const limiteFetcheado = useRef(0);
   const buscarCarreras = useCallback(async () => {
     // Esta callback se recrea cuando cambia cualquiera de sus dependencias, y
     // el efecto de más abajo dispara una corrida nueva por cada cambio. Sin
@@ -425,7 +824,7 @@ export default function CalculadoraNem() {
       // hay NEM real, esto se apaga solo y pasa a mandar el puntaje ponderado
       // real (ver `carreras` más abajo).
       const modoExplorar =
-        busqueda.trim().length < 3 && tipoFiltro === "Todos" && regionFiltro === "todas" && !tieneNem;
+        busqueda.trim().length < 3 && tipoFiltro === "Todos" && regionFiltro === "todas" && !tieneNem && !soloConCorte;
 
       if (modoExplorar) {
         const { count } = await supabase
@@ -499,6 +898,11 @@ export default function CalculadoraNem() {
       if (regionFiltro !== "todas") {
         query = query.eq('region', regionFiltro);
       }
+      // "Solo con corte": restringe a las instituciones que tienen corte, para
+      // que sus carreras (pocas) surfaceen en vez de perderse en el tope.
+      if (soloConCorte && institucionesConCorte.size > 0) {
+        query = query.in('codigo_institucion', Array.from(institucionesConCorte));
+      }
 
       const { data, count, error } = await query
         .order('nombre_carrera', { ascending: true })
@@ -522,9 +926,12 @@ export default function CalculadoraNem() {
       setErrorCarga(true);
       setRawCarreras([]);
     } finally {
-      if (esVigente()) setCargando(false);
+      if (esVigente()) {
+        setCargando(false);
+        limiteFetcheado.current = limite;
+      }
     }
-  }, [busqueda, tipoFiltro, regionFiltro, limite, tieneNem]);
+  }, [busqueda, tipoFiltro, regionFiltro, limite, tieneNem, soloConCorte, institucionesConCorte]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => { buscarCarreras(); }, 300);
@@ -545,14 +952,23 @@ export default function CalculadoraNem() {
   // primero, no solo alfabéticamente.
   const carreras = useMemo(() => {
     const adaptadas = rawCarreras.map((item, i) =>
-      adaptarCarrera({ ...item, ...resolverPonderacion(item, ponderacionesMapa) }, puntajesEntrada, i)
+      adaptarCarrera(
+        { ...item, ...resolverPonderacion(item, ponderacionesMapa) },
+        puntajesEntrada, i,
+        referenciaMapa?.[item.codigo_carrera], resultados.promedio,
+        resolverCorte(item, cortesMapa),
+      )
     );
     // Las priorizadas (IPG/UA de modo explorar) se muestran aunque no tengan
     // fórmula conocida — es una regla de negocio explícita, no un resultado
     // real de búsqueda como en modoBusqueda.
-    const visibles = modoBusqueda
+    let visibles = modoBusqueda
       ? adaptadas
       : adaptadas.filter(c => !c.puntaje.sinFormula || prioridadIds.has(c.id));
+    // "Solo con corte": deja solo las que tienen corte real (universidades).
+    if (soloConCorte) visibles = visibles.filter(c => c.veredictoCorte !== null);
+    // Filtro por cohorte (1d): solo carreras donde estás sobre el promedio.
+    if (soloAlcanzo) visibles = visibles.filter(c => c.veredicto.estado === "sobre");
     if (puntajesEntrada.nem <= 0) return visibles;
     return [...visibles].sort((a, b) => {
       // Las carreras sin fórmula oficial conocida siempre van al final —
@@ -563,23 +979,58 @@ export default function CalculadoraNem() {
       if (sinFormulaA !== sinFormulaB) return sinFormulaA - sinFormulaB;
       return b.puntaje.total - a.puntaje.total || a.nombre.localeCompare(b.nombre);
     });
-  }, [rawCarreras, puntajesEntrada, ponderacionesMapa, modoBusqueda, prioridadIds]);
+  }, [rawCarreras, puntajesEntrada, ponderacionesMapa, referenciaMapa, cortesMapa, resultados.promedio, modoBusqueda, prioridadIds, soloAlcanzo, soloConCorte]);
 
-  // Fuera del modo búsqueda, filtrar "sin fórmula" puede dejar una página casi
-  // vacía si por mala suerte el tramo alfabético fetcheado tiene pocos matches
-  // (~32-64% de las carreras tiene ponderación conocida, no todas). Mientras
-  // haya menos de una página completa visible Y todavía queden filas crudas
-  // por traer, se pide más automáticamente — sin esto, "Todos"/"U"/"IP"/"CFT"
-  // podrían mostrar 2 o 3 tarjetas sueltas en vez de una página llena.
-  // Tope duro (no depende de totalResultados, que puede ser ~10.000): sin él,
-  // una racha de mala suerte reintenta sin parar y satura de renders.
-  const LIMITE_MAXIMO_AUTOCARGA = RESULTADOS_INICIALES * 6;
+  // ── PAGINACIÓN ─────────────────────────────────────────────────────────
+  // La página visible es un slice cliente-side de `carreras` (ya filtrada y
+  // ordenada). Para que la página actual siempre pueda llenarse, la ventana
+  // cruda (`limite`) se agranda sola mientras falten tarjetas visibles y
+  // queden filas por traer. Fuera del modo búsqueda el filtro "sin fórmula"
+  // descarta filas (~32-64% matchea), por eso el objetivo se persigue con un
+  // tope duro proporcional a la página — sin él, una racha de mala suerte
+  // reintentaría sin parar y saturaría de renders/consultas.
+  const objetivoVisibles = pagina * RESULTADOS_POR_PAGINA;
+  const capAutocarga = Math.min(objetivoVisibles * 6, 600);
+  // true cuando las filas crudas ya alcanzaron la ventana pedida — es decir,
+  // NO hay un fetch pendiente por un `limite` recién subido. Crítico: el fetch
+  // se dispara con debounce de 300ms y `cargando` recién se prende ahí; sin
+  // esta guarda, los efectos de abajo re-actúan durante esa ventana con datos
+  // viejos (subiendo `limite` hasta el tope y gatillando un snap-back falso a
+  // la página 1).
+  const ventanaCompleta =
+    limiteFetcheado.current >= limite && rawCarreras.length >= Math.min(limite, totalResultados);
   useEffect(() => {
-    if (modoBusqueda || cargando || errorCarga) return;
-    if (carreras.length < RESULTADOS_INICIALES && limite < Math.min(totalResultados, LIMITE_MAXIMO_AUTOCARGA)) {
-      setLimite(l => Math.min(l + RESULTADOS_INCREMENTO, totalResultados, LIMITE_MAXIMO_AUTOCARGA));
+    if (cargando || errorCarga || !ventanaCompleta) return;
+    if (carreras.length < objetivoVisibles && limite < Math.min(totalResultados, capAutocarga)) {
+      // Salta directo al objetivo (páginas profundas en modo búsqueda no
+      // necesitan N roundtrips de a 9) y de ahí crece por incrementos.
+      setLimite(l => Math.min(Math.max(l + RESULTADOS_INCREMENTO, objetivoVisibles), totalResultados, capAutocarga));
     }
-  }, [modoBusqueda, cargando, errorCarga, carreras.length, limite, totalResultados]);
+  }, [cargando, errorCarga, ventanaCompleta, carreras.length, limite, totalResultados, objetivoVisibles, capAutocarga]);
+
+  // Si el usuario quedó parado en una página que ya no existe (cambió el
+  // universo de resultados y no hay más filas que traer), vuelve a la última
+  // página real en vez de mostrar una grilla vacía.
+  useEffect(() => {
+    if (cargando || errorCarga || !ventanaCompleta || pagina === 1) return;
+    const sinMasDatos = limite >= Math.min(totalResultados, capAutocarga);
+    if (sinMasDatos && carreras.length <= (pagina - 1) * RESULTADOS_POR_PAGINA) {
+      setPagina(Math.max(1, Math.ceil(carreras.length / RESULTADOS_POR_PAGINA)));
+    }
+  }, [cargando, errorCarga, ventanaCompleta, pagina, limite, totalResultados, capAutocarga, carreras.length]);
+
+  // En modo búsqueda (sin toggles cliente-side) la lista visible es 1:1 con
+  // las filas de Supabase → el total de páginas es exacto. Con filtros que
+  // esconden filas en el cliente solo conocemos las páginas ya materializadas,
+  // más una tentativa mientras queden filas crudas por traer.
+  const totalPaginasExactas = modoBusqueda && !soloAlcanzo && !soloConCorte
+    ? Math.max(1, Math.ceil(totalResultados / RESULTADOS_POR_PAGINA))
+    : null;
+  const paginasConocidas = Math.max(1, Math.ceil(carreras.length / RESULTADOS_POR_PAGINA));
+  const quedanFilasPorTraer = limite < totalResultados;
+  const totalPaginas = totalPaginasExactas ?? (quedanFilasPorTraer ? paginasConocidas + 1 : paginasConocidas);
+  const hayPaginaSiguiente = pagina < totalPaginas;
+  const carrerasPagina = carreras.slice((pagina - 1) * RESULTADOS_POR_PAGINA, pagina * RESULTADOS_POR_PAGINA);
 
   // Comparador: recalculado en vivo desde la cache por id, así si el usuario
   // edita sus notas DESPUÉS de armar el comparador, los puntajes mostrados
@@ -588,8 +1039,26 @@ export default function CalculadoraNem() {
     return comparandoIds
       .map(id => rawPorId.get(id))
       .filter((item): item is CarreraSupabaseRaw => !!item)
-      .map((item, i) => adaptarCarrera({ ...item, ...resolverPonderacion(item, ponderacionesMapa) }, puntajesEntrada, i));
-  }, [comparandoIds, rawPorId, puntajesEntrada, ponderacionesMapa]);
+      .map((item, i) => adaptarCarrera(
+        { ...item, ...resolverPonderacion(item, ponderacionesMapa) },
+        puntajesEntrada, i,
+        referenciaMapa?.[item.codigo_carrera], resultados.promedio,
+        resolverCorte(item, cortesMapa),
+      ));
+  }, [comparandoIds, rawPorId, puntajesEntrada, ponderacionesMapa, referenciaMapa, cortesMapa, resultados.promedio]);
+
+  // Todo cambio de búsqueda/filtro reinicia la ventana cruda Y la página.
+  const reiniciarPaginacion = () => {
+    setLimite(RESULTADOS_INICIALES);
+    setPagina(1);
+  };
+
+  // Ancla para volver al inicio de la sección de resultados al cambiar de página.
+  const resultadosRef = useRef<HTMLDivElement>(null);
+  const cambiarPagina = (p: number) => {
+    setPagina(p);
+    resultadosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const toggleComparar = (carrera: CarreraSimuladorUI) => {
     setComparandoIds(prev => {
@@ -607,6 +1076,42 @@ export default function CalculadoraNem() {
   };
 
   const hayCorteEnComparador = comparando.some(c => c.corteReferencial !== null);
+
+  // Índice de la carrera con el mejor valor de una fila del comparador.
+  // Devuelve -1 (nadie destacado) si hay menos de 2 valores comparables —
+  // "mejor" solo tiene sentido cuando efectivamente se compara contra algo.
+  const mejorEn = (vals: (number | null)[], modo: "max" | "min"): number => {
+    let mejorIdx = -1;
+    let mejorVal: number | null = null;
+    vals.forEach((v, i) => {
+      if (v === null) return;
+      if (mejorVal === null || (modo === "max" ? v > mejorVal : v < mejorVal)) {
+        mejorVal = v;
+        mejorIdx = i;
+      }
+    });
+    const comparables = vals.filter((v): v is number => v !== null);
+    // Nada que destacar si hay menos de 2 valores o si el mejor está empatado
+    // (marcar "mejor" un 10 semestres contra otros dos de 10 sería engañoso).
+    if (comparables.length < 2 || comparables.filter(v => v === mejorVal).length > 1) return -1;
+    return mejorIdx;
+  };
+  const idxMejorPuntaje = mejorEn(comparando.map(c => (c.puntaje.sinFormula || c.puntaje.total <= 0) ? null : c.puntaje.total), "max");
+  const idxMejorArancel = mejorEn(comparando.map(c => numeroDe(c.arancel)), "min");
+  const idxMejorDuracion = mejorEn(comparando.map(c => numeroDe(c.duracion)), "min");
+  const idxMejorEmpleabilidad = mejorEn(comparando.map(c => numeroDe(c.empleabilidad)), "max");
+
+  // Celda del comparador que destaca en verde el mejor valor de su fila.
+  const CeldaComparador = ({ valor, esMejor }: { valor: string; esMejor: boolean }) => (
+    <td className="py-3 px-3 text-sm font-semibold text-gray-700">
+      {esMejor ? (
+        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-2 py-1 font-bold">
+          {valor}
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+        </span>
+      ) : valor}
+    </td>
+  );
 
   return (
     <div className="min-h-screen bg-[#F4F5F9] text-gray-800 font-sans selection:bg-[#7C3AED] selection:text-white pb-20">
@@ -658,18 +1163,19 @@ export default function CalculadoraNem() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-          {/* COLUMNA IZQUIERDA - FORMULARIO */}
-          <div className="lg:col-span-7 space-y-6">
+          {/* COLUMNA IZQUIERDA - FORMULARIO (3 secciones ordenadas) */}
+          <div className="lg:col-span-7 space-y-5">
 
-            {/* Notas */}
-            <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-[#6544FF]/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-6 h-6 text-[#6544FF]" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-[#1A1528]">Tus Notas de Media</h2>
-                  <p className="text-sm text-gray-500">Ingresa tus promedios anuales finales.</p>
+            {/* ── SECCIÓN 1: NOTAS (obligatoria) ─────────────────────────── */}
+            <section className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-11 h-11 rounded-2xl bg-[#6544FF] text-white flex items-center justify-center shrink-0 font-black text-lg shadow-sm">1</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl md:text-2xl font-bold text-[#1A1528]">Tus notas de media</h2>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[#6544FF]/10 text-[#6544FF] px-2 py-0.5 rounded-full">Obligatorio</span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-0.5">Con esto calculamos tu <strong className="font-semibold text-gray-600">NEM</strong> y <strong className="font-semibold text-gray-600">Ranking</strong>. Ingresa tus promedios anuales finales.</p>
                 </div>
               </div>
 
@@ -693,55 +1199,38 @@ export default function CalculadoraNem() {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            {/* PAES (opcional) */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => setPaesActivo(!paesActivo)}
-                aria-expanded={paesActivo}
-                className="w-full p-6 flex items-center justify-between bg-white hover:bg-[#fafafa] transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <GraduationCap className={`w-5 h-5 transition-colors duration-300 ${paesActivo ? 'text-[#6544FF]' : 'text-gray-400'}`} />
-                  <div className="text-left">
-                    <span className="font-bold text-[#1A1528] block">Agregar puntajes PAES</span>
-                    <span className="text-xs text-gray-400">Opcional — para calcular tu puntaje ponderado por carrera</span>
-                  </div>
-                </div>
-                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${paesActivo ? 'rotate-180' : ''}`} />
-              </button>
+            {/* ── SECCIÓN 2: PAES OBLIGATORIAS (opcional, switch) ────────── */}
+            <SeccionPaes
+              numero={2}
+              titulo="Puntajes PAES obligatorias"
+              subtitulo="Competencia Lectora y Matemática 1 (M1) — las rinde todo el mundo."
+              activo={paesObligatoriasActivo}
+              onToggle={() => setPaesObligatoriasActivo(v => !v)}
+              campos={[
+                { id: "lenguaje", label: "Comp. Lectora" },
+                { id: "matematica", label: "Matemática 1 (M1)" },
+              ]}
+              paes={paes}
+              onInput={handlePaesInput}
+            />
 
-              {paesActivo && (
-                <div className="px-6 pb-6 border-t border-gray-100 bg-[#fafafa]/50">
-                  <p className="text-sm text-gray-500 my-4">
-                    Ingresa solo los puntajes que ya tengas (100 a 1000 pts). Los que dejes vacíos
-                    se marcarán como pendientes en el simulador de carreras.
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[
-                      { id: "lenguaje", label: "Comp. Lectora" },
-                      { id: "matematica", label: "Matemática 1" },
-                      { id: "matematica2", label: "Matemática 2" },
-                      { id: "historia", label: "Historia y Cs. Sociales" },
-                      { id: "ciencias", label: "Ciencias" },
-                    ].map((p) => (
-                      <div key={p.id} className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-700 ml-1">{p.label}</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={paes[p.id as keyof typeof paes]}
-                          onChange={(e) => handlePaesInput(e, p.id as keyof typeof paes)}
-                          placeholder="Ej: 650"
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 font-bold text-[#1A1528] focus:outline-none focus:ring-2 focus:ring-[#6544FF]/50 placeholder:font-normal placeholder:text-gray-300"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* ── SECCIÓN 3: PAES ELECTIVAS (opcional, switch) ──────────── */}
+            <SeccionPaes
+              numero={3}
+              titulo="Puntajes PAES electivas"
+              subtitulo="Matemática 2, Historia o Ciencias — solo las que rendiste según tu carrera."
+              activo={paesElectivasActivo}
+              onToggle={() => setPaesElectivasActivo(v => !v)}
+              campos={[
+                { id: "matematica2", label: "Matemática 2 (M2)" },
+                { id: "historia", label: "Historia y Cs. Sociales" },
+                { id: "ciencias", label: "Ciencias" },
+              ]}
+              paes={paes}
+              onInput={handlePaesInput}
+            />
           </div>
 
           {/* COLUMNA DERECHA - RESULTADOS */}
@@ -781,14 +1270,14 @@ export default function CalculadoraNem() {
                   </div>
                 </div>
 
-                {paesActivo && (
+                {(paesObligatoriasActivo || paesElectivasActivo) && (
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: "Lectora", val: paes.lenguaje },
-                      { label: "Mate 1", val: paes.matematica },
-                      { label: "Mate 2", val: paes.matematica2 },
-                      { label: "Historia", val: paes.historia },
-                      { label: "Ciencias", val: paes.ciencias },
+                      { label: "Lectora", val: paesObligatoriasActivo ? paes.lenguaje : "" },
+                      { label: "Mate 1", val: paesObligatoriasActivo ? paes.matematica : "" },
+                      { label: "Mate 2", val: paesElectivasActivo ? paes.matematica2 : "" },
+                      { label: "Historia", val: paesElectivasActivo ? paes.historia : "" },
+                      { label: "Ciencias", val: paesElectivasActivo ? paes.ciencias : "" },
                     ].filter(p => p.val).map((p) => (
                       <div key={p.label} className="bg-white/5 rounded-xl px-4 py-2.5 border border-white/10 flex items-center justify-between">
                         <span className="text-xs text-gray-400 font-semibold">{p.label}</span>
@@ -815,7 +1304,7 @@ export default function CalculadoraNem() {
       {/* =========================================================================
           BLOQUE 2: BUSCA TU CARRERA + PUNTAJE PONDERADO REAL
       ========================================================================= */}
-      <div className="max-w-7xl mx-auto px-4 mt-16 relative z-20">
+      <div ref={resultadosRef} className="max-w-7xl mx-auto px-4 mt-16 relative z-20 scroll-mt-6">
 
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-[#6544FF]/10 text-[#6544FF] font-bold text-sm mb-4 uppercase tracking-widest">
@@ -838,12 +1327,12 @@ export default function CalculadoraNem() {
               type="search"
               placeholder="Ej: Enfermería, Ingeniería, Derecho..."
               value={busqueda}
-              onChange={(e) => { setBusqueda(e.target.value); setLimite(RESULTADOS_INICIALES); }}
+              onChange={(e) => { setBusqueda(e.target.value); reiniciarPaginacion(); }}
               className="w-full pl-14 pr-12 py-4 rounded-[1.5rem] bg-gray-50/50 hover:bg-gray-50 border-2 border-transparent focus:border-[#6544FF]/30 focus:bg-white focus:ring-4 focus:ring-[#6544FF]/10 outline-none transition-all font-semibold text-gray-700 placeholder:text-gray-400 text-base md:text-lg"
             />
             {busqueda && (
               <button
-                onClick={() => { setBusqueda(""); setLimite(RESULTADOS_INICIALES); }}
+                onClick={() => { setBusqueda(""); reiniciarPaginacion(); }}
                 className="absolute right-5 text-gray-400 hover:text-rose-500 transition-colors p-1.5 bg-white hover:bg-rose-50 rounded-full shadow-sm border border-gray-100"
               >
                 <X className="w-4 h-4" />
@@ -860,7 +1349,7 @@ export default function CalculadoraNem() {
             ].map((opc) => (
               <button
                 key={opc.id}
-                onClick={() => { setTipoFiltro(opc.id); setLimite(RESULTADOS_INICIALES); }}
+                onClick={() => { setTipoFiltro(opc.id); reiniciarPaginacion(); }}
                 className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-300 ${
                   tipoFiltro === opc.id
                     ? 'bg-white text-[#6544FF] shadow-sm ring-1 ring-black/5'
@@ -891,7 +1380,7 @@ export default function CalculadoraNem() {
                 <div className="fixed inset-0 z-40" onClick={() => setDropdownRegionAbierto(false)}></div>
                 <div className="absolute top-[calc(100%+8px)] left-0 w-full max-h-[300px] overflow-y-auto bg-white border border-gray-100 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] py-2 z-50 custom-scrollbar">
                   <button
-                    onClick={() => { setRegionFiltro("todas"); setLimite(RESULTADOS_INICIALES); setDropdownRegionAbierto(false); }}
+                    onClick={() => { setRegionFiltro("todas"); reiniciarPaginacion(); setDropdownRegionAbierto(false); }}
                     className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-2 transition-colors ${regionFiltro === "todas" ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
                   >
                     Todas las Regiones
@@ -900,7 +1389,7 @@ export default function CalculadoraNem() {
                   {listaRegiones.map((reg) => (
                     <button
                       key={reg}
-                      onClick={() => { setRegionFiltro(reg); setLimite(RESULTADOS_INICIALES); setDropdownRegionAbierto(false); }}
+                      onClick={() => { setRegionFiltro(reg); reiniciarPaginacion(); setDropdownRegionAbierto(false); }}
                       className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-2 transition-colors ${regionFiltro === reg ? 'bg-[#6544FF]/10 text-[#6544FF]' : 'text-slate-700 hover:bg-gray-100'}`}
                     >
                       <span className="truncate">{formatRegionLabel(reg)}</span>
@@ -919,9 +1408,43 @@ export default function CalculadoraNem() {
             Ingresa tus notas de 1º a 4º medio arriba para calcular tu puntaje ponderado real por carrera.
           </div>
         ) : (
-          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl px-5 py-4 mb-8 text-sm font-medium">
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-            Carreras ordenadas por tu puntaje ponderado — se recalcula al instante con cada nota o puntaje PAES que agregues.
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl px-5 py-4 mb-8 text-sm font-medium">
+            <div className="flex items-center gap-3 flex-1">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>Carreras ordenadas por tu puntaje ponderado — se recalcula al instante con cada nota o puntaje PAES que agregues.</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {institucionesConCorte.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setSoloConCorte(v => !v); reiniciarPaginacion(); }}
+                  aria-pressed={soloConCorte}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                    soloConCorte
+                      ? 'bg-[#6544FF] text-white border-[#6544FF]'
+                      : 'bg-white text-[#6544FF] border-[#6544FF]/30 hover:bg-[#6544FF]/10'
+                  }`}
+                >
+                  <Scale className="w-3.5 h-3.5" />
+                  Solo con puntaje de corte
+                </button>
+              )}
+              {referenciaMapa && (
+                <button
+                  type="button"
+                  onClick={() => { setSoloAlcanzo(v => !v); reiniciarPaginacion(); }}
+                  aria-pressed={soloAlcanzo}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                    soloAlcanzo
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Solo donde alcanzo el promedio
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -963,15 +1486,50 @@ export default function CalculadoraNem() {
                 <tbody className="divide-y divide-gray-100">
                   <tr>
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Puntaje Ponderado</td>
-                    {comparando.map((c) => (
+                    {comparando.map((c, i) => (
                       <td key={c.id} className="py-3 px-3">
                         {c.puntaje.sinFormula ? (
                           <span className="text-xs font-semibold text-gray-400">Sin fórmula</span>
                         ) : (
                           <>
-                            <span className="text-2xl font-black text-[#6544FF]">{c.puntaje.total || "---"}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-2xl font-black text-[#6544FF]">{c.puntaje.total || "---"}</span>
+                              {i === idxMejorPuntaje && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">Mejor</span>
+                              )}
+                            </span>
                             {c.puntaje.parcial && <span className="block text-[10px] font-bold text-amber-600 mt-0.5">Parcial</span>}
                           </>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Veredicto: mismo criterio que las tarjetas — corte real
+                      DEMRE si existe; si no, comparación vs promedio SIES. */}
+                  <tr>
+                    <td className="py-3 pr-4 text-sm font-bold text-gray-500">¿Te alcanza?</td>
+                    {comparando.map((c) => (
+                      <td key={c.id} className="py-3 px-3">
+                        {c.veredictoCorte ? (
+                          c.veredictoCorte.alcanza ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Te alcanza (corte {c.veredictoCorte.anioReciente})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
+                              <XCircle className="w-3.5 h-3.5 shrink-0" /> Te faltan {c.veredictoCorte.faltan} pts
+                            </span>
+                          )
+                        ) : c.veredicto.estado === "sobre" ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Sobre el promedio
+                          </span>
+                        ) : c.veredicto.estado === "bajo" ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Bajo el promedio
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-400">Sin referencia</span>
                         )}
                       </td>
                     ))}
@@ -988,26 +1546,43 @@ export default function CalculadoraNem() {
                   )}
                   <tr>
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Arancel Anual</td>
-                    {comparando.map((c) => (
-                      <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.arancel}</td>
+                    {comparando.map((c, i) => (
+                      <CeldaComparador key={c.id} valor={c.arancel} esMejor={i === idxMejorArancel} />
                     ))}
                   </tr>
                   <tr>
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Duración</td>
-                    {comparando.map((c) => (
-                      <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.duracion}</td>
+                    {comparando.map((c, i) => (
+                      <CeldaComparador key={c.id} valor={c.duracion} esMejor={i === idxMejorDuracion} />
                     ))}
                   </tr>
                   <tr>
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Empleabilidad 1er año</td>
-                    {comparando.map((c) => (
-                      <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.empleabilidad}</td>
+                    {comparando.map((c, i) => (
+                      <CeldaComparador key={c.id} valor={c.empleabilidad} esMejor={i === idxMejorEmpleabilidad} />
                     ))}
                   </tr>
                   <tr>
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Acreditación</td>
                     {comparando.map((c) => (
                       <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.acreditacion}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="py-3 pr-4 text-sm font-bold text-gray-500">Ficha</td>
+                    {comparando.map((c) => (
+                      <td key={c.id} className="py-3 px-3">
+                        {esCodigoRutaValido(c.codigoCarrera) ? (
+                          <a
+                            href={`/carrera/${c.codigoCarrera}`}
+                            className="inline-block text-xs font-bold text-[#6544FF] bg-[#6544FF]/10 hover:bg-[#6544FF]/20 rounded-xl px-4 py-2 transition-colors"
+                          >
+                            Ver detalle
+                          </a>
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-300">No disponible</span>
+                        )}
+                      </td>
                     ))}
                   </tr>
                 </tbody>
@@ -1029,20 +1604,20 @@ export default function CalculadoraNem() {
               Reintentar
             </button>
           </div>
-        ) : cargando && carreras.length === 0 ? (
+        ) : cargando && carrerasPagina.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#6544FF]" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {carreras.map((carrera, idx) => {
+            {carrerasPagina.map((carrera, idx) => {
               const seleccionada = comparando.some(c => c.id === carrera.id);
               const comparadorLleno = comparando.length >= 3 && !seleccionada;
               const detalleValido = esCodigoRutaValido(carrera.codigoCarrera);
-              // Solo en la primera posición del orden actual, y solo cuando
-              // realmente sabemos su fórmula — nunca "mejor opción" para una
-              // carrera sin ponderación conocida.
-              const esMejorOpcion = idx === 0 && puntajesEntrada.nem > 0 && !carrera.puntaje.sinFormula;
+              // Solo en la primera posición del orden actual (página 1), y
+              // solo cuando realmente sabemos su fórmula — nunca "mejor
+              // opción" para una carrera sin ponderación conocida.
+              const esMejorOpcion = idx === 0 && pagina === 1 && puntajesEntrada.nem > 0 && !carrera.puntaje.sinFormula;
               return (
                 <article
                   key={carrera.id}
@@ -1113,6 +1688,12 @@ export default function CalculadoraNem() {
                     )}
                   </div>
 
+                  {/* Veredicto: corte real DEMRE (rojo/verde) si existe; si no,
+                      comparación vs promedio de admitidos SIES (verde/ámbar) */}
+                  {carrera.veredictoCorte
+                    ? <VeredictoCorteBadge v={carrera.veredictoCorte} tuPuntaje={carrera.puntaje.total} />
+                    : <VeredictoBadge v={carrera.veredicto} />}
+
                   <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-gray-100 mb-4">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Arancel</span>
@@ -1166,24 +1747,63 @@ export default function CalculadoraNem() {
             <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="font-black text-2xl text-slate-700 mb-2">No encontramos carreras</h3>
             <p className="text-slate-500 text-sm font-medium">
-              {modoBusqueda
-                ? "Prueba con otro nombre, tipo de institución o región."
-                : "Ninguna carrera de este filtro tiene fórmula de puntaje disponible todavía. Prueba buscando por nombre — ahí sí se muestra el catálogo completo."}
+              {soloConCorte
+                ? "No hay carreras con puntaje de corte para este filtro. Los cortes existen solo en universidades que los publican — prueba sin búsqueda o con otro nombre."
+                : soloAlcanzo
+                  ? "Ninguna carrera aquí queda sobre el promedio de admitidos con tus puntajes actuales. Desactiva el filtro o sube tus puntajes."
+                  : modoBusqueda
+                    ? "Prueba con otro nombre, tipo de institución o región."
+                    : "Ninguna carrera de este filtro tiene fórmula de puntaje disponible todavía. Prueba buscando por nombre — ahí sí se muestra el catálogo completo."}
             </p>
           </div>
         )}
 
-        {!errorCarga && !cargando && carreras.length > 0 && limite < totalResultados && (
-          <div className="flex justify-center mt-10">
-            <button
-              onClick={() => setLimite(l => l + RESULTADOS_INCREMENTO)}
-              className="px-8 py-3.5 bg-white border-2 border-gray-200 hover:border-[#6544FF]/40 text-[#1A1528] font-bold rounded-2xl transition-all hover:shadow-md"
-            >
-              {modoBusqueda
-                ? `Cargar más carreras (${carreras.length} de ${totalResultados})`
-                : `Cargar más carreras (${carreras.length} con fórmula disponible, de ${totalResultados} en total)`}
-            </button>
-          </div>
+        {/* PAGINACIÓN: 9 tarjetas por página, en vez de acumular hacia abajo */}
+        {!errorCarga && carreras.length > 0 && (totalPaginas > 1 || pagina > 1) && (
+          <nav aria-label="Paginación de resultados" className="flex flex-col items-center gap-3 mt-10">
+            <div className="flex items-center gap-1.5 flex-wrap justify-center bg-white rounded-2xl p-2 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+              <button
+                onClick={() => cambiarPagina(pagina - 1)}
+                disabled={pagina <= 1 || cargando}
+                aria-label="Página anterior"
+                className="px-4 py-2.5 text-xs font-bold rounded-xl transition-all text-gray-600 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              >
+                ← Anterior
+              </button>
+              {rangoPaginas(pagina, totalPaginas).map((p, i) =>
+                p === "..." ? (
+                  <span key={`gap-${i}`} className="px-2 text-gray-300 font-bold select-none">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => cambiarPagina(p)}
+                    disabled={cargando && p !== pagina}
+                    aria-current={p === pagina ? "page" : undefined}
+                    className={`min-w-[2.5rem] px-3 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                      p === pagina
+                        ? 'bg-[#6544FF] text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-[#6544FF]/10 hover:text-[#6544FF]'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => cambiarPagina(pagina + 1)}
+                disabled={!hayPaginaSiguiente || cargando}
+                aria-label="Página siguiente"
+                className="px-4 py-2.5 text-xs font-bold rounded-xl transition-all text-gray-600 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              >
+                Siguiente →
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 font-medium">
+              {totalPaginasExactas
+                ? `Página ${pagina} de ${totalPaginasExactas} · ${totalResultados.toLocaleString('es-CL')} carreras encontradas`
+                : `Página ${pagina} · ${carreras.length} carreras con fórmula disponible de ${totalResultados.toLocaleString('es-CL')} en total`}
+            </p>
+          </nav>
         )}
       </div>
 

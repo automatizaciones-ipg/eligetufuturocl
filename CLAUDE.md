@@ -63,6 +63,8 @@ src/
 ├── types/ · types.ts              # Modelos: CarreraDB, Noticia, vocacional...
 ├── utils/formatters.ts            # Siglas, tipos de institución, slugs de logo
 ├── datos_et/                      # Scripts Python ETL (SIES → Supabase). NO se despliega.
+├── lib/admin/session.ts           # Cookie de sesión del panel admin (HMAC)
+├── lib/scraper/                   # Motor de scraping de tendencias (ver sección propia)
 └── styles/global.css              # Tailwind + daisyUI + Google Fonts
 
 lib/                          # Clientes Supabase (¡en la RAÍZ, no en src/!)
@@ -93,6 +95,72 @@ Tablas principales:
 
 Los datos se cargan con los scripts Python de `src/datos_et/` (procesan excels
 SIES/MINEDUC y los inyectan a Supabase). No forman parte del runtime web.
+
+- **Códigos como segmento de URL:** la ingesta SIES a veces cuela datos basura
+  en `codigo_carrera`/`codigo_institucion` (p.ej. notas al pie tipo "FUENTE:
+  Portal mifuturo.cl..."), que rompen el build en Windows (`:` ilegal en
+  carpetas) y generan URLs basura en producción/sitemap. `esCodigoRutaValido()`
+  (`src/utils/formatters.ts`) filtra estos códigos antes de generar rutas —se
+  usa en `src/pages/carrera/[id].astro`, `src/pages/institucion/[id].astro` y
+  `src/pages/sitemap.xml.ts`. Si tocas cualquiera de esos tres archivos,
+  revisa que sigan llamando al validador.
+
+## Simulador de Admisión (`/herramientas/calculadora`)
+
+`src/components/CalculadoraNem.tsx` (isla React, `client:visible`) es el
+simulador: el alumno ingresa notas (obligatorio) + PAES (dos secciones
+opcionales con switch — obligatorias CL/M1 y electivas M2/Historia/Ciencias),
+y por cada carrera ve su **puntaje ponderado real** y un **veredicto "¿te
+alcanza?"**. Todo el recálculo es client-side (las notas/PAES nunca disparan
+consultas; sólo búsqueda/filtro/paginación pegan a Supabase).
+
+**Tres capas de datos, todas como JSON estático en `public/data/` (stopgap
+mientras no viven en Supabase), cargadas con `fetch` una vez y resueltas por
+fila con degradado con gracia:**
+
+1. **Ponderaciones** (`ponderaciones_carreras.json`) — fórmula oficial SIES por
+   carrera. Genera: `exportar_ponderaciones_json.py` (+ `generar_claves_necesarias.py`).
+   Match difuso de 2 niveles (institución+carrera+jornada+sede / respaldo
+   institución+carrera) vía `limpiarTextoMatch` — **debe dar EXACTO el mismo
+   resultado que el `limpiar_texto` de los scripts Python**.
+2. **Referencia de ingreso** (`referencia_ingreso.json`) — *promedio* PAES/NEM de
+   los admitidos 2025 (SIES/MINEDUC). Genera: `exportar_referencia_ingreso_json.py`
+   desde `clean/carreras_bd_lista.json`, **join DIRECTO por `codigo_carrera`**
+   (sin fuzzy). Alimenta el veredicto v1 "sobre/bajo el promedio" (verde/ámbar) —
+   es un promedio, NO un corte, por eso **nunca** marca rojo "no alcanzas".
+3. **Cortes** (`cortes_carreras.json`) — *último seleccionado/matriculado*
+   ponderado por año (histórico 2024/2025/2026). Alimenta el veredicto duro
+   **rojo "te faltan X pts" / verde "te alcanza" + histórico**
+   (`resolverCorte`/`computarVeredictoCorte`), match difuso igual que
+   ponderaciones. Dos generadores:
+   - `scrape_cortes_universidades.py` (**el que se usa**): cosecha el "puntaje
+     último matriculado/seleccionado" de las páginas OFICIALES de cada
+     universidad (registro `UNIVERSIDADES`, soporta tabla multi-año o páginas
+     por-año) y matchea a nuestras carreras. La fuente comprehensiva (bases
+     DEMRE) está tras **reCAPTCHA** → no scrapeable; por eso se va universidad
+     por universidad → **cobertura parcial** (solo universidades que publican;
+     IP/CFT y admisión propia quedan sin corte → caen al veredicto SIES).
+   - `exportar_cortes_json.py` (alternativo): si se consigue una base DEMRE de
+     Postulación/Matrícula (descarga manual, pasa el reCAPTCHA), la ingesta a
+     cortes completos. Listo pero requiere el archivo en `raw/`.
+   Ojo UX: la búsqueda del simulador trae ~30 carreras por nombre, así que
+   carreras de universidades con corte pueden no surfacear — mejorar el ranking
+   para que los cortes sean visibles es pendiente.
+
+Prioridad del veredicto por tarjeta: **corte DEMRE** (si existe) → **promedio
+SIES** → "sin referencia". Los tres JSON degradan a nulo si faltan (la carrera
+igual carga, sólo sin ese dato). El `puntaje_corte_referencial`/`_anio`/`_fuente`
+de `migracion_ponderaciones_carreras.sql` es el destino "definitivo" para cuando
+esto migre a columnas de Supabase.
+
+**Paginación de resultados:** siempre 9 tarjetas por página con barra numerada
+(no hay "Cargar más" acumulativo). La página visible es un slice cliente-side
+de la lista filtrada/ordenada; `limite` (ventana cruda de Supabase) crece solo
+hasta llenar la página actual, con la guarda `ventanaCompleta` para no re-actuar
+durante la ventana del debounce (300ms) en que el fetch aún no marca `cargando`
+— sin ella, la autocarga se dispara al tope y el snap-back devuelve falsamente
+a la página 1. El comparador destaca el mejor valor por fila (solo sin empate)
+y agrega fila de veredicto y link a ficha.
 
 ## Convenciones
 
@@ -132,27 +200,122 @@ SIES/MINEDUC y los inyectan a Supabase). No forman parte del runtime web.
 variables `PUBLIC_GA_MEASUREMENT_ID` y `PUBLIC_CLARITY_PROJECT_ID`. Los
 page_views SPA se reenvían en `astro:page-load`.
 
+## Middleware (`src/middleware.ts`)
+
+Corre en **todas** las requests y agrupa tres responsabilidades sin relación
+entre sí — no asumas que solo hace una cosa al tocarlo:
+
+1. **Gate del panel admin:** ver sección propia abajo.
+2. **Rate limiting:** 10 peticiones `POST` a `/api/*` por IP por ventana de 1
+   minuto, en un `Map` en memoria (`rlStore`) purgado cada 5 min. Igual que el
+   `jobRunner` del scraper, asume **una sola instancia Node** — no sobrevive a
+   despliegues multi-proceso ni horizontal scaling. Responde `429` con headers
+   `Retry-After` / `X-RateLimit-*`.
+3. **Headers de seguridad + CSP:** aplica `X-Frame-Options`,
+   `Strict-Transport-Security`, `Permissions-Policy` y una Content-Security-Policy
+   a toda respuesta. La CSP tiene un allowlist explícito de orígenes externos
+   (GA4, Clarity, Supabase, Google Fonts, OpenStreetMap/Nominatim para el mapa
+   de la ficha de institución). **Si agregas un script, fuente o API externa
+   nueva, súmala aquí o el navegador la bloqueará en silencio.**
+
+## Panel admin oculto de tendencias (`/admin/tendencias`)
+
+Herramienta interna (un solo operador) que corre el scraper de demanda de
+búsqueda de carreras (Google Autocomplete + Google Trends, Chile) y alimenta
+la página pública `/tendencias`. **No es parte del producto orientado a
+estudiantes** — es un panel de decisión de negocio, oculto y autenticado.
+
+- **Auth:** cookie HMAC firmada (`src/lib/admin/session.ts`), sin usuarios ni
+  roles — una sola `ADMIN_PASSWORD`. Gate centralizado en `src/middleware.ts`
+  para `/admin/**` y `/api/admin/**` (`/admin/login` queda abierta). Defensa
+  adicional: `noindex` en las páginas admin + `Disallow: /admin/` en
+  `robots.txt` (la auth real es la cookie, no la ocultación).
+- **Motor de scraping:** `src/lib/scraper/*.ts` (autocomplete, trends,
+  normalize, build, pipeline) — puerto TypeScript sin dependencias nuevas
+  (usa `fetch` nativo). `pipeline.ts` persiste cada corrida en Supabase
+  (tablas `scraping_runs`, `scraping_careers`, `scraping_intenciones`,
+  `scraping_preguntas`, `scraping_respuestas_bank`, `tendencias_config`) —
+  ver `supabase/migrations/0001_scraping_tendencias.sql` para el esquema y
+  las políticas RLS.
+- **Job runner:** `src/lib/scraper/jobRunner.ts` mantiene el estado del
+  scraping en curso en memoria (asume una sola instancia Node, igual que el
+  rate-limiter de `src/middleware.ts`). El botón "Iniciar scraping" dispara
+  `POST /api/admin/tendencias/scrape/start` y hace polling a `.../scrape/status`.
+- **Publicación:** `/tendencias` (público) lee con el cliente **anon** la
+  corrida marcada en `tendencias_config.published_run_id`, protegida por RLS
+  (solo expone la corrida publicada, y solo preguntas con `respuesta` +
+  `aprobada = true`). Publicar una corrida nueva es mover ese puntero — nunca
+  se borran corridas anteriores (histórico completo para futuro momentum
+  año-contra-año).
+- Antes de esta migración, `/tendencias` leía un JSON estático a mano
+  (`src/data/tendencias_busqueda.json`); ya no se usa.
+
+## Cron semanal de noticias IA (`/api/cron/noticias`)
+
+Publica automáticamente, cada viernes 16:00 (hora Chile), un artículo de tips
+para estudiantes ("new age": lectura rápida, técnicas de estudio modernas,
+herramientas de IA, productividad) en la tabla `noticias` — sin intervención
+manual, `estado = 'activado'` desde el momento en que se inserta.
+
+- **Disparo:** `.github/workflows/cron-noticias.yml` (schedule + `workflow_dispatch`
+  para pruebas manuales) hace un `POST` autenticado con secreto compartido
+  (`Authorization: Bearer $NOTICIAS_CRON_SECRET`) a `/api/cron/noticias`. Vive
+  fuera de `/api/admin/**` a propósito: ese árbol lo protege el middleware con
+  cookie de sesión HMAC, que un workflow de GitHub Actions no puede sostener.
+- **Motor:** `src/lib/noticiasIA/*.ts` — puerto TypeScript sin dependencias
+  nuevas (usa `fetch` nativo, igual que `src/lib/scraper/*`). `pipeline.ts`
+  orquesta: generación del artículo con Claude (`anthropic.ts`, Anthropic
+  Messages API con `output_config.format` para forzar JSON estricto) → imágenes
+  vía Unsplash Search API (`unsplash.ts`) → `enlaces_referencia` armados desde
+  un banco curado (`enlaces.ts`, **nunca** URLs inventadas por el LLM) →
+  `color` resuelto por una allow-list fija (`categorias.ts`, nunca una clase
+  CSS generada por el modelo) → `tiempo_lectura` calculado por conteo de
+  palabras (`readingTime.ts`, no se confía en el número que devuelva el LLM).
+- **Idempotencia:** `noticias_ia_runs` (ver
+  `supabase/migrations/0002_noticias_ia.sql`) tiene `iso_week` `unique` — si el
+  workflow se dispara dos veces la misma semana, la segunda corrida detecta el
+  conflicto y aborta antes de gastar llamadas a Anthropic/Unsplash.
+- Requiere `ANTHROPIC_API_KEY`, `UNSPLASH_ACCESS_KEY` y `NOTICIAS_CRON_SECRET`
+  configuradas tanto en Hostinger (el servidor que corre el endpoint) como en
+  los secrets de GitHub Actions del repo (el workflow que lo dispara).
+
 ## Variables de entorno
 
 Ver `.env.example`. Claves: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`,
 `RESEND_TO_EMAIL`, `PUBLIC_SITE_URL`, `MARKETING_API_SECRET`,
-`PUBLIC_GA_MEASUREMENT_ID`, `PUBLIC_CLARITY_PROJECT_ID`. **Nunca** subas `.env`.
+`PUBLIC_GA_MEASUREMENT_ID`, `PUBLIC_CLARITY_PROJECT_ID`, `ADMIN_PASSWORD`,
+`ADMIN_SESSION_SECRET` (estas dos últimas para `/admin/tendencias`),
+`ANTHROPIC_API_KEY`, `UNSPLASH_ACCESS_KEY`, `NOTICIAS_CRON_SECRET` (estas tres
+para el cron de noticias IA, ver sección propia arriba). **Nunca** subas `.env`.
 
 ## Despliegue
 
-GitHub Actions (`.github/workflows/deploy.yml`): en push a `main` hace
-`npm ci && npm run build` y sube `./dist/` por **FTP a Hostinger**.
+**Hostinger conectado al repo:** al hacer `git push` a `main`, Hostinger
+ejecuta el build y publica automáticamente. No hay `wrangler.jsonc` en el
+repo. Sí existe `.github/workflows/cron-noticias.yml`, pero **no** hace build
+ni deploy — solo dispara un `POST` HTTP semanal contra el servidor ya
+desplegado (ver "Cron semanal de noticias IA" arriba); el pipeline de
+despliegue real sigue siendo exclusivamente Hostinger.
 
-> ⚠️ **Inconsistencia conocida de target:** el repo tiene `output: 'server'`
-> (adapter Node) y a la vez un `wrangler.jsonc` (Cloudflare), pero el deploy
-> real es **FTP estático a Hostinger**. Las páginas SSR (p. ej. `/api/*` y
-> `/noticia/[id]` con `prerender:false`) **no se ejecutan** en hosting estático.
-> Si una tarea toca el despliegue, aclara el target con el responsable antes de
-> asumir SSR.
+> ⚠️ **Variables de entorno:** las `PUBLIC_*` (GA, Clarity, Supabase URL/anon)
+> se incrustan **en tiempo de build**. Deben estar configuradas en el panel de
+> Hostinger, no solo en el `.env` local, o no llegarán a producción. Verificado
+> (jun 2026): GA `G-HF4EB7BF87` carga 200 OK; el tag de Clarity `xabvto7lvq`
+> devuelve **503** desde `clarity.ms` → revisar el Project ID en el dashboard de
+> Clarity (no es un bug de código).
 
 ## Notas / deuda técnica conocida
 
-- Enlaces rotos en `Footer.tsx`: apuntan a `/informacion/*` e `/instituciones`
-  que **no existen** como rutas (lo correcto es `/herramientas/*`).
-- No hay tests automatizados ni linter configurado.
+- No hay tests automatizados ni linter configurado. El "test" antes de
+  fusionar es `npm run build` (si pasa, no se rompió nada grave) + revisión
+  manual en `npm run dev`.
+- `supabase/migrations/0001_scraping_tendencias.sql` debe correrse a mano en
+  el SQL Editor del proyecto Supabase de producción (el conector MCP de
+  Supabase disponible en este entorno no apunta al proyecto de
+  eligetufuturo.cl). Hasta que se corra, `/tendencias` y `/admin/tendencias`
+  muestran estado vacío ("Estamos calculando tendencias" / sin corridas).
+- El momentum de Google Trends usa un endpoint no oficial (`src/lib/scraper/trends.ts`);
+  puede devolver 429 o cambiar de formato sin aviso — el pipeline ya degrada
+  con gracia (`estado: 'sin dato'`) si Trends falla, la demanda de Autocomplete
+  sigue funcionando igual.

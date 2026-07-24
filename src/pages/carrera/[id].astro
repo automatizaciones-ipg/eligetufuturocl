@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { courseSchema, breadcrumbSchema } from "../../lib/seo";
+import { esCodigoRutaValido } from "../../utils/formatters";
 
 export const prerender = true;
 
@@ -28,7 +29,17 @@ export const getStaticPaths = (async () => {
     }
   }
 
-  return allCodes.map((carrera) => ({
+  const codigosValidos = allCodes.filter((c) =>
+    esCodigoRutaValido(c.codigo_carrera),
+  );
+  const descartados = allCodes.length - codigosValidos.length;
+  if (descartados > 0) {
+    console.warn(
+      `[carrera/[id]] Se descartaron ${descartados} codigo_carrera inválidos (datos basura en Supabase).`,
+    );
+  }
+
+  return codigosValidos.map((carrera) => ({
     params: { id: carrera.codigo_carrera.toString() },
   }));
 }) satisfies GetStaticPaths;

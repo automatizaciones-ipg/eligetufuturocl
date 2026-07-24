@@ -5,9 +5,10 @@
 User-agent: *
 Allow: /
 
-# No indexar respuestas de formularios ni endpoints de API
+# No indexar respuestas de formularios, endpoints de API ni el panel admin
 Disallow: /api/
 Disallow: /*?q=
+Disallow: /admin/
 
 # ─── Motores de IA / GEO (Generative Engine Optimization) ───
 # Permitimos explícitamente a los rastreadores de IA citar el contenido.

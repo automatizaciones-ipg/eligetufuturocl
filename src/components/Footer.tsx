@@ -15,9 +15,9 @@ export default function Footer() {
             <img
               src="/logos_web/logo_principal_blanco.webp"
               alt="Elige Tu Futuro"
-              className="h-14 mb-6 hover:scale-105 transition-transform duration-300"
-              width="200"
-              height="56"
+              className="h-12 md:h-14 w-auto object-contain mb-6 hover:scale-105 transition-transform duration-300"
+              width="201"
+              height="101"
             />
             <p className="text-gray-400 text-sm leading-relaxed">
               La plataforma gratuita que te ayuda a elegir tu carrera ideal

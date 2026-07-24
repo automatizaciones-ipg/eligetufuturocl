@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import InstitucionDetalle from "../../components/InstitucionDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { educationalOrgSchema, breadcrumbSchema } from "../../lib/seo";
+import { esCodigoRutaValido } from "../../utils/formatters";
 
 // ============================================================================
 // 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
@@ -33,10 +34,13 @@ export const getStaticPaths = (async () => {
     }
   }
 
-  // Retornamos SOLO el param de la URL, sin pasar data pesada por props
-  return allCodes.map((inst) => ({
-    params: { id: inst.codigo_institucion.toString() },
-  }));
+  // Retornamos SOLO el param de la URL, sin pasar data pesada por props.
+  // Filtramos códigos basura para no romper el build ni crear URLs inválidas.
+  return allCodes
+    .filter((inst) => esCodigoRutaValido(inst.codigo_institucion))
+    .map((inst) => ({
+      params: { id: inst.codigo_institucion.toString() },
+    }));
 }) satisfies GetStaticPaths;
 
 // ============================================================================

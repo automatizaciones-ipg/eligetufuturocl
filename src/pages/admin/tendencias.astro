@@ -1,0 +1,102 @@
+---
+// src/pages/admin/tendencias.astro
+// Panel admin oculto: dispara el scraping, revisa/edita resultados y publica
+// la corrida activa en /tendencias. Protegido por src/middleware.ts.
+import Layout from "../../layouts/Layout.astro";
+import ScrapeControl from "../../components/admin/ScrapeControl";
+import TendenciasReview from "../../components/admin/TendenciasReview";
+import { getSupabaseServerClient } from "../../../lib/supabaseServer";
+
+export const prerender = false;
+
+const supabase = getSupabaseServerClient();
+
+const { data: config } = await supabase
+  .from("tendencias_config")
+  .select("published_run_id")
+  .eq("id", 1)
+  .single();
+const publishedRunId: string | null = config?.published_run_id ?? null;
+
+const { data: runs } = await supabase
+  .from("scraping_runs")
+  .select("id, started_at, status, carreras_detectadas")
+  .order("started_at", { ascending: false })
+  .limit(20);
+
+const requestedRunId = Astro.url.searchParams.get("run");
+const activeRunId: string | null = requestedRunId || publishedRunId || runs?.[0]?.id || null;
+
+let activeRun: any = null;
+let careers: any[] = [];
+let intenciones: any[] = [];
+let preguntas: any[] = [];
+
+if (activeRunId) {
+  const [{ data: run }, { data: careerRows }, { data: intRows }, { data: qRows }] = await Promise.all([
+    supabase.from("scraping_runs").select("*").eq("id", activeRunId).single(),
+    supabase.from("scraping_careers").select("*").eq("run_id", activeRunId).order("orden"),
+    supabase.from("scraping_intenciones").select("*").eq("run_id", activeRunId).order("orden"),
+    supabase.from("scraping_preguntas").select("*").eq("run_id", activeRunId).order("orden"),
+  ]);
+  activeRun = run;
+  careers = careerRows ?? [];
+  intenciones = intRows ?? [];
+  preguntas = qRows ?? [];
+}
+
+const publishedRun = (runs ?? []).find((r) => r.id === publishedRunId);
+---
+
+<Layout title="Panel admin · Tendencias" noindex={true}>
+  <main class="mx-auto max-w-6xl px-4 py-10">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+      <div>
+        <h1 class="text-2xl font-bold">Panel admin · Tendencias de búsqueda</h1>
+        <p class="text-sm text-base-content/60">
+          Publicada actualmente: {publishedRun ? new Date(publishedRun.started_at).toLocaleString("es-CL") : "ninguna"}
+          {" · "}
+          <a href="/tendencias" class="link link-primary" target="_blank" rel="noopener">Ver /tendencias</a>
+        </p>
+      </div>
+      <form method="POST" action="/api/admin/logout">
+        <button type="submit" class="btn btn-ghost btn-sm">Cerrar sesión</button>
+      </form>
+    </div>
+
+    <ScrapeControl client:load />
+
+    <section class="mb-8">
+      <h2 class="font-bold mb-2">Corridas anteriores</h2>
+      <div class="flex flex-wrap gap-2">
+        {(runs ?? []).map((r) => (
+          <a
+            href={`/admin/tendencias?run=${r.id}`}
+            class={`text-xs px-3 py-1.5 rounded-full border ${
+              r.id === activeRunId ? "border-primary text-primary bg-primary/10" : "border-base-300 text-base-content/60"
+            }`}
+          >
+            {new Date(r.started_at).toLocaleDateString("es-CL")} · {r.status}
+            {r.id === publishedRunId ? " · PUBLICADA" : ""}
+          </a>
+        ))}
+        {(!runs || runs.length === 0) && (
+          <p class="text-sm text-base-content/50">Sin corridas todavía.</p>
+        )}
+      </div>
+    </section>
+
+    {activeRun ? (
+      <TendenciasReview
+        client:load
+        run={activeRun}
+        careers={careers}
+        intenciones={intenciones}
+        preguntas={preguntas}
+        isPublished={activeRunId === publishedRunId}
+      />
+    ) : (
+      <p class="text-base-content/60">Todavía no hay corridas. Usa el botón de arriba para iniciar la primera.</p>
+    )}
+  </main>
+</Layout>
