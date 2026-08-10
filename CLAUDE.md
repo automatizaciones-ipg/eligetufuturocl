@@ -279,6 +279,45 @@ manual, `estado = 'activado'` desde el momento en que se inserta.
   configuradas tanto en Hostinger (el servidor que corre el endpoint) como en
   los secrets de GitHub Actions del repo (el workflow que lo dispara).
 
+## Leads → n8n → Bitrix24 + Google Sheets
+
+Todo lead o consulta que entra por los endpoints públicos se notifica a un
+**Webhook de n8n** (`N8N_LEADS_WEBHOOK_URL`, autenticado con
+`Authorization: Bearer <N8N_LEADS_WEBHOOK_SECRET>`); es n8n quien centraliza,
+en su propio workflow (fuera de este repo), la escritura tanto en la hoja
+`Leads` de la planilla de CRM como en el funnel de Bitrix24. **Las
+credenciales de Google Sheets y de Bitrix24 nunca están en este repo** —
+viven enteramente en el credential store de n8n; el sitio solo conoce la URL
+del webhook y el secreto compartido.
+
+- **Módulo:** `src/lib/leads/` — `n8nWebhook.ts` (cliente mínimo `fetch` para
+  el webhook, sin dependencias nuevas) + `registrarLead.ts` (esquema
+  unificado `LeadParaCRM`, sanitización y registro vía
+  `registrarLeadEnCRM`).
+- **Puntos de captura (server-side, todos):** `/api/contacto`
+  (`contacto_web`), `/api/solicitar-informacion` (`test_vocacional` si
+  tipo=auto, `asesoria_test` si tipo=contacto) y `/api/solicitud-lead`
+  (`solicitud_carrera` / `solicitud_institucion`). Se llama **después de
+  validar y antes de enviar correos**: si Resend falla, el lead igual queda
+  capturado. Si agregas un endpoint nuevo que reciba leads, llama a
+  `registrarLeadEnCRM` ahí también.
+- **Nunca bloquea:** `registrarLeadEnCRM` es fire-and-forget, jamás lanza;
+  con las env sin configurar solo avisa una vez por `console.warn` y sigue.
+  Un reintento con backoff de 2 s; el error final se loguea **sin PII**.
+- **Seguridad:** secreto solo server-side (sin `PUBLIC_`), auth por header
+  `Authorization: Bearer` (misma convención que `NOTICIAS_CRON_SECRET`,
+  validado en n8n con su credencial nativa "Header Auth"); caracteres de
+  control eliminados y campos truncados a 1500 chars; teléfono normalizado a
+  `+569XXXXXXXX`; `idEvento` UUID por notificación para dedup en n8n/Bitrix;
+  el rate limiting del middleware ya cubre estos endpoints. El escape
+  anti-inyección-de-fórmulas (apóstrofo ante `= + - @`) **no** se aplica en
+  el sitio — se haría en el propio workflow de n8n, justo antes del nodo que
+  escribe a Google Sheets (aplicarlo aquí ensuciaría el mismo valor que
+  también llega a Bitrix).
+- El insert client-side a `leads_vocacional` (`guardarLead`) no toca el
+  webhook: el mismo lead del test entra por `/api/solicitar-informacion`
+  tipo=auto, que dispara `ResultadosTest.tsx` al mostrar resultados.
+
 ## Variables de entorno
 
 Ver `.env.example`. Claves: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`,
@@ -287,7 +326,9 @@ Ver `.env.example`. Claves: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`,
 `PUBLIC_GA_MEASUREMENT_ID`, `PUBLIC_CLARITY_PROJECT_ID`, `ADMIN_PASSWORD`,
 `ADMIN_SESSION_SECRET` (estas dos últimas para `/admin/tendencias`),
 `ANTHROPIC_API_KEY`, `UNSPLASH_ACCESS_KEY`, `NOTICIAS_CRON_SECRET` (estas tres
-para el cron de noticias IA, ver sección propia arriba). **Nunca** subas `.env`.
+para el cron de noticias IA, ver sección propia arriba),
+`N8N_LEADS_WEBHOOK_URL` y `N8N_LEADS_WEBHOOK_SECRET` para la notificación de
+leads a n8n (ver sección propia arriba). **Nunca** subas `.env`.
 
 ## Despliegue
 

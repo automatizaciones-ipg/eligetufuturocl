@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { validarCampo, validarEmail, validarTelefono, jsonResponse } from "../../lib/api/validators";
 import { getEmailConfig, sendEmail } from "../../lib/resend";
 import { contactoAdminEmail, contactoConfirmacionEmail } from "../../lib/emails/templates/contacto";
+import { registrarLeadEnCRM } from "../../lib/leads/registrarLead";
 
 const TIPOS_VALIDOS = ["consulta-general", "consulta-carreras", "otro-motivo"];
 
@@ -30,6 +31,17 @@ export const POST: APIRoute = async ({ request }) => {
     if (mensaje.length < 10) {
       return jsonResponse({ ok: false, message: "El mensaje debe tener al menos 10 caracteres." }, 400);
     }
+
+    // Notificación al CRM (n8n) antes de los correos: si Resend fallara,
+    // el lead igual queda capturado.
+    registrarLeadEnCRM({
+      origen: "contacto_web",
+      nombre,
+      email: correo,
+      telefono,
+      mensaje,
+      temaConsulta: tipoMensaje,
+    });
 
     const payload = { nombre, correo, telefono, tipoMensaje, mensaje };
     const { toEmail } = getEmailConfig();

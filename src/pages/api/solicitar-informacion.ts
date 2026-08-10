@@ -7,6 +7,7 @@ import {
   vocacionalAsesoriaAdminEmail,
   vocacionalAsesoriaConfirmacionEmail,
 } from "../../lib/emails/templates/vocacional";
+import { registrarLeadEnCRM } from "../../lib/leads/registrarLead";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -35,6 +36,19 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ ok: false, message: "El mensaje debe tener al menos 5 caracteres." }, 400);
       }
     }
+
+    // Notificación al CRM (n8n) antes de los correos: si Resend fallara,
+    // el lead igual queda capturado. "auto" = terminó el test; "contacto" =
+    // pidió asesoría desde los resultados (evento distinto, origen distinto).
+    registrarLeadEnCRM({
+      origen: tipoAccion === "auto" ? "test_vocacional" : "asesoria_test",
+      nombre,
+      email: correo,
+      telefono,
+      mensaje: mensaje || undefined,
+      perfilRiasec: perfil,
+      carrerasInteres: carreras,
+    });
 
     const payload = { nombre, correo, telefono, perfil, carreras, mensaje };
     const { toEmail } = getEmailConfig();

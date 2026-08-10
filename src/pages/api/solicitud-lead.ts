@@ -6,6 +6,7 @@ import {
   solicitudLeadConfirmacionEmail,
   type TipoLead,
 } from "../../lib/emails/templates/solicitud-lead";
+import { registrarLeadEnCRM } from "../../lib/leads/registrarLead";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -51,6 +52,23 @@ export const POST: APIRoute = async ({ request }) => {
       tipoInstitucion: typeof body.tipoInstitucion === "string" ? body.tipoInstitucion.trim() : undefined,
       urlOrigen: typeof body.urlOrigen === "string" ? body.urlOrigen.trim() : undefined,
     };
+
+    // Notificación al CRM (n8n) antes de los correos: si Resend fallara,
+    // el lead igual queda capturado.
+    registrarLeadEnCRM({
+      origen: tipo === "institucion" ? "solicitud_institucion" : "solicitud_carrera",
+      nombre,
+      email,
+      telefono,
+      mensaje: payload.mensajeOtro,
+      temaConsulta: tiposPregunta.join(", "),
+      carrera: payload.nombreCarrera,
+      institucion: [payload.nombreInstitucion, payload.tipoInstitucion && `(${payload.tipoInstitucion})`]
+        .filter(Boolean)
+        .join(" "),
+      profesion: payload.profesion,
+      urlOrigen: payload.urlOrigen,
+    });
 
     const { toEmail } = getEmailConfig();
 
