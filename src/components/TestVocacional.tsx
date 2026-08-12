@@ -1,6 +1,7 @@
 // src/components/TestVocacional.tsx
-import { 
-  User, Mail, Smartphone, ChevronRight, Sparkles, BrainCircuit, 
+import { useState } from "react";
+import {
+  User, Mail, Smartphone, ChevronRight, Sparkles, BrainCircuit,
   CheckCircle2,
   ArrowLeft
 } from "lucide-react";
@@ -14,6 +15,19 @@ export default function TestVocacional() {
     perfilResult, areaPredominante, carrerasDB,
     fraseIndex, progresoTest, preguntaActual, PREGUNTAS, FRASES_ANALISIS
   } = useTestVocacional();
+
+  // Nombres y apellidos se piden por separado (paso 1) para evitar que los
+  // alumnos dejen solo el nombre de pila; se combinan en datos.nombre al
+  // continuar, que es el único campo que consume el resto del flujo.
+  const [nombres, setNombres] = useState("");
+  const [apellidos, setApellidos] = useState("");
+  const nombreCompletoValido = nombres.trim().length >= 2 && apellidos.trim().length >= 2;
+
+  const continuarConNombre = () => {
+    if (!nombreCompletoValido) return;
+    setDatos({ ...datos, nombre: `${nombres.trim()} ${apellidos.trim()}` });
+    avanzar();
+  };
 
   if (paso === 0) {
     return (
@@ -66,15 +80,22 @@ export default function TestVocacional() {
           <div className="space-y-4">
             <input
               type="text"
-              value={datos.nombre}
-              onChange={(e) => setDatos({...datos, nombre: e.target.value})}
-              placeholder="Escribe tu nombre completo"
+              value={nombres}
+              onChange={(e) => setNombres(e.target.value)}
+              placeholder="Nombres"
               className="w-full bg-[#fafafa] border-2 border-gray-100 focus:border-[#6544FF] focus:bg-white rounded-2xl px-6 py-5 text-xl font-semibold text-center text-[#1A1528] outline-none transition-all shadow-inner"
               autoFocus
             />
-            <button 
-              onClick={avanzar}
-              disabled={datos.nombre.length < 3}
+            <input
+              type="text"
+              value={apellidos}
+              onChange={(e) => setApellidos(e.target.value)}
+              placeholder="Apellidos"
+              className="w-full bg-[#fafafa] border-2 border-gray-100 focus:border-[#6544FF] focus:bg-white rounded-2xl px-6 py-5 text-xl font-semibold text-center text-[#1A1528] outline-none transition-all shadow-inner"
+            />
+            <button
+              onClick={continuarConNombre}
+              disabled={!nombreCompletoValido}
               className="w-full bg-[#6544FF] text-white font-bold py-4 rounded-2xl transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
             >
               Continuar <ChevronRight className="w-5 h-5" />
