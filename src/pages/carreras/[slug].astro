@@ -1,0 +1,368 @@
+---
+// src/pages/carreras/[slug].astro
+// ============================================================================
+// Página hub por carrera: agrupa TODAS las fichas del mismo programa en Chile
+// (todas las instituciones, sedes y regiones) en una sola URL con intención
+// genérica: "estudiar enfermería en Chile". Antes esa búsqueda no tenía
+// ninguna página que le respondiera —solo existían ~9.900 fichas concretas,
+// huérfanas y casi idénticas entre sí.
+// ============================================================================
+import type { GetStaticPaths } from "astro";
+import Layout from "../../layouts/Layout.astro";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+import { formatearTitulo, recortarDescripcion } from "../../utils/formatters";
+import { regionPorValor } from "../../utils/regiones";
+import {
+  slugsDeCarreras,
+  carrerasPorSlug,
+  nombreDeSlug,
+  calcularEstadisticas,
+  indiceCarreras,
+  type CarreraIndexada,
+} from "../../services/carrerasIndex";
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+  const slugs = await slugsDeCarreras();
+  return slugs.map((slug) => ({ params: { slug } }));
+}) satisfies GetStaticPaths;
+
+const { slug } = Astro.params;
+
+const filas = await carrerasPorSlug(slug!);
+if (filas.length === 0) {
+  return Astro.redirect("/404");
+}
+
+const nombreCrudo = (await nombreDeSlug(slug!)) ?? filas[0].nombre_carrera;
+const nombre = formatearTitulo(nombreCrudo);
+const stats = calcularEstadisticas(filas);
+const { instituciones: catalogoInstituciones } = await indiceCarreras();
+
+const pesos = (v: number | null) =>
+  v == null ? null : `$${Math.round(v).toLocaleString("es-CL")}`;
+const porcentaje = (v: number | null) =>
+  v == null ? null : `${(v * 100).toFixed(0)}%`;
+
+// ── Agrupación por institución ──────────────────────────────────────────────
+// Una fila representativa por institución: la de menor arancel informado, con
+// desempate por código para que el build sea determinista.
+type Oferta = {
+  codigo_institucion: string;
+  nombre: string;
+  tipo: string | null;
+  acreditada: boolean | null;
+  gratuidad: boolean | null;
+  representante: CarreraIndexada;
+  sedes: number;
+  regiones: string[];
+  arancelMin: number | null;
+};
+
+const porInstitucion = new Map<string, CarreraIndexada[]>();
+for (const f of filas) {
+  const k = String(f.codigo_institucion);
+  const lista = porInstitucion.get(k);
+  if (lista) lista.push(f);
+  else porInstitucion.set(k, [f]);
+}
+
+const ofertas: Oferta[] = [...porInstitucion.entries()]
+  .map(([codigo, lista]) => {
+    const ordenadas = [...lista].sort((a, b) => {
+      const aa = a.arancel_anual ?? Number.MAX_SAFE_INTEGER;
+      const bb = b.arancel_anual ?? Number.MAX_SAFE_INTEGER;
+      if (aa !== bb) return aa - bb;
+      return String(a.codigo_carrera).localeCompare(String(b.codigo_carrera));
+    });
+    const inst = catalogoInstituciones.get(codigo);
+    const aranceles = lista
+      .map((l) => l.arancel_anual)
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    return {
+      codigo_institucion: codigo,
+      nombre: inst?.nombre ?? "Institución no informada",
+      tipo: inst?.tipo ?? null,
+      acreditada: inst?.acreditada ?? null,
+      gratuidad: inst?.adscrita_gratuidad ?? null,
+      representante: ordenadas[0],
+      sedes: new Set(lista.map((l) => l.sede ?? "")).size,
+      regiones: [...new Set(lista.map((l) => l.region).filter(Boolean))] as string[],
+      arancelMin: aranceles.length ? Math.min(...aranceles) : null,
+    };
+  })
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+// ── Presencia por región ────────────────────────────────────────────────────
+const regiones = [...new Set(filas.map((f) => f.region).filter(Boolean))]
+  .map((valor) => {
+    const meta = regionPorValor(valor as string);
+    return {
+      valor: valor as string,
+      slug: meta?.slug ?? null,
+      nombre: meta?.nombre ?? (valor as string),
+      programas: filas.filter((f) => f.region === valor).length,
+    };
+  })
+  .sort((a, b) => b.programas - a.programas);
+
+// ── Metadatos ───────────────────────────────────────────────────────────────
+const title = `Estudiar ${nombre} en Chile: dónde, cuánto cuesta y empleabilidad`;
+
+const fragmentos = [
+  `${stats.programas} programas en ${stats.instituciones} instituciones`,
+  stats.arancelMin && stats.arancelMax
+    ? `aranceles desde ${pesos(stats.arancelMin)}`
+    : null,
+  stats.duracionTipica ? `${stats.duracionTipica} semestres` : null,
+  stats.empleabilidadPromedio
+    ? `${porcentaje(stats.empleabilidadPromedio)} de empleabilidad`
+    : null,
+].filter(Boolean);
+
+const description = recortarDescripcion(
+  `${nombre} en Chile: ${fragmentos.join(", ")}. Compara instituciones, sedes, jornadas y costos con datos oficiales SIES. Admisión 2026.`,
+);
+
+const preguntas = [
+  {
+    question: `¿Dónde puedo estudiar ${nombre} en Chile?`,
+    answer: `${nombre} se imparte en ${stats.instituciones} instituciones de educación superior chilenas, con ${stats.programas} programas repartidos en ${stats.regiones} ${stats.regiones === 1 ? "región" : "regiones"}. Puedes revisar cada institución, su sede y su jornada en esta página.`,
+  },
+  stats.duracionTipica
+    ? {
+        question: `¿Cuánto dura la carrera de ${nombre}?`,
+        answer: `La duración más frecuente de ${nombre} en Chile es de ${stats.duracionTipica} semestres (${(stats.duracionTipica / 2).toFixed(1).replace(".0", "")} años), según los datos oficiales del SIES. Puede variar según la institución y la jornada.`,
+      }
+    : null,
+  stats.arancelMin && stats.arancelMax
+    ? {
+        question: `¿Cuánto cuesta estudiar ${nombre}?`,
+        answer: `El arancel anual de ${nombre} va desde ${pesos(stats.arancelMin)} hasta ${pesos(stats.arancelMax)}, con un promedio de ${pesos(stats.arancelPromedio)}. Muchas de estas instituciones están adscritas a gratuidad y aceptan becas del FUAS.`,
+      }
+    : null,
+  stats.empleabilidadPromedio
+    ? {
+        question: `¿Cuál es la empleabilidad de ${nombre}?`,
+        answer: `La empleabilidad promedio al primer año de titulación de ${nombre} es de ${porcentaje(stats.empleabilidadPromedio)}, según el Servicio de Información de Educación Superior (SIES) del MINEDUC.${stats.ingresoPromedio ? ` El ingreso promedio al cuarto año bordea los ${pesos(stats.ingresoPromedio)} mensuales.` : ""}`,
+      }
+    : null,
+].filter(Boolean) as { question: string; answer: string }[];
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Carreras", url: "/carreras" },
+    { name: nombre, url: `/carreras/${slug}` },
+  ]),
+  faqSchema(preguntas),
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Dónde estudiar ${nombre} en Chile`,
+    numberOfItems: ofertas.length,
+    itemListElement: ofertas.slice(0, 100).map((o, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `/carrera/${o.representante.codigo_carrera}`,
+      name: `${nombre} - ${o.nombre}`,
+    })),
+  },
+];
+
+const METRICAS = [
+  { etiqueta: "Programas disponibles", valor: String(stats.programas) },
+  { etiqueta: "Instituciones", valor: String(stats.instituciones) },
+  { etiqueta: "Regiones", valor: String(stats.regiones) },
+  {
+    etiqueta: "Duración típica",
+    valor: stats.duracionTipica ? `${stats.duracionTipica} sem.` : "No informada",
+  },
+  {
+    etiqueta: "Arancel promedio",
+    valor: pesos(stats.arancelPromedio) ?? "No informado",
+  },
+  {
+    etiqueta: "Empleabilidad 1er año",
+    valor: porcentaje(stats.empleabilidadPromedio) ?? "No informada",
+  },
+];
+---
+
+<Layout title={title} description={description} canonical={`/carreras/${slug}`} jsonLd={jsonLd}>
+  <main class="bg-[#F4F5F9] min-h-screen pb-20">
+    <header class="bg-[#1A1528] text-white">
+      <div class="max-w-6xl mx-auto px-6 pt-28 pb-16">
+        <nav aria-label="Migas de pan" class="text-sm text-white/50 mb-6">
+          <a href="/" class="hover:text-white">Inicio</a>
+          <span class="mx-2">/</span>
+          <a href="/carreras" class="hover:text-white">Carreras</a>
+          <span class="mx-2">/</span>
+          <span class="text-white/80">{nombre}</span>
+        </nav>
+
+        <h1 class="font-black italic uppercase text-4xl md:text-6xl tracking-tight leading-[1.05]">
+          Estudiar <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]"
+            >{nombre}</span
+          > en Chile
+        </h1>
+
+        <p class="mt-6 text-lg text-white/70 max-w-3xl leading-relaxed">
+          {nombre} se imparte en <strong class="text-white">{stats.instituciones}</strong>
+          {stats.instituciones === 1 ? " institución" : " instituciones"} de educación
+          superior, con <strong class="text-white">{stats.programas}</strong>
+          {stats.programas === 1 ? " programa" : " programas"} distribuidos en
+          <strong class="text-white">{stats.regiones}</strong>
+          {stats.regiones === 1 ? " región" : " regiones"} del país. Todos los datos
+          provienen del Servicio de Información de Educación Superior (SIES) del
+          MINEDUC para la Admisión 2026.
+        </p>
+      </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-6 -mt-10">
+      <section
+        aria-label="Datos clave de la carrera"
+        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
+      >
+        {
+          METRICAS.map((m) => (
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                {m.etiqueta}
+              </p>
+              <p class="mt-1 text-xl font-black text-[#1A1528]">{m.valor}</p>
+            </div>
+          ))
+        }
+      </section>
+
+      <section class="mt-12">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+          Dónde estudiar {nombre}
+        </h2>
+        <p class="mt-2 text-slate-500">
+          {ofertas.length}
+          {ofertas.length === 1 ? " institución imparte" : " instituciones imparten"}
+          esta carrera. Entra a cada ficha para ver arancel, jornada, acreditación y
+          empleabilidad.
+        </p>
+
+        <ul class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+          {
+            ofertas.map((o) => (
+              <li>
+                <a
+                  href={`/carrera/${o.representante.codigo_carrera}`}
+                  class="block h-full bg-white rounded-2xl border border-slate-100 p-5 hover:border-[#6544FF]/40 hover:shadow-md transition-all"
+                >
+                  <p class="font-bold text-[#1A1528] leading-snug">{o.nombre}</p>
+                  <p class="mt-1 text-xs text-slate-400">
+                    {o.sedes}
+                    {o.sedes === 1 ? " sede" : " sedes"}
+                    {o.regiones.length > 0 && ` · ${o.regiones.slice(0, 3).join(", ")}`}
+                  </p>
+                  <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    {o.arancelMin && (
+                      <span class="font-bold text-[#6544FF]">
+                        Desde ${o.arancelMin.toLocaleString("es-CL")}
+                      </span>
+                    )}
+                    {o.acreditada && (
+                      <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+                        Acreditada
+                      </span>
+                    )}
+                    {o.gratuidad && (
+                      <span class="px-2 py-0.5 rounded-lg bg-violet-50 text-violet-700 font-semibold">
+                        Gratuidad
+                      </span>
+                    )}
+                  </div>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      {
+        regiones.length > 0 && (
+          <section class="mt-12">
+            <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+              {nombre} por región
+            </h2>
+            <ul class="mt-6 flex flex-wrap gap-2">
+              {regiones.map((r) => (
+                <li>
+                  {r.slug ? (
+                    <a
+                      href={`/carreras/region/${r.slug}`}
+                      class="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#6544FF]/40 hover:text-[#6544FF] transition-colors"
+                    >
+                      {r.nombre}
+                      <span class="text-xs text-slate-400">{r.programas}</span>
+                    </a>
+                  ) : (
+                    <span class="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
+                      {r.nombre}
+                      <span class="text-xs text-slate-400">{r.programas}</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <section class="mt-12">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+          Preguntas frecuentes sobre {nombre}
+        </h2>
+        <div class="mt-6 space-y-3">
+          {
+            preguntas.map((p) => (
+              <details class="bg-white rounded-2xl border border-slate-100 p-5 group">
+                <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                  {p.question}
+                  <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p class="mt-3 text-slate-600 leading-relaxed">{p.answer}</p>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+
+      <nav aria-label="Herramientas relacionadas" class="mt-12">
+        <div class="bg-white rounded-[2rem] border border-slate-100 p-8">
+          <h2 class="text-xl font-black text-[#1A1528] tracking-tight mb-4">
+            Sigue tu proceso de admisión
+          </h2>
+          <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <a href="/herramientas/calculadora" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+              Calcular mi puntaje ponderado
+            </a>
+            <a href="/herramientas/test-vocacional" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+              Test vocacional gratuito
+            </a>
+            <a href="/herramientas/mercado-laboral" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+              Empleabilidad por carrera
+            </a>
+            <a href="/herramientas/fuas" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+              Becas y gratuidad
+            </a>
+            <a href="/carreras" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+              Todas las carreras
+            </a>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </main>
+</Layout>

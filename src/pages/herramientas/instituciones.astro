@@ -1,15 +1,72 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import DirectorioInstitucionesComponent from "../../components/DirectorioInstituciones";
+import DirectorioInstitucionesComponent from "../../components/DirectorioInstituciones.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+import { institucionesDirectorio } from "../../services/listadosSSR";
+
+// Directorio resuelto en el servidor: el HTML sale con los enlaces a
+// /institucion/, que antes solo aparecían tras hidratar en el navegador.
+const instituciones = await institucionesDirectorio();
+
+const total = instituciones.length;
+const universidades = instituciones.filter((i: any) =>
+  String(i.tipo || "").includes("Universidades"),
+).length;
+const ips = instituciones.filter((i: any) =>
+  String(i.tipo || "").includes("Institutos"),
+).length;
+const cfts = instituciones.filter((i: any) =>
+  String(i.tipo || "").includes("Centros"),
+).length;
+const conGratuidad = instituciones.filter((i: any) => i.adscrita_gratuidad).length;
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Instituciones", url: "/herramientas/instituciones" },
+  ]),
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Instituciones de educación superior de Chile",
+    numberOfItems: total,
+    itemListElement: instituciones.slice(0, 100).map((i: any, idx: number) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      url: `/institucion/${i.codigo_institucion}`,
+      name: i.nombre,
+    })),
+  },
+  faqSchema([
+    {
+      question: "¿Cuántas instituciones de educación superior hay en el directorio?",
+      answer: `El directorio reúne ${total} instituciones chilenas: ${universidades} universidades, ${ips} institutos profesionales (IP) y ${cfts} centros de formación técnica (CFT), con datos oficiales del SIES (MINEDUC).`,
+    },
+    {
+      question: "¿Cómo sé si una institución está adscrita a gratuidad?",
+      answer: `Cada ficha indica si la institución está adscrita a gratuidad y si cuenta con acreditación de la CNA. Actualmente ${conGratuidad} de las instituciones del directorio están adscritas a gratuidad.`,
+    },
+    {
+      question: "¿Qué diferencia hay entre universidad, IP y CFT?",
+      answer:
+        "Las universidades imparten carreras profesionales con licenciatura y programas de posgrado; los institutos profesionales entregan títulos profesionales sin licenciatura; los centros de formación técnica otorgan títulos de técnico de nivel superior, con carreras más cortas y orientadas al oficio.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Directorio de Instituciones | Elige tu Futuro"
-  description="Directorio de universidades, institutos profesionales (IP) y centros de formación técnica (CFT) de Chile: acreditación, gratuidad, carreras y datos oficiales SIES."
+  title="Directorio de Universidades, IP y CFT de Chile"
+  description={`Directorio de ${total} instituciones de educación superior en Chile: ${universidades} universidades, ${ips} IP y ${cfts} CFT. Acreditación, gratuidad, carreras y datos oficiales SIES.`}
+  canonical="/herramientas/instituciones"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="">
-      <DirectorioInstitucionesComponent client:load />
+      <DirectorioInstitucionesComponent
+        datosIniciales={instituciones}
+        client:load
+      />
     </div>
   </div>
 </Layout>

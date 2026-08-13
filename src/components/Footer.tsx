@@ -34,6 +34,9 @@ export default function Footer() {
               <li><a href="/herramientas/buscador" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Buscador de Carreras</a></li>
               <li><a href="/herramientas/calculadora" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Calculadora PAES</a></li>
               <li><a href="/herramientas/mercado-laboral" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Mercado Laboral</a></li>
+              {/* Puertas de entrada al árbol de hubs: sin este enlace en el
+                  footer, /carreras solo se alcanzaría desde el sitemap. */}
+              <li><a href="/carreras" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Todas las Carreras</a></li>
             </ul>
           </div>
 
@@ -43,6 +46,8 @@ export default function Footer() {
               Información
             </h5>
             <ul className="space-y-4 text-sm text-gray-400">
+              <li><a href="/noticias" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Noticias y guías</a></li>
+              <li><a href="/tendencias" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Carreras en tendencia</a></li>
               <li><a href="/terminos-y-condiciones" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Términos y condiciones</a></li>
               <li><a href="/herramientas/fuas" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Becas y Gratuidad</a></li>
               <li><a href="/herramientas/calendario" className="hover:text-white hover:translate-x-1 inline-block transition-all duration-200">Calendario PAES</a></li>

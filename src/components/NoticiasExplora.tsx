@@ -1,24 +1,45 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Flame, Sparkles, ArrowLeft,
   Clock, ArrowUpRight, BookOpen, Trophy, Globe, Loader2, Compass
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import type { Noticia, NoticiaRow } from "../types/noticia";
+import { mapearNoticia, type Noticia, type NoticiaRow } from "../types/noticia";
 import { trackEvent } from "../lib/analytics";
 import GenerandoLoader from "./GenerandoLoader";
 
 const CATEGORIAS: string[] = ["Todas", "Tendencias", "Inspiración", "Oportunidades", "Tips de Estudio"];
 
-export default function NoticiasExplora() {
+interface NoticiasExploraProps {
+  /**
+   * Noticias resueltas en el servidor. Sin esto el listado se pintaba vacío en
+   * el HTML y los buscadores no encontraban ni un solo enlace a /noticia/.
+   */
+  datosIniciales?: NoticiaRow[];
+}
+
+export default function NoticiasExplora({ datosIniciales = [] }: NoticiasExploraProps) {
+  const noticiasIniciales = useMemo(
+    () => datosIniciales.map(mapearNoticia),
+    [datosIniciales]
+  );
+
   const [filtroActivo, setFiltroActivo] = useState<string>("Todas");
-  const [noticiasFiltradas, setNoticiasFiltradas] = useState<Noticia[]>([]);
-  const [cargando, setCargando] = useState<boolean>(true);
+  const [noticiasFiltradas, setNoticiasFiltradas] = useState<Noticia[]>(noticiasIniciales);
+  const [cargando, setCargando] = useState<boolean>(noticiasIniciales.length === 0);
   const [navegandoA, setNavegandoA] = useState<string | null>(null);
 
+  // El primer render ya viene servido: evitamos refetchear "Todas" al hidratar.
+  const usarDatosIniciales = useRef<boolean>(noticiasIniciales.length > 0);
+
   useEffect(() => {
+    if (usarDatosIniciales.current) {
+      usarDatosIniciales.current = false;
+      return;
+    }
+
     const cacheKey = `etf_explora_${filtroActivo}`;
     const CACHE_TTL = 3 * 60 * 1000;
 
@@ -54,23 +75,7 @@ export default function NoticiasExplora() {
 
         const rows = data as NoticiaRow[] | null;
 
-        const noticiasFormateadas: Noticia[] = (rows || []).map((row: NoticiaRow) => ({
-          id: row.id,
-          titulo: row.titulo,
-          extracto: row.extracto,
-          categoria: row.categoria,
-          color: row.color,
-          autor: row.autor,
-          imagenPrincipal: row.imagen_principal,
-          imagenesSecundarias: row.imagenes_secundarias || [],
-          cuerpoMarkdown: row.cuerpo_markdown,
-          enlacesReferencia: row.enlaces_referencia || [],
-          estado: row.estado,
-          destacada: row.destacada,
-          tiempoLectura: row.tiempo_lectura,
-          tags: row.tags || [],
-          createdAt: row.created_at,
-        }));
+        const noticiasFormateadas: Noticia[] = (rows || []).map(mapearNoticia);
 
         setNoticiasFiltradas(noticiasFormateadas);
         try {

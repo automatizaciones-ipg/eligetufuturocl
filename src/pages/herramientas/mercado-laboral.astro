@@ -1,15 +1,47 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import MercadoLaboralComponent from "../../components/MercadoLaboral.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+import { carrerasMercadoLaboral } from "../../services/listadosSSR";
+
+// Ranking resuelto en el servidor: el HTML sale con las carreras, sus cifras y
+// los enlaces a /carrera/ en vez de un esqueleto de carga.
+const datosIniciales = await carrerasMercadoLaboral(200);
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Mercado Laboral", url: "/herramientas/mercado-laboral" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Qué es la empleabilidad al primer año?",
+      answer:
+        "Es el porcentaje de titulados de una carrera que se encuentra trabajando formalmente durante su primer año tras egresar. La publica el Servicio de Información de Educación Superior (SIES) del MINEDUC y es el indicador más usado en Chile para comparar la inserción laboral entre carreras.",
+    },
+    {
+      question: "¿Qué significa el ingreso promedio al cuarto año?",
+      answer:
+        "Es la remuneración bruta promedio que perciben los titulados de una carrera al cuarto año de haber egresado, según los registros del SIES. Sirve para estimar el retorno económico de una carrera más allá de su sueldo inicial.",
+    },
+    {
+      question: "¿Las carreras técnicas tienen buena empleabilidad en Chile?",
+      answer:
+        "Varias carreras técnicas de nivel superior registran empleabilidad al primer año comparable o superior a la de carreras profesionales, con una duración menor y un arancel más bajo. En esta herramienta puedes comparar ambas cifras carrera por carrera con datos oficiales del SIES.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Mercado Laboral y Empleabilidad | Elige tu Futuro"
-  description="Compara empleabilidad al primer año e ingreso promedio al cuarto año por carrera en Chile. Decide tu futuro con datos reales del mercado laboral (fuente SIES)."
+  title="Empleabilidad e Ingresos por Carrera en Chile (Datos SIES)"
+  description="Compara la empleabilidad al primer año y el ingreso promedio al cuarto año de las carreras en Chile. Decide con datos reales del mercado laboral, fuente SIES / MINEDUC."
+  canonical="/herramientas/mercado-laboral"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="">
-      <MercadoLaboralComponent client:load />
+      <MercadoLaboralComponent datosIniciales={datosIniciales} client:load />
     </div>
   </div>
 </Layout>

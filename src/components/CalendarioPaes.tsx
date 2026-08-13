@@ -181,10 +181,10 @@ export default function CalendarioPaes() {
             <CalendarDays className="w-4 h-4" /> Ciclo Admisión 2026
           </div>
           
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl text-white tracking-tight mb-6 leading-[1.05]">
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl text-white tracking-tight mb-6 leading-[1.05]">
             Tu Ruta hacia <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">La Universidad</span>
-          </h2>
+          </h1>
           
           <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
             Revisa los temarios, organiza tu tiempo y no dejes que las fechas se te pasen. Aquí tienes el calendario oficial para asegurar tu éxito.

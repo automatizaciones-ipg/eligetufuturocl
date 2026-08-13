@@ -1,7 +1,7 @@
 // src/components/DirectorioInstituciones.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Building2, Award, CheckCircle2, ChevronRight,
   Search, MapPin, Globe, Star, ArrowLeft, Loader2, ChevronLeft,
@@ -60,7 +60,54 @@ const REGIONES = [
 
 const ITEMS_POR_PAGINA = 15;
 
-export default function DirectorioInstituciones() {
+// Adapta filas de Supabase a la UI. A nivel de módulo para que el estado
+// inicial (sembrado desde el servidor) y el refetch en cliente compartan
+// exactamente la misma transformación y no haya desajuste al hidratar.
+function adaptarInstituciones(data: any[]): InstitucionUI[] {
+  return data.map((item, index) => {
+    const regionesMapeadas = item.carreras
+      ? (item.carreras.map((c: any) => c.region).filter(Boolean) as string[])
+      : [];
+    const regionesUnicas = Array.from(new Set(regionesMapeadas));
+
+    // ── Construir la URL pública del logo ──
+    let logoUrl = "";
+    const rawLogo = item.logo_url;
+    if (rawLogo) {
+      if (rawLogo.startsWith("http")) {
+        logoUrl = rawLogo;
+      } else {
+        const bucket = "logos_instituciones";
+        // @ts-ignore - import.meta.env es provisto por Astro
+        const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+        if (baseUrl) {
+          logoUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${rawLogo}`;
+        }
+      }
+    }
+
+    return {
+      codigo_institucion: item.codigo_institucion,
+      nombre: item.nombre,
+      tipo: item.tipo,
+      adscrita_gratuidad: item.adscrita_gratuidad,
+      acreditada: item.acreditada,
+      logo_url: item.logo_url,       // preservamos el original si se necesita (no se usa en la UI)
+      regiones: regionesUnicas,
+      color: PALETA_COLORES[index % PALETA_COLORES.length],
+      destacada: item.acreditada && item.adscrita_gratuidad,
+      logoUrl: logoUrl,
+    };
+  });
+}
+
+interface DirectorioInstitucionesProps {
+  /** Instituciones resueltas en el servidor: hacen que el HTML salga con los
+   *  enlaces a /institucion/ en vez de una grilla vacía. */
+  datosIniciales?: any[];
+}
+
+export default function DirectorioInstituciones({ datosIniciales = [] }: DirectorioInstitucionesProps) {
   // Estados de los Filtros
   const [regionActiva, setRegionActiva] = useState("todas");
   const [filtroTipo, setFiltroTipo] = useState("Todos");
@@ -73,9 +120,13 @@ export default function DirectorioInstituciones() {
   const [dropdownAcreditacionAbierto, setDropdownAcreditacionAbierto] = useState(false);
   const [dropdownOrdenAbierto, setDropdownOrdenAbierto] = useState(false);
   
-  const [institucionesBD, setInstitucionesBD] = useState<InstitucionUI[]>([]);
-  const [institucionesFiltradas, setInstitucionesFiltradas] = useState<InstitucionUI[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const institucionesIniciales = useMemo(
+    () => adaptarInstituciones(datosIniciales),
+    [datosIniciales]
+  );
+  const [institucionesBD, setInstitucionesBD] = useState<InstitucionUI[]>(institucionesIniciales);
+  const [institucionesFiltradas, setInstitucionesFiltradas] = useState<InstitucionUI[]>(institucionesIniciales);
+  const [cargando, setCargando] = useState(institucionesIniciales.length === 0);
   const [paginaActual, setPaginaActual] = useState(1);
   
   // Estado para UX de Navegación y Logos
@@ -95,8 +146,10 @@ export default function DirectorioInstituciones() {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
-  // --- FETCH DE SUPABASE ---
+  // --- FETCH DE SUPABASE (solo si el servidor no sembró el listado) ---
   useEffect(() => {
+    if (institucionesIniciales.length > 0) return;
+
     const fetchInstituciones = async () => {
       setCargando(true);
       try {
@@ -115,44 +168,7 @@ export default function DirectorioInstituciones() {
         if (error) throw error;
 
         if (data) {
-          const instAdaptadas: InstitucionUI[] = data.map((item, index) => {
-            const regionesMapeadas = item.carreras 
-              ? item.carreras.map(c => c.region).filter(Boolean) as string[]
-              : [];
-            const regionesUnicas = Array.from(new Set(regionesMapeadas));
-
-            // ── Construir la URL pública del logo ──
-            let logoUrl = "";
-            const rawLogo = item.logo_url;
-            if (rawLogo) {
-              if (rawLogo.startsWith("http")) {
-                logoUrl = rawLogo;
-              } else {
-                const bucket = "logos_instituciones";
-                // @ts-ignore - import.meta.env es provisto por Astro
-                const baseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-                if (!baseUrl) {
-                  console.error("⚠️ No se encontró PUBLIC_SUPABASE_URL. Define la variable en .env");
-                } else {
-                  logoUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${rawLogo}`;
-                }
-              }
-            }
-            
-            return {
-              codigo_institucion: item.codigo_institucion,
-              nombre: item.nombre,
-              tipo: item.tipo,
-              adscrita_gratuidad: item.adscrita_gratuidad,
-              acreditada: item.acreditada,
-              logo_url: item.logo_url,       // preservamos el original si se necesita (no se usa en la UI)
-              regiones: regionesUnicas,
-              color: PALETA_COLORES[index % PALETA_COLORES.length],
-              destacada: item.acreditada && item.adscrita_gratuidad,
-              logoUrl: logoUrl
-            };
-          });
-
+          const instAdaptadas = adaptarInstituciones(data);
           setInstitucionesBD(instAdaptadas);
           setInstitucionesFiltradas(instAdaptadas);
         }
@@ -282,10 +298,10 @@ export default function DirectorioInstituciones() {
             <Building2 className="w-4 h-4" /> Red Educativa Nacional
           </div>
 
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             Directorio de <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Instituciones</span>
-          </h2>
+          </h1>
 
           <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed mb-6" style={{ animationDelay: '0.2s' }}>
             Explora las universidades, institutos y centros de formación técnica de todo el país. Verifica su gratuidad y acreditación.

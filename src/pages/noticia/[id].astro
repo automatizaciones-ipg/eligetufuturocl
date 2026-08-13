@@ -3,6 +3,7 @@
 import Layout from "../../layouts/Layout.astro";
 import NoticiaSingle from "../../components/NoticiaSingle"; // Componente React
 import { supabase } from "../../../lib/supabase";
+import { mapearNoticia, type Noticia, type NoticiaRow } from "../../types/noticia";
 import { newsArticleSchema, breadcrumbSchema, SITE } from "../../lib/seo";
 
 // SSR: leemos cualquier ID en tiempo real desde la URL.
@@ -10,30 +11,48 @@ export const prerender = false;
 
 const { id } = Astro.params;
 
-// Obtenemos la noticia en el servidor SOLO para construir los metadatos SEO
-// (Open Graph, Twitter, NewsArticle). El render visible lo sigue haciendo React.
-let titulo = "Lectura | Explora Tu Futuro";
-let description = SITE.description;
-let image = SITE.defaultOgImage;
-let jsonLd: Record<string, unknown>[] = [];
-let publishedTime: string | undefined;
+// El artículo se resuelve ENTERO en el servidor y se le pasa al componente como
+// prop. Antes se montaba con `client:only`, así que el cuerpo, el título visible
+// y los encabezados no existían en el HTML: los buscadores solo veían el
+// esqueleto de carga y ninguna noticia llegaba a indexarse.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-try {
-  const { data: noticia } = await supabase
-    .from("noticias")
-    .select("id, titulo, extracto, autor, imagen_principal, categoria, created_at, tags")
-    .eq("id", id)
-    .single();
+let noticia: Noticia | null = null;
 
-  if (noticia) {
-    titulo = `${noticia.titulo} | Explora Tu Futuro`;
-    description = (noticia.extracto || SITE.description).slice(0, 200);
-    image = noticia.imagen_principal || SITE.defaultOgImage;
-    publishedTime = noticia.created_at
-      ? new Date(noticia.created_at).toISOString()
-      : undefined;
-    const canonical = `/noticia/${id}`;
-    jsonLd = [
+if (id && UUID_RE.test(id)) {
+  try {
+    const { data } = await supabase
+      .from("noticias")
+      .select("*")
+      .eq("id", id)
+      .eq("estado", "activado") // Solo artículos publicados
+      .single();
+    if (data) noticia = mapearNoticia(data as NoticiaRow);
+  } catch {
+    // Si Supabase falla, se responde como "no disponible" en vez de romper.
+  }
+}
+
+// Un artículo inexistente o despublicado debe devolver 404 de verdad: antes
+// respondía 200 con un cartel de error, lo que deja URLs muertas indexables.
+if (!noticia) {
+  Astro.response.status = 404;
+}
+
+const titulo = noticia
+  ? `${noticia.titulo} | Explora Tu Futuro`
+  : "Artículo no disponible";
+const description = noticia
+  ? (noticia.extracto || SITE.description).slice(0, 200)
+  : "El artículo que buscas no está disponible. Explora las guías de orientación vocacional de Elige Tu Futuro.";
+const image = noticia?.imagenPrincipal || SITE.defaultOgImage;
+const canonical = `/noticia/${id}`;
+const publishedTime = noticia?.createdAt
+  ? new Date(noticia.createdAt).toISOString()
+  : undefined;
+
+const jsonLd = noticia
+  ? [
       breadcrumbSchema([
         { name: "Inicio", url: "/" },
         { name: "Noticias", url: "/noticias" },
@@ -46,22 +65,55 @@ try {
         image,
         datePublished: publishedTime,
         author: noticia.autor,
+        // El cuerpo completo en el JSON-LD ayuda a que buscadores y motores de
+        // IA citen el artículo aunque no ejecuten JavaScript.
+        articleBody: noticia.cuerpoMarkdown,
+        section: noticia.categoria,
+        keywords: noticia.tags,
       }),
-    ];
-  }
-} catch {
-  // Si Supabase falla, renderizamos con metadatos genéricos.
-}
+    ]
+  : [];
 ---
 
 <Layout
   title={titulo}
   description={description}
   image={image}
-  canonical={`/noticia/${id}`}
+  canonical={canonical}
   type="article"
+  noindex={!noticia}
   jsonLd={jsonLd}
-  article={{ publishedTime, author: "Elige Tu Futuro", section: "Orientación" }}
+  article={{
+    publishedTime,
+    author: noticia?.autor || "Elige Tu Futuro",
+    section: noticia?.categoria || "Orientación",
+    tags: noticia?.tags,
+  }}
 >
-  <NoticiaSingle noticiaId={id as string} client:only="react" />
+  {
+    noticia ? (
+      <NoticiaSingle
+        noticiaId={id as string}
+        noticiaInicial={noticia}
+        client:load
+      />
+    ) : (
+      <main class="w-full min-h-screen bg-[#F4F5F9] flex flex-col items-center justify-center px-4">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-xl text-center max-w-md border border-slate-100">
+          <h1 class="font-black text-2xl text-slate-800 mb-2">
+            Artículo no disponible
+          </h1>
+          <p class="text-slate-500 text-sm font-medium mb-6">
+            El contenido solicitado no existe o ya no está publicado.
+          </p>
+          <a
+            href="/noticias"
+            class="px-6 py-3 bg-[#1A1528] text-white rounded-xl font-bold transition-transform hover:scale-105 inline-block"
+          >
+            Volver a Noticias
+          </a>
+        </div>
+      </main>
+    )
+  }
 </Layout>

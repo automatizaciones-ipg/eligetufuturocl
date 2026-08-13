@@ -1,0 +1,283 @@
+---
+// src/pages/carreras/region/[region].astro
+// ============================================================================
+// Página hub por región: responde a "carreras en Valparaíso", "estudiar en
+// Concepción", que hoy no tenían destino en el sitio. Agrupa toda la oferta de
+// una región y enlaza tanto a los hubs por carrera como a las instituciones.
+// ============================================================================
+import type { GetStaticPaths } from "astro";
+import Layout from "../../../layouts/Layout.astro";
+import { breadcrumbSchema, faqSchema } from "../../../lib/seo";
+import {
+  formatearTitulo,
+  slugificar,
+  recortarDescripcion,
+} from "../../../utils/formatters";
+import { REGIONES, regionPorSlug } from "../../../utils/regiones";
+import {
+  carrerasPorRegion,
+  calcularEstadisticas,
+  indiceCarreras,
+} from "../../../services/carrerasIndex";
+
+export const prerender = true;
+
+export const getStaticPaths = (async () =>
+  REGIONES.map((r) => ({ params: { region: r.slug } }))) satisfies GetStaticPaths;
+
+const { region: slugRegion } = Astro.params;
+const region = regionPorSlug(slugRegion!);
+if (!region) {
+  return Astro.redirect("/404");
+}
+
+const filas = await carrerasPorRegion(region.valor);
+if (filas.length === 0) {
+  return Astro.redirect("/404");
+}
+
+const stats = calcularEstadisticas(filas);
+const { instituciones: catalogoInstituciones } = await indiceCarreras();
+
+const pesos = (v: number | null) =>
+  v == null ? null : `$${Math.round(v).toLocaleString("es-CL")}`;
+
+// ── Carreras distintas de la región, con su hub ─────────────────────────────
+const porCarrera = new Map<string, { nombre: string; programas: number }>();
+for (const f of filas) {
+  const s = slugificar(f.nombre_carrera);
+  if (!s) continue;
+  const entrada = porCarrera.get(s);
+  if (entrada) entrada.programas += 1;
+  else porCarrera.set(s, { nombre: formatearTitulo(f.nombre_carrera), programas: 1 });
+}
+const carreras = [...porCarrera.entries()]
+  .map(([slug, v]) => ({ slug, ...v }))
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+// ── Instituciones presentes en la región ────────────────────────────────────
+const codigosInstitucion = [...new Set(filas.map((f) => String(f.codigo_institucion)))];
+const institucionesRegion = codigosInstitucion
+  .map((codigo) => {
+    const inst = catalogoInstituciones.get(codigo);
+    return {
+      codigo,
+      nombre: inst?.nombre ?? "Institución no informada",
+      acreditada: inst?.acreditada ?? null,
+      gratuidad: inst?.adscrita_gratuidad ?? null,
+      programas: filas.filter((f) => String(f.codigo_institucion) === codigo).length,
+    };
+  })
+  .sort((a, b) => b.programas - a.programas);
+
+// ── Metadatos ───────────────────────────────────────────────────────────────
+const title = `Carreras en la ${region.nombre.replace(/^Región /, "Región ")}: oferta 2026`;
+
+const description = recortarDescripcion(
+  `${stats.programas} carreras en la ${region.nombre} (${region.capital}): ${carreras.length} programas distintos en ${stats.instituciones} instituciones. Aranceles, jornadas y empleabilidad con datos oficiales SIES.`,
+);
+
+const preguntas = [
+  {
+    question: `¿Cuántas carreras se pueden estudiar en la ${region.nombre}?`,
+    answer: `En la ${region.nombre} hay ${stats.programas} programas de educación superior, correspondientes a ${carreras.length} carreras distintas impartidas por ${stats.instituciones} instituciones, según los datos oficiales del SIES (MINEDUC) para la Admisión 2026.`,
+  },
+  stats.arancelPromedio
+    ? {
+        question: `¿Cuánto cuesta estudiar en la ${region.nombre}?`,
+        answer: `El arancel anual promedio en la ${region.nombre} es de ${pesos(stats.arancelPromedio)}, con un rango que va desde ${pesos(stats.arancelMin)} hasta ${pesos(stats.arancelMax)}. Varias instituciones de la región están adscritas a gratuidad.`,
+      }
+    : null,
+  {
+    question: `¿Qué instituciones hay en la ${region.nombre}?`,
+    answer: `${stats.instituciones} instituciones de educación superior imparten carreras en la ${region.nombre}, entre universidades, institutos profesionales y centros de formación técnica. La ciudad con mayor concentración de oferta es ${region.capital}.`,
+  },
+].filter(Boolean) as { question: string; answer: string }[];
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Carreras", url: "/carreras" },
+    { name: region.nombre, url: `/carreras/region/${region.slug}` },
+  ]),
+  faqSchema(preguntas),
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Carreras en la ${region.nombre}`,
+    numberOfItems: carreras.length,
+    itemListElement: carreras.slice(0, 100).map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `/carreras/${c.slug}`,
+      name: c.nombre,
+    })),
+  },
+];
+---
+
+<Layout
+  title={title}
+  description={description}
+  canonical={`/carreras/region/${region.slug}`}
+  jsonLd={jsonLd}
+>
+  <main class="bg-[#F4F5F9] min-h-screen pb-20">
+    <header class="bg-[#1A1528] text-white">
+      <div class="max-w-6xl mx-auto px-6 pt-28 pb-16">
+        <nav aria-label="Migas de pan" class="text-sm text-white/50 mb-6">
+          <a href="/" class="hover:text-white">Inicio</a>
+          <span class="mx-2">/</span>
+          <a href="/carreras" class="hover:text-white">Carreras</a>
+          <span class="mx-2">/</span>
+          <span class="text-white/80">{region.nombre}</span>
+        </nav>
+
+        <h1 class="font-black italic uppercase text-4xl md:text-6xl tracking-tight leading-[1.05]">
+          Carreras en la <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]"
+            >{region.nombre.replace(/^Región (de |del |)/, "")}</span
+          >
+        </h1>
+
+        <p class="mt-6 text-lg text-white/70 max-w-3xl leading-relaxed">
+          La {region.nombre} concentra <strong class="text-white">{stats.programas}</strong>
+          programas de educación superior: <strong class="text-white">{carreras.length}</strong>
+          carreras distintas impartidas por <strong class="text-white"
+            >{stats.instituciones}</strong
+          > instituciones, con {region.capital} como principal centro de oferta académica.
+        </p>
+      </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-6 -mt-10">
+      <section
+        aria-label="Datos clave de la región"
+        class="grid grid-cols-2 md:grid-cols-4 gap-3"
+      >
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Programas</p>
+          <p class="mt-1 text-xl font-black text-[#1A1528]">{stats.programas}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Carreras</p>
+          <p class="mt-1 text-xl font-black text-[#1A1528]">{carreras.length}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Instituciones
+          </p>
+          <p class="mt-1 text-xl font-black text-[#1A1528]">{stats.instituciones}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Arancel promedio
+          </p>
+          <p class="mt-1 text-xl font-black text-[#1A1528]">
+            {pesos(stats.arancelPromedio) ?? "No informado"}
+          </p>
+        </div>
+      </section>
+
+      <section class="mt-12">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+          Instituciones en la {region.nombre}
+        </h2>
+        <ul class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {
+            institucionesRegion.map((i) => (
+              <li>
+                <a
+                  href={`/institucion/${i.codigo}`}
+                  class="block h-full bg-white rounded-2xl border border-slate-100 p-5 hover:border-[#6544FF]/40 hover:shadow-md transition-all"
+                >
+                  <p class="font-bold text-[#1A1528] leading-snug">{i.nombre}</p>
+                  <p class="mt-1 text-xs text-slate-400">
+                    {i.programas}
+                    {i.programas === 1 ? " programa" : " programas"} en la región
+                  </p>
+                  <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                    {i.acreditada && (
+                      <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+                        Acreditada
+                      </span>
+                    )}
+                    {i.gratuidad && (
+                      <span class="px-2 py-0.5 rounded-lg bg-violet-50 text-violet-700 font-semibold">
+                        Gratuidad
+                      </span>
+                    )}
+                  </div>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="mt-12">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+          Todas las carreras de la región
+        </h2>
+        <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+          {
+            carreras.map((c) => (
+              <li>
+                <a
+                  href={`/carreras/${c.slug}`}
+                  class="flex items-baseline justify-between gap-3 py-2 border-b border-slate-200/70 text-sm text-slate-700 hover:text-[#6544FF] transition-colors"
+                >
+                  <span class="font-medium">{c.nombre}</span>
+                  <span class="text-xs text-slate-400 shrink-0">{c.programas}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="mt-12">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight">
+          Preguntas frecuentes
+        </h2>
+        <div class="mt-6 space-y-3">
+          {
+            preguntas.map((p) => (
+              <details class="bg-white rounded-2xl border border-slate-100 p-5 group">
+                <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                  {p.question}
+                  <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p class="mt-3 text-slate-600 leading-relaxed">{p.answer}</p>
+              </details>
+            ))
+          }
+        </div>
+      </section>
+
+      <nav aria-label="Otras regiones" class="mt-12">
+        <div class="bg-white rounded-[2rem] border border-slate-100 p-8">
+          <h2 class="text-xl font-black text-[#1A1528] tracking-tight mb-4">
+            Explora otras regiones
+          </h2>
+          <ul class="flex flex-wrap gap-2">
+            {
+              REGIONES.filter((r) => r.slug !== region.slug).map((r) => (
+                <li>
+                  <a
+                    href={`/carreras/region/${r.slug}`}
+                    class="inline-block rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:border-[#6544FF]/40 hover:text-[#6544FF] transition-colors"
+                  >
+                    {r.nombre.replace(/^Región (de |del |)/, "")}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </main>
+</Layout>

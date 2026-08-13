@@ -5,7 +5,6 @@ import {
   Building2, CalendarDays, Calculator, GraduationCap, ArrowRight,
   Loader2
 } from "lucide-react";
-import { supabase } from "../../lib/supabase";
 
 // ============================================================================
 // 1. INTERFACES (TIPADO ESTRICTO)
@@ -28,10 +27,11 @@ interface DynamicItem {
   icono: React.ReactNode;
 }
 
+// Forma de la respuesta de /api/buscar (el endpoint ya aplana la institución).
 interface CarreraResp {
   codigo_carrera: number;
   nombre_carrera: string;
-  instituciones: { nombre: string } | { nombre: string }[] | null;
+  institucion: string;
 }
 
 interface InstitucionResp {
@@ -57,6 +57,10 @@ const NAV_ITEMS = [
     icon: <Building2 className="w-4 h-4" />,
     children: [
       { name: "Buscador de Carreras", href: "/herramientas/buscador", desc: "Filtra por carrera, arancel y más" },
+      // Entrada al árbol de páginas hub desde el menú principal: es el enlace
+      // que reparte autoridad hacia /carreras/[carrera] y, desde ahí, hacia las
+      // ~9.900 fichas. Antes solo existía en el footer.
+      { name: "Todas las Carreras", href: "/carreras", desc: "Aranceles, duración y empleabilidad" },
       { name: "Todas las Instituciones", href: "/herramientas/instituciones", desc: "Universidades, IPs y CFTs" },
     ],
   },
@@ -124,65 +128,65 @@ export default function Header() {
     );
     setHerramientasEncontradas(hFiltradas);
 
-    // B. Consulta Asíncrona a Supabase con Debounce (Carreras e Instituciones)
+    // B. Consulta Asíncrona con Debounce (Carreras e Instituciones)
+    // Pasa por /api/buscar en vez de por el SDK de Supabase: el Header se
+    // hidrata con `client:load` en TODAS las páginas, así que importar aquí el
+    // cliente de Supabase metía 204 KB de JavaScript en la ruta crítica de todo
+    // el sitio para alimentar un buscador que casi nadie llega a abrir.
     setIsSearching(true);
+    const controlador = new AbortController();
     const timeoutId = setTimeout(async () => {
       try {
-        const queryRobusta = query.replace(/[aeiouáéíóúAEIOUÁÉÍÓÚ]/g, '_');
-        
-        const [resCarreras, resInst] = await Promise.all([
-          supabase.from('carreras')
-            .select('codigo_carrera, nombre_carrera, instituciones(nombre)')
-            .ilike('nombre_carrera', `%${queryRobusta}%`)
-            .limit(4),
-          supabase.from('instituciones')
-            .select('codigo_institucion, nombre, tipo')
-            .ilike('nombre', `%${queryRobusta}%`)
-            .limit(2)
-        ]);
+        const res = await fetch(`/api/buscar?q=${encodeURIComponent(query)}`, {
+          signal: controlador.signal,
+        });
+        if (!res.ok) throw new Error(`Búsqueda falló: ${res.status}`);
+        const datos = (await res.json()) as {
+          carreras: CarreraResp[];
+          instituciones: InstitucionResp[];
+        };
 
         const results: DynamicItem[] = [];
 
         // 1. Mapeamos Instituciones (Prioridad Arriba)
-        if (resInst.data) {
-          const instData = resInst.data as unknown as InstitucionResp[];
-          instData.forEach(inst => {
-            results.push({
-              id: `inst-${inst.codigo_institucion}`,
-              tipo: 'institucion',
-              titulo: inst.nombre,
-              subtitulo: inst.tipo || 'Educación Superior',
-              url: `/institucion/${inst.codigo_institucion}`,
-              icono: <Building2 className="w-5 h-5" />
-            });
+        for (const inst of datos.instituciones ?? []) {
+          results.push({
+            id: `inst-${inst.codigo_institucion}`,
+            tipo: 'institucion',
+            titulo: inst.nombre,
+            subtitulo: inst.tipo || 'Educación Superior',
+            url: `/institucion/${inst.codigo_institucion}`,
+            icono: <Building2 className="w-5 h-5" />
           });
         }
 
         // 2. Mapeamos Carreras
-        if (resCarreras.data) {
-          const carData = resCarreras.data as unknown as CarreraResp[];
-          carData.forEach(car => {
-            const instObj = Array.isArray(car.instituciones) ? car.instituciones[0] : car.instituciones;
-            results.push({
-              id: `car-${car.codigo_carrera}`,
-              tipo: 'carrera',
-              titulo: car.nombre_carrera,
-              subtitulo: instObj?.nombre || 'Institución no informada',
-              url: `/carrera/${car.codigo_carrera}`,
-              icono: <GraduationCap className="w-5 h-5" />
-            });
+        for (const car of datos.carreras ?? []) {
+          results.push({
+            id: `car-${car.codigo_carrera}`,
+            tipo: 'carrera',
+            titulo: car.nombre_carrera,
+            subtitulo: car.institucion || 'Institución no informada',
+            url: `/carrera/${car.codigo_carrera}`,
+            icono: <GraduationCap className="w-5 h-5" />
           });
         }
 
         setCarrerasEncontradas(results);
       } catch (error) {
+        if ((error as Error)?.name === 'AbortError') return;
         console.error('Error en búsqueda en tiempo real:', error);
       } finally {
         setIsSearching(false);
       }
     }, 300);
 
-    return () => clearTimeout(timeoutId);
+    // Al cambiar la consulta se cancela también la petición en vuelo, para que
+    // una respuesta antigua no pise los resultados de lo que se está tecleando.
+    return () => {
+      clearTimeout(timeoutId);
+      controlador.abort();
+    };
   }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

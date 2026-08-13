@@ -7,6 +7,7 @@ import {
   ArrowLeft, CheckCircle2, Sparkles, User, Mail, Phone, Loader2, Send, ChevronDown, Check, Edit3, Award
 } from 'lucide-react';
 import GenerandoLoader from './GenerandoLoader';
+import { formatearTitulo, describirLugar, describirJornada } from '../utils/formatters';
 
 // ============================================================================
 // 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
@@ -87,35 +88,7 @@ const TIPOS_PREGUNTAS = [
   "Otro"
 ];
 
-const CONECTORES = ['de', 'en', 'el', 'la', 'los', 'las', 'y', 'del', 'a', 'por', 'con', 'para'];
-
-const MAPA_TILDES: Record<string, string> = {
-  'actuacion': 'actuación', 'administracion': 'administración', 'ingenieria': 'ingeniería',
-  'tecnico': 'técnico', 'tecnologia': 'tecnología', 'computacion': 'computación',
-  'informatica': 'informática', 'psicologia': 'psicología', 'pedagogia': 'pedagogía',
-  'educacion': 'educación', 'kinesiologia': 'kinesiología', 'odontologia': 'odontología',
-  'fonoaudiologia': 'fonoaudiología', 'nutricion': 'nutrición', 'biologia': 'biología',
-  'quimica': 'química', 'fisica': 'física', 'geologia': 'geología', 'agronomia': 'agronomía',
-  'electronica': 'electrónica', 'electrica': 'eléctrica', 'mecanica': 'mecánica',
-  'automatizacion': 'automatización', 'gestion': 'gestión', 'publico': 'público',
-  'publicas': 'públicas', 'juridica': 'jurídica', 'politica': 'política',
-  'politicas': 'políticas', 'antropologia': 'antropología', 'arqueologia': 'arqueología',
-  'sociologia': 'sociología', 'filosofia': 'filosofía', 'teologia': 'teología',
-  'musica': 'música', 'animacion': 'animación', 'gastronomia': 'gastronomía',
-  'estetica': 'estética', 'cosmetologia': 'cosmetología', 'logistica': 'logística',
-  'prevencion': 'prevención', 'construccion': 'construcción', 'comunicacion': 'comunicación',
-  'diseno': 'diseño', 'parvulo': 'párvulo', 'bilingue': 'bilingüe', 'ingles': 'inglés',
-  'enfermeria': 'enfermería', 'audicion': 'audición', 'optometria': 'optometría',
-  'clinico': 'clínico', 'radiologia': 'radiología', 'odontologico': 'odontológico',
-  'medico': 'médico', 'bioquimica': 'bioquímica', 'biotecnologia': 'biotecnología',
-  'estadistica': 'estadística', 'matematica': 'matemática', 'astronomia': 'astronomía',
-  'geofisica': 'geofísica', 'geografia': 'geografía', 'linguistica': 'lingüística',
-  'basica': 'básica', 'plasticas': 'plásticas', 'coreografia': 'coreografía', 
-  'grafico': 'gráfico', 'geomatica': 'geomática', 'topografia': 'topografía', 
-  'hoteleria': 'hotelería', 'television': 'televisión', 'fotografia': 'fotografía', 
-  'religion': 'religión', 'traduccion': 'traducción', 'interpretacion': 'interpretación', 
-  'fraces': 'francés', 'aleman': 'alemán', 'orientacion': 'orientación'
-};
+// CONECTORES y MAPA_TILDES viven en src/utils/formatters.ts.
 
 // ============================================================================
 // 3. HELPERS DE FORMATEO
@@ -137,18 +110,7 @@ const formatoDinero = (valor: number | null | undefined): string =>
 const formatoPorcentaje = (valor: number | null | undefined): string => 
   valor ? `${(valor * 100).toFixed(1)}%` : 'No informado';
 
-const formatearTitulo = (texto: string): string => {
-  if (!texto) return "";
-  return texto.toLowerCase().split(' ').map((palabra, index) => {
-    const palabraLimpia = palabra.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
-    const palabraCorregida = MAPA_TILDES[palabraLimpia] 
-      ? palabra.replace(palabraLimpia, MAPA_TILDES[palabraLimpia]) 
-      : palabra;
-
-    if (index > 0 && CONECTORES.includes(palabraCorregida)) return palabraCorregida;
-    return palabraCorregida.charAt(0).toUpperCase() + palabraCorregida.slice(1);
-  }).join(' ');
-};
+// formatearTitulo vive en src/utils/formatters.ts (ver import arriba).
 
 // ============================================================================
 // 4. COMPONENTE PRINCIPAL
@@ -186,9 +148,18 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
   const institucionNombre = useMemo(() => carrera?.instituciones?.nombre || 'Institución Desconocida', [carrera]);
   const tipoInstitucion = useMemo(() => carrera?.instituciones?.tipo || 'Educación Superior', [carrera]);
   
-  const nombreCarreraFormateado = useMemo(() => 
-    carrera?.nombre_carrera ? formatearTitulo(carrera.nombre_carrera) : 'Carrera no especificada', 
+  const nombreCarreraFormateado = useMemo(() =>
+    carrera?.nombre_carrera ? formatearTitulo(carrera.nombre_carrera) : 'Carrera no especificada',
     [carrera?.nombre_carrera]
+  );
+
+  const lugarCarrera = useMemo(
+    () => describirLugar(carrera?.sede, carrera?.region),
+    [carrera?.sede, carrera?.region]
+  );
+  const jornadaCarrera = useMemo(
+    () => describirJornada(carrera?.jornada),
+    [carrera?.jornada]
   );
 
   const SUPABASE_PROJECT_URL = useMemo(() => getSupabaseUrl(), []);
@@ -348,9 +319,19 @@ export default function CarreraDetalle({ carrera }: CarreraDetalleProps) {
                 {nombreCarreraFormateado}
               </h1>
               
+              {/* La sede y la jornada van en el encabezado, no solo en la tabla
+                  de datos: son lo único que distingue esta ficha del mismo
+                  programa dictado en otras sedes. */}
               <h2 className="text-xl md:text-3xl text-[#A78BFA] font-medium flex items-center justify-center md:justify-start gap-3">
                 {institucionNombre}
               </h2>
+              {(lugarCarrera || jornadaCarrera) && (
+                <p className="mt-2 text-base md:text-lg text-white/70 font-medium">
+                  {lugarCarrera}
+                  {lugarCarrera && jornadaCarrera && " · "}
+                  {jornadaCarrera && `Jornada ${jornadaCarrera}`}
+                </p>
+              )}
             </div>
           </div>
         </div>

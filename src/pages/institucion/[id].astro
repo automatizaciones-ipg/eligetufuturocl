@@ -5,7 +5,13 @@ import { supabase } from "../../../lib/supabase";
 import InstitucionDetalle from "../../components/InstitucionDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { educationalOrgSchema, breadcrumbSchema } from "../../lib/seo";
-import { esCodigoRutaValido } from "../../utils/formatters";
+import {
+  esCodigoRutaValido,
+  formatearTitulo,
+  describirLugar,
+  recortarDescripcion,
+} from "../../utils/formatters";
+import { carrerasDeInstitucion } from "../../services/carrerasIndex";
 
 // ============================================================================
 // 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
@@ -60,12 +66,34 @@ if (error || !institucion) {
   return Astro.redirect("/404");
 }
 
-const title = `${institucion.nombre} | Directorio de Educación Superior`;
-
 const canonical = `/institucion/${id}`;
-const description =
-  institucion.descripcion?.slice(0, 200) ||
-  `Conoce ${institucion.nombre}${institucion.tipo ? ` (${institucion.tipo})` : ""} en Chile: carreras, aranceles, acreditación, gratuidad y datos oficiales para la Admisión 2026.`;
+
+// Oferta académica: sale del índice en memoria (una consulta para todo el
+// build), no de una consulta por página.
+const carreras = await carrerasDeInstitucion(id!, 60);
+
+const tipoLegible = institucion.tipo
+  ? String(institucion.tipo)
+      .replace(/Universidades/i, "universidad")
+      .replace(/Institutos Profesionales/i, "instituto profesional")
+      .replace(/Centros de Formación Técnica/i, "centro de formación técnica")
+  : "institución de educación superior";
+
+// La descripción se compone con datos verificables de la ficha en vez de
+// recortar `descripcion` a 200 caracteres a mitad de palabra.
+const rasgos = [
+  carreras.length ? `${carreras.length} carreras` : null,
+  institucion.acreditada ? "acreditada por la CNA" : null,
+  institucion.adscrita_gratuidad ? "adscrita a gratuidad" : null,
+].filter(Boolean);
+
+const description = recortarDescripcion(
+  `${institucion.nombre}, ${tipoLegible} en Chile${
+    rasgos.length ? `: ${rasgos.join(", ")}` : ""
+  }. Revisa aranceles, sedes, jornadas y empleabilidad con datos oficiales SIES. Admisión 2026.`,
+);
+
+const title = `${institucion.nombre}: Carreras, Aranceles y Acreditación`;
 
 const jsonLd = [
   breadcrumbSchema([
@@ -80,12 +108,25 @@ const jsonLd = [
     logo: institucion.logo_url,
     type: institucion.tipo,
   }),
+  ...(carreras.length
+    ? [
+        {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: `Carreras de ${institucion.nombre}`,
+          numberOfItems: carreras.length,
+          itemListElement: carreras.map((c, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: `/carrera/${c.codigo_carrera}`,
+            name: formatearTitulo(c.nombre_carrera),
+          })),
+        },
+      ]
+    : []),
 ];
 ---
 
-{
-  /* Eliminamos el prop 'description' para evitar el error de TypeScript y mantenerlo igual que en Carreras */
-}
 <Layout
   title={title}
   description={description}
@@ -95,6 +136,71 @@ const jsonLd = [
 >
   <main class="min-h-screen bg-[#F4F5F9]">
     <InstitucionDetalle institucion={institucion} client:load />
+
+    {/* Oferta académica en el HTML: sin esto la ficha no enlazaba a ninguna de
+        sus carreras y las ~9.900 URLs de /carrera/ quedaban sin respaldo
+        interno, colgando únicamente del sitemap. */}
+    {
+      carreras.length > 0 && (
+        <nav
+          aria-label="Carreras de la institución"
+          class="max-w-5xl mx-auto px-6 pb-20"
+        >
+          <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 md:p-10">
+            <h2 class="text-xl font-black text-slate-800 tracking-tight mb-2">
+              Carreras en {institucion.nombre}
+            </h2>
+            <p class="text-sm text-slate-500 mb-6">
+              {carreras.length} programas con datos oficiales del SIES.
+            </p>
+
+            <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {carreras.map((c) => {
+                const lugar = describirLugar(c.sede, c.region);
+                return (
+                  <li>
+                    <a
+                      href={`/carrera/${c.codigo_carrera}`}
+                      class="block p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-[#6544FF]/30 hover:bg-white transition-colors"
+                    >
+                      <span class="block text-sm font-semibold text-slate-700">
+                        {formatearTitulo(c.nombre_carrera)}
+                      </span>
+                      {lugar && (
+                        <span class="block text-xs text-slate-400 mt-0.5">
+                          {lugar}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div class="mt-8 pt-6 border-t border-slate-100 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <a
+                href="/herramientas/instituciones"
+                class="text-slate-600 hover:text-[#6544FF] font-semibold"
+              >
+                Ver todas las instituciones
+              </a>
+              <a
+                href="/herramientas/buscador"
+                class="text-slate-600 hover:text-[#6544FF] font-semibold"
+              >
+                Buscador de carreras
+              </a>
+              <a
+                href="/herramientas/fuas"
+                class="text-slate-600 hover:text-[#6544FF] font-semibold"
+              >
+                Becas y gratuidad
+              </a>
+            </div>
+          </div>
+        </nav>
+      )
+    }
   </main>
 </Layout>
 

@@ -4,11 +4,43 @@ export const prerender = true;
 
 import Layout from "../../layouts/Layout.astro";
 import CalculadoraNem from "../../components/CalculadoraNem.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Calculadora PAES y NEM", url: "/herramientas/calculadora" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Cómo se calcula el puntaje ponderado de postulación?",
+      answer:
+        "Cada carrera define qué porcentaje pesa cada factor: NEM, Ranking de Notas, Competencia Lectora, Competencia Matemática M1 y la prueba electiva (M2, Historia o Ciencias). El puntaje ponderado es la suma de cada puntaje multiplicado por su ponderación. El simulador aplica la fórmula oficial publicada por cada carrera.",
+    },
+    {
+      question: "¿Qué es el NEM y cómo se convierte a puntaje?",
+      answer:
+        "El NEM (Notas de Enseñanza Media) es el promedio de tus calificaciones de 1° a 4° medio. Se convierte a una escala de 100 a 1000 puntos mediante una tabla oficial del DEMRE: un 6,0 equivale aproximadamente a 750 puntos y un 7,0 a 1000.",
+    },
+    {
+      question: "¿Qué es el Ranking de Notas?",
+      answer:
+        "El Ranking compara tu rendimiento con el de las promociones anteriores de tu propio colegio. Si estás por sobre ese promedio histórico, obtienes un puntaje superior al NEM; si no, se te asigna el mismo puntaje NEM. Nunca te perjudica.",
+    },
+    {
+      question: "¿El simulador me dice si quedo en la carrera?",
+      answer:
+        "Te muestra tu puntaje ponderado real por carrera y lo compara con el puntaje del último matriculado de años anteriores cuando la universidad lo publica, o con el promedio de los admitidos según el SIES. Es una referencia orientadora: los puntajes de corte cambian cada año según la demanda.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Simulador de Admisión: Calculadora NEM, PAES y Puntaje Ponderado por Carrera - Elige Tu Futuro"
-  description="Calcula tu NEM, Ranking y puntajes PAES, y descubre tu puntaje ponderado real en miles de carreras chilenas usando la fórmula oficial de cada una (SIES). Compara hasta 3 carreras. Gratis, Admisión 2026."
+  title="Calculadora PAES y NEM: Simula tu Puntaje Ponderado por Carrera"
+  description="Calcula tu NEM, Ranking y puntajes PAES, y descubre tu puntaje ponderado real en miles de carreras chilenas con la fórmula oficial de cada una (SIES). Gratis, Admisión 2026."
+  canonical="/herramientas/calculadora"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#fafafa] min-h-screen h-screen">
     <div class="relative z-10 w-full">

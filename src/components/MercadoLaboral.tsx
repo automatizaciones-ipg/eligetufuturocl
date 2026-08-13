@@ -1,7 +1,7 @@
 // src/components/MercadoLaboral.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   TrendingUp, Briefcase, DollarSign,
   BarChart, ArrowLeft, Loader2, ChevronLeft, ChevronRight,
@@ -261,14 +261,70 @@ const obtenerTemaPorCarrera = (nombre: string): TemaCarrera => {
   };
 };
 
+// Adapta y deduplica por nombre de carrera. A nivel de módulo para que el
+// estado inicial servido y el refetch en cliente compartan la transformación.
+function adaptarMercadoLaboral(rawData: CarreraDB[]): CarreraUI[] {
+  const nombresAgregados = new Set<string>();
+  const carrerasUnicas: CarreraUI[] = [];
+
+  for (const item of rawData) {
+    const llave = item.nombre_carrera
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ");
+
+    if (nombresAgregados.has(llave)) continue;
+    nombresAgregados.add(llave);
+
+    const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
+    const instNombre = inst?.nombre || "No informada";
+    const instTipo = inst?.tipo || "Universidades";
+    const empleabilidadReal = item.empleabilidad_1er_anio
+      ? Number((item.empleabilidad_1er_anio * 100).toFixed(1))
+      : 0;
+    const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
+
+    carrerasUnicas.push({
+      id: item.id,
+      codigo_carrera: item.codigo_carrera,
+      carrera: item.nombre_carrera.trim(),
+      institucion: instNombre,
+      tipoInst: instTipo,
+      tipoInstCompleto: obtenerTipoInstCompleto(instTipo),
+      empleabilidad: empleabilidadReal,
+      arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
+      ingreso: item.ingreso_promedio_4to_anio || "No informado",
+      logoUrl: inst?.logo_url || fallbackLogo,
+      sigla: generarSiglaInstitucion(instNombre),
+      tema: obtenerTemaPorCarrera(item.nombre_carrera),
+    });
+  }
+
+  return carrerasUnicas;
+}
+
+interface MercadoLaboralProps {
+  /** Ranking resuelto en el servidor: hace que el HTML traiga los enlaces a
+   *  /carrera/ y el contenido comparativo, antes invisible sin JavaScript. */
+  datosIniciales?: CarreraDB[];
+}
+
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
-export default function MercadoLaboral() {
+export default function MercadoLaboral({ datosIniciales = [] }: MercadoLaboralProps) {
+  const carrerasIniciales = useMemo(
+    () => adaptarMercadoLaboral(datosIniciales),
+    [datosIniciales]
+  );
+
   const [filtroActivo, setFiltroActivo] = useState("todo");
-  const [carrerasBD, setCarrerasBD] = useState<CarreraUI[]>([]);
-  const [carrerasFiltradas, setCarrerasFiltradas] = useState<CarreraUI[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [carrerasBD, setCarrerasBD] = useState<CarreraUI[]>(carrerasIniciales);
+  const [carrerasFiltradas, setCarrerasFiltradas] = useState<CarreraUI[]>(carrerasIniciales);
+  const [cargando, setCargando] = useState(carrerasIniciales.length === 0);
   const [paginaActual, setPaginaActual] = useState(1);
   const [accediendoId, setAccediendoId] = useState<string | number | null>(null);
   const [erroresLogos, setErroresLogos] = useState<number[]>([]);
@@ -291,6 +347,12 @@ export default function MercadoLaboral() {
   // FETCH A SUPABASE
   // ==========================================================================
   useEffect(() => {
+    // El servidor ya entregó el ranking: no hace falta volver a pedirlo.
+    if (carrerasIniciales.length > 0) {
+      setTimeout(() => setAnimarBarras(true), 100);
+      return;
+    }
+
     const fetchTopCarreras = async () => {
       setCargando(true);
       try {
@@ -317,48 +379,7 @@ export default function MercadoLaboral() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          const rawData = data as unknown as CarreraDB[];
-
-          const nombresAgregados = new Set<string>();
-          const carrerasUnicas: CarreraUI[] = [];
-
-          for (const item of rawData) {
-            const llave = item.nombre_carrera
-              .trim()
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/[^a-z0-9\s]/g, "")
-              .replace(/\s+/g, " ");
-
-            if (!nombresAgregados.has(llave)) {
-              nombresAgregados.add(llave);
-              
-              const inst = Array.isArray(item.instituciones) ? item.instituciones[0] : item.instituciones;
-              const instNombre = inst?.nombre || "No informada";
-              const instTipo = inst?.tipo || "Universidades";
-              const empleabilidadReal = item.empleabilidad_1er_anio
-                ? Number((item.empleabilidad_1er_anio * 100).toFixed(1))
-                : 0;
-              const fallbackLogo = `https://ui-avatars.com/api/?name=${encodeURIComponent(instNombre)}&background=f4f5f9&color=6544ff&bold=true&size=128`;
-
-              carrerasUnicas.push({
-                id: item.id,
-                codigo_carrera: item.codigo_carrera,
-                carrera: item.nombre_carrera.trim(),
-                institucion: instNombre,
-                tipoInst: instTipo,
-                tipoInstCompleto: obtenerTipoInstCompleto(instTipo),
-                empleabilidad: empleabilidadReal,
-                arancel: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : 'No informado',
-                ingreso: item.ingreso_promedio_4to_anio || "No informado",
-                logoUrl: inst?.logo_url || fallbackLogo,
-                sigla: generarSiglaInstitucion(instNombre),
-                tema: obtenerTemaPorCarrera(item.nombre_carrera),
-              });
-            }
-          }
-
+          const carrerasUnicas = adaptarMercadoLaboral(data as unknown as CarreraDB[]);
           setCarrerasBD(carrerasUnicas);
           setCarrerasFiltradas(carrerasUnicas);
           setTimeout(() => setAnimarBarras(true), 100);
@@ -467,10 +488,10 @@ export default function MercadoLaboral() {
             <TrendingUp className="w-4 h-4" /> Datos Oficiales Mineduc
           </div>
 
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             Top Empleabilidad <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Mercado Laboral</span>
-          </h2>
+          </h1>
 
           <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed" style={{ animationDelay: '0.2s' }}>
             Toma decisiones informadas. Descubre las carreras con mayor empleabilidad real y proyección de sueldos en Chile (Datos actualizados SIES).

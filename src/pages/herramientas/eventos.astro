@@ -1,11 +1,38 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import EventosCharlas from "../../components/EventosCharlas.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Eventos y Charlas", url: "/herramientas/eventos" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Qué es una feria vocacional?",
+      answer:
+        "Es un evento donde varias universidades, institutos profesionales y centros de formación técnica presentan su oferta académica en un mismo lugar. Puedes conversar con admisión, resolver dudas de aranceles y becas, y conocer las carreras de primera fuente en una sola visita.",
+    },
+    {
+      question: "¿Las charlas y casas abiertas tienen costo?",
+      answer:
+        "No. Las ferias vocacionales, charlas de orientación y casas abiertas (open days) de las instituciones son gratuitas y abiertas a estudiantes y apoderados. Algunas piden inscripción previa por capacidad.",
+    },
+    {
+      question: "¿Cuándo conviene asistir a una feria vocacional?",
+      answer:
+        "Lo ideal es entre tercero y cuarto medio, antes del periodo de postulación. Así llegas con tiempo para comparar instituciones, revisar requisitos de admisión y planificar el financiamiento con el FUAS.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Eventos y Ferias Universitarias - Admisión 2026"
+  title="Ferias Vocacionales y Charlas de Admisión 2026 en Chile"
   description="Agenda de ferias vocacionales, charlas y casas abiertas de universidades, IP y CFT en Chile. No te pierdas los eventos de orientación de la Admisión 2026."
+  canonical="/herramientas/eventos"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="">

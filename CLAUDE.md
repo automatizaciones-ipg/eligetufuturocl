@@ -193,6 +193,85 @@ y agrega fila de veredicto y link a ficha.
 - Archivos GEO/SEO en `public/`: `robots.txt`, `site.webmanifest`, `llms.txt`.
   Mantén `llms.txt` y el sitemap al día cuando cambien secciones del sitio.
 
+### El contenido tiene que estar en el HTML
+
+Regla dura: **si un listado o una ficha se llena con `fetch` dentro de
+`useEffect`, para Google esa página está vacía.** Pasó con `/noticia/[id]`
+(montada con `client:only`, cuerpo del artículo invisible) y con los listados
+(`/noticias`, buscador, instituciones, mercado laboral), que servían HTML sin un
+solo enlace a `/carrera/`, `/institucion/` ni `/noticia/`. Al añadir una página
+o isla que liste datos:
+
+- Resuelve la primera carga **en el servidor** y pásala por props
+  (`datosIniciales`); el componente solo refetchea al filtrar o paginar.
+- `src/services/listadosSSR.ts` centraliza esas consultas con caché en memoria
+  de 10 min (misma suposición de instancia única que el rate-limiter).
+- `src/services/carrerasIndex.ts` carga **una vez por proceso** el índice
+  completo de carreras (`select *`, ~10 MB en memoria) más las instituciones.
+  De ahí salen: las rutas de `getStaticPaths`, la ficha completa de cada
+  carrera (`carreraCompleta`), las variantes de un programa (otras
+  sedes/jornadas), el código canónico de las filas duplicadas, la oferta por
+  institución, los hubs y el sitemap.
+
+  **No consultes Supabase por página en rutas prerenderizadas.** La ficha
+  `/carrera/[id]` lo hacía y costaba ~330 ms × 9.899 páginas: casi una hora de
+  build en cada `git push`. Al servirla desde el índice, el build baja a
+  minutos. Si necesitas un campo nuevo en una ficha, añádelo al índice, no una
+  consulta.
+
+### El navegador no debe importar el cliente de Supabase en islas globales
+
+`Header.tsx` va con `client:load` en el Layout, o sea en **todas** las páginas.
+Importar ahí `lib/supabase` metía 204 KB (el bundle más pesado del sitio) en la
+ruta crítica de todo el sitio solo para alimentar el buscador del menú. Ahora
+consulta `GET /api/buscar?q=` (ver `src/pages/api/buscar.ts`), que es la única
+ruta de `/api` que es GET —el resto son POST— y va cacheada.
+
+Antes de importar `lib/supabase` en un componente, pregúntate en cuántas
+páginas se hidrata: si es global o casi global, hazlo por un endpoint.
+
+### Páginas hub (`/carreras`)
+
+Tres rutas prerenderizadas que dan un "padre" temático a las ~9.900 fichas y
+capturan la búsqueda genérica, que antes no tenía destino:
+
+- `/carreras` — índice alfabético de las ~1.575 carreras + las 16 regiones.
+- `/carreras/[slug]` — una carrera en todo Chile: instituciones, rango de
+  aranceles, duración típica, empleabilidad. Slug vía `slugificar()`.
+- `/carreras/region/[region]` — oferta de una región. El catálogo de regiones
+  (valor crudo del SIES ↔ slug ↔ nombre oficial) vive en `src/utils/regiones.ts`.
+
+Todo su contenido sale de `carrerasIndex.ts` (cero consultas por página). Si
+añades una hub nueva, súmala al sitemap y a `llms.txt`, y enlázala desde el
+footer o desde `/carreras`: una hub huérfana no sirve de nada.
+
+**Las FAQ visibles y el `faqSchema` deben salir del mismo array.** Si el JSON-LD
+declara preguntas que no están en el HTML, Google lo trata como marcado
+engañoso y descarta el rich result.
+
+### Canonicalización de URL (`src/middleware.ts`)
+
+El middleware hace un 301 antes de renderizar para consolidar `www.` → apex y
+quitar la barra final (`/ruta/` → `/ruta`), que servían la misma página en tres
+URLs distintas. `/api/*` queda excluido a propósito: un 301 rompería los POST
+de los formularios.
+
+### Assets de marca generados
+
+`node scripts/generar-assets-seo.mjs` regenera `public/og-default.png`
+(1200×630, obligatorio: es el tamaño que declaran las metaetiquetas) y
+`public/apple-touch-icon.png` (180×180). Ejecútalo si cambia la marca.
+
+### Metadatos de `/carrera/[id]`
+
+El mismo programa existe hasta en 25 sedes y 4 jornadas. El `<title>` y la
+descripción **deben** incluir sede y jornada (`describirLugar` /
+`describirJornada` en `src/utils/formatters.ts`), o miles de fichas quedan
+duplicadas entre sí. Tampoco uses `carrera.descripcion` como meta description:
+es texto de plantilla que se repite en cientos de páginas; compón la
+descripción con los datos reales de la fila. Los nombres del SIES vienen EN
+MAYÚSCULA Y SIN TILDES: pásalos siempre por `formatearTitulo`.
+
 ## Analítica
 
 `components/Analytics.astro` (incluido en el Layout) carga **GA4** y
@@ -349,8 +428,21 @@ despliegue real sigue siendo exclusivamente Hostinger.
 ## Notas / deuda técnica conocida
 
 - No hay tests automatizados ni linter configurado. El "test" antes de
-  fusionar es `npm run build` (si pasa, no se rompió nada grave) + revisión
-  manual en `npm run dev`.
+  fusionar es `npm run build` + revisión manual en `npm run dev`.
+  **Que el build termine con exit 0 no basta**: hay que revisar el artefacto.
+  En ago 2026 un `Response.redirect` devuelto desde el middleware durante el
+  prerender hizo que el build —con exit 0 y `tsc --noEmit` limpio— horneara
+  11.599 de 11.601 páginas como stubs de "Redirecting from…". Comprobaciones
+  mínimas tras construir:
+
+  ```bash
+  find dist/client -name '*.html' | wc -l                              # ~11.600
+  grep -rl "Redirecting from" dist/client --include='*.html' | wc -l   # debe ser 0
+  ```
+
+  Ojo también con `rm -rf dist` en Windows: falla a menudo con "Directory not
+  empty" por la cantidad de carpetas, y si va encadenado con `&&` corta el
+  build sin que se note. Usa `Remove-Item -Recurse -Force dist`.
 - `supabase/migrations/0001_scraping_tendencias.sql` debe correrse a mano en
   el SQL Editor del proyecto Supabase de producción (el conector MCP de
   Supabase disponible en este entorno no apunta al proyecto de

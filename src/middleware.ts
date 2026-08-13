@@ -102,8 +102,63 @@ function isProtectedAdminRoute(pathname: string): boolean {
   return (isAdminPage || isAdminApi) && !isPublicAdminRoute;
 }
 
+// ── Canonicalización de URL ──────────────────────────────────────────────────
+// El sitio respondía 200 en tres direcciones distintas para la misma página:
+// con y sin `www.`, y con y sin barra final (que además se auto-canonicalizaba
+// hacia la variante con barra, distinta de la que declara el sitemap). Eso son
+// URLs duplicadas compitiendo entre sí. Aquí se consolidan con un 301 antes de
+// que la petición llegue a renderizar nada.
+//
+// Se excluye /api/*: un 301 rompería los POST de los formularios.
+//
+// CRÍTICO — también se excluyen las rutas prerenderizadas. Durante el build,
+// Astro invoca el middleware con la URL en su forma con barra final; si aquí se
+// devuelve una redirección, Astro la SERIALIZA como el contenido estático de la
+// página y el archivo generado deja de tener la página: pasa a ser un "meta
+// refresh". Sin esta guarda, el build horneaba 11.599 de 11.601 páginas como
+// redirecciones. Además, en runtime el adaptador Node sirve los archivos
+// prerenderizados sin pasar por el middleware, así que la redirección tampoco
+// se aplicaría nunca: la única canonicalización que reciben es la etiqueta
+// <link rel="canonical">, que ya se genera correcta en el build.
+
+function urlCanonica(url: URL, request: Request, esPrerenderizada: boolean): string | null {
+  if (esPrerenderizada) return null;
+  if (url.pathname.startsWith("/api/")) return null;
+
+  // El host real detrás del CDN de Hostinger.
+  const host = request.headers.get("host") ?? url.host;
+  let destinoHost = host;
+  let cambiado = false;
+
+  if (host.startsWith("www.")) {
+    destinoHost = host.slice(4);
+    cambiado = true;
+  }
+
+  let destinoPath = url.pathname;
+  if (destinoPath.length > 1 && destinoPath.endsWith("/")) {
+    destinoPath = destinoPath.replace(/\/+$/, "") || "/";
+    cambiado = true;
+  }
+
+  if (!cambiado) return null;
+
+  // Detrás del CDN la petición llega por http, así que el esquema real viene en
+  // x-forwarded-proto. Sin esta lectura el redirect forzaría https incluso en
+  // desarrollo, donde localhost no lo sirve.
+  const proto =
+    request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ||
+    url.protocol.replace(":", "") ||
+    "https";
+
+  return `${proto}://${destinoHost}${destinoPath}${url.search}`;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
+
+  const destino = urlCanonica(url, request, context.isPrerendered === true);
+  if (destino) return Response.redirect(destino, 301);
 
   if (isProtectedAdminRoute(url.pathname)) {
     const token = context.cookies.get(ADMIN_SESSION_COOKIE)?.value;

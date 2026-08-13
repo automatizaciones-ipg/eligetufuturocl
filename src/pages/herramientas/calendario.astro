@@ -2,11 +2,38 @@
 // src/pages/herramientas/calendario.astro
 import Layout from "../../layouts/Layout.astro";
 import CalendarioPaesComponent from "../../components/CalendarioPaes.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Calendario PAES", url: "/herramientas/calendario" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Cuándo se rinde la PAES 2026?",
+      answer:
+        "La PAES regular se rinde a fines de noviembre o comienzos de diciembre, en jornadas consecutivas para Competencia Lectora, Competencia Matemática M1, M2 y las pruebas electivas de Historia y Ciencias. En esta página encuentras el calendario con las fechas exactas del proceso de Admisión 2026.",
+    },
+    {
+      question: "¿Cuándo se publican los resultados de la PAES?",
+      answer:
+        "Los puntajes se publican a comienzos de enero, unos días antes de que se abra el periodo de postulación centralizada a las universidades adscritas al Sistema de Acceso.",
+    },
+    {
+      question: "¿Cuánto dura el periodo de postulación?",
+      answer:
+        "El periodo de postulación centralizada dura unos tres días tras la publicación de puntajes. Puedes postular hasta a diez carreras en orden de preferencia y modificar tu lista mientras el sistema siga abierto.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Calendario PAES - Fechas Clave y Ensayos"
+  title="Calendario PAES 2026: Fechas de Inscripción, Rendición y Postulación"
   description="Calendario oficial de la PAES y la Admisión 2026: fechas de inscripción, rendición, publicación de resultados y periodo de postulación a la educación superior en Chile."
+  canonical="/herramientas/calendario"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#FAFAFA] min-h-screen">
     <div class="relative z-10 w-full">

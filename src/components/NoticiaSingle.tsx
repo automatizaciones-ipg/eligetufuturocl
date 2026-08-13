@@ -4,18 +4,27 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, Clock, BookOpen, Calendar, User, Link2, Share2, Bookmark, ArrowUpRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "../../lib/supabase";
-import type { Noticia, NoticiaRow } from "../types/noticia";
+import { mapearNoticia, type Noticia, type NoticiaRow } from "../types/noticia";
 
 interface NoticiaSingleProps {
-  noticiaId: string; 
+  noticiaId: string;
+  /**
+   * Noticia ya resuelta en el servidor. Cuando llega, el artículo se renderiza
+   * completo en el HTML (imprescindible para SEO: antes el cuerpo solo existía
+   * tras hidratar y los buscadores veían la página vacía) y se omite el fetch.
+   */
+  noticiaInicial?: Noticia | null;
 }
 
-export default function NoticiaSingle({ noticiaId }: NoticiaSingleProps) {
-  const [noticia, setNoticia] = useState<Noticia | null>(null);
-  const [cargando, setCargando] = useState<boolean>(true);
+export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: NoticiaSingleProps) {
+  const [noticia, setNoticia] = useState<Noticia | null>(noticiaInicial);
+  const [cargando, setCargando] = useState<boolean>(!noticiaInicial);
   const [errorSeguridad, setErrorSeguridad] = useState<boolean>(false);
 
   useEffect(() => {
+    // El servidor ya entregó el artículo: no hay nada que pedir.
+    if (noticiaInicial) return;
+
     const fetchNoticiaCompleta = async () => {
       // Cápsula de seguridad: Validar formato UUIDv4 para prevenir inyecciones o peticiones basura
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,27 +45,7 @@ export default function NoticiaSingle({ noticiaId }: NoticiaSingleProps) {
 
         if (error) throw error;
 
-        if (data) {
-          const rowData = data as NoticiaRow;
-          const mapeada: Noticia = {
-            id: rowData.id,
-            titulo: rowData.titulo,
-            extracto: rowData.extracto,
-            categoria: rowData.categoria,
-            color: rowData.color,
-            autor: rowData.autor,
-            imagenPrincipal: rowData.imagen_principal,
-            imagenesSecundarias: rowData.imagenes_secundarias || [],
-            cuerpoMarkdown: rowData.cuerpo_markdown,
-            enlacesReferencia: rowData.enlaces_referencia || [],
-            estado: rowData.estado,
-            destacada: rowData.destacada,
-            tiempoLectura: rowData.tiempo_lectura,
-            tags: rowData.tags || [],
-            createdAt: rowData.created_at,
-          };
-          setNoticia(mapeada);
-        }
+        if (data) setNoticia(mapearNoticia(data as NoticiaRow));
       } catch (err) {
         console.error("Error obteniendo el artículo:", err);
       } finally {
@@ -65,7 +54,7 @@ export default function NoticiaSingle({ noticiaId }: NoticiaSingleProps) {
     };
 
     if (noticiaId) fetchNoticiaCompleta();
-  }, [noticiaId]);
+  }, [noticiaId, noticiaInicial]);
 
   // =========================================================================
   // UI SKELETON: Carga ultra sutil y veloz (Mejor UX percibido)
@@ -227,6 +216,47 @@ export default function NoticiaSingle({ noticiaId }: NoticiaSingleProps) {
           )}
 
         </div>
+
+        {/* Enlaces internos: saca al artículo de ser una hoja huérfana y reparte
+            autoridad hacia las herramientas, que es lo que queremos posicionar. */}
+        <nav
+          aria-label="Continuar navegando"
+          className="mt-10 bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-100 shadow-sm"
+        >
+          <h2 className="font-black text-xl text-slate-800 tracking-tight mb-5">
+            Sigue orientándote
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { url: "/herramientas/test-vocacional", texto: "Test vocacional gratuito", detalle: "Descubre qué estudiar en 5 minutos" },
+              { url: "/herramientas/buscador", texto: "Buscador de carreras", detalle: "Aranceles, duración y empleabilidad" },
+              { url: "/herramientas/calculadora", texto: "Calculadora PAES y NEM", detalle: "Tu puntaje ponderado por carrera" },
+              { url: "/herramientas/fuas", texto: "Becas, FUAS y gratuidad", detalle: "Cómo financiar tus estudios" },
+            ].map((enlace) => (
+              <a
+                key={enlace.url}
+                href={enlace.url}
+                className="flex items-start justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-[#6544FF]/30 hover:bg-white transition-all duration-300 group"
+              >
+                <span>
+                  <span className="block text-sm font-bold text-slate-700 group-hover:text-[#6544FF] transition-colors">
+                    {enlace.texto}
+                  </span>
+                  <span className="block text-xs text-slate-500 mt-0.5">{enlace.detalle}</span>
+                </span>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#6544FF] transition-colors shrink-0 mt-0.5" />
+              </a>
+            ))}
+          </div>
+
+          <a
+            href="/noticias"
+            className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#6544FF] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Ver todos los artículos de orientación
+          </a>
+        </nav>
       </main>
     </div>
   );

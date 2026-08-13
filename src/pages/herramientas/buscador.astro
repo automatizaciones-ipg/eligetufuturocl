@@ -1,15 +1,62 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import BuscadorCarrerasComponent from "../../components/BuscadorCarreras.tsx";
+import { breadcrumbSchema, faqSchema } from "../../lib/seo";
+import {
+  carrerasIniciales,
+  totalCarreras,
+  regionesDisponibles,
+  nombresInstituciones,
+} from "../../services/listadosSSR";
+
+// El buscador se sirve con la primera página ya resuelta: así el HTML lleva
+// enlaces reales a /carrera/ y las fichas dejan de depender solo del sitemap.
+const [datosIniciales, total, regiones, instituciones] = await Promise.all([
+  carrerasIniciales(30),
+  totalCarreras(),
+  regionesDisponibles(),
+  nombresInstituciones(),
+]);
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Buscador de Carreras", url: "/herramientas/buscador" },
+  ]),
+  faqSchema([
+    {
+      question: "¿Cuántas carreras puedo buscar en Elige Tu Futuro?",
+      answer: `El buscador cubre ${total.toLocaleString("es-CL")} programas de universidades, institutos profesionales y centros de formación técnica de Chile, con datos oficiales del SIES (MINEDUC) para la Admisión 2026.`,
+    },
+    {
+      question: "¿Qué datos puedo comparar de cada carrera?",
+      answer:
+        "De cada programa puedes ver arancel anual, duración en semestres, jornada, sede, región, acreditación de la carrera y de la institución, empleabilidad al primer año e ingreso promedio al cuarto año.",
+    },
+    {
+      question: "¿El buscador de carreras tiene costo?",
+      answer:
+        "No. El buscador y todas las herramientas de Elige Tu Futuro son gratuitas y no requieren registro.",
+    },
+  ]),
+];
 ---
 
 <Layout
-  title="Buscador de Carreras | Elige tu Futuro"
-  description="Busca y compara carreras técnicas y universitarias en Chile: arancel, duración, jornada, sede, acreditación y empleabilidad. Datos oficiales SIES para la Admisión 2026."
+  title="Buscador de Carreras en Chile: Aranceles, Duración y Empleabilidad"
+  description={`Busca y compara ${total.toLocaleString("es-CL")} carreras técnicas y universitarias en Chile: arancel, duración, jornada, sede, acreditación y empleabilidad. Datos oficiales SIES, Admisión 2026.`}
+  canonical="/herramientas/buscador"
+  jsonLd={jsonLd}
 >
   <div class="bg-[#FAFAFA] min-h-screen h-screen">
     <div class="relative z-10 w-full">
-      <BuscadorCarrerasComponent client:load />
+      <BuscadorCarrerasComponent
+        datosIniciales={datosIniciales}
+        regionesIniciales={regiones}
+        institucionesIniciales={instituciones}
+        totalIniciales={total}
+        client:load
+      />
     </div>
   </div>
 </Layout>

@@ -31,8 +31,13 @@ export const SITE = {
     "instituciones educación superior Chile",
     "empleabilidad carreras",
   ],
-  /** Imagen social por defecto (1200x630 recomendado). Debe existir en /public. */
-  defaultOgImage: "/imagenes/imagen_portada.png",
+  /**
+   * Imagen social por defecto. DEBE medir 1200×630 (es lo que declaran las
+   * metaetiquetas og:image:width/height): antes apuntaba a imagen_portada.png,
+   * que es cuadrada (592×579), y las previsualizaciones salían recortadas.
+   * Se genera con `node scripts/generar-assets-seo.mjs`.
+   */
+  defaultOgImage: "/og-default.png",
   themeColor: "#6544FF",
   twitterHandle: "@eligetufuturocl",
   email: "contacto@eligetufuturo.cl",
@@ -154,7 +159,22 @@ export function courseSchema(opts: {
   url: string;
   providerName?: string;
   providerUrl?: string;
+  /** Arancel anual en pesos chilenos. */
+  arancel?: number | null;
+  /** Duración del programa en semestres. */
+  duracionSemestres?: number | null;
+  /** Modalidad: presencial, a distancia, semipresencial. */
+  jornada?: string | null;
+  /** Ciudad o región donde se imparte. */
+  lugar?: string | null;
 }) {
+  // Google exige al menos una instancia del curso para los rich results.
+  const modalidad = /distancia/i.test(opts.jornada || "")
+    ? "Online"
+    : /semipresencial/i.test(opts.jornada || "")
+      ? "Blended"
+      : "Onsite";
+
   return {
     "@context": "https://schema.org",
     "@type": "Course",
@@ -166,7 +186,31 @@ export function courseSchema(opts: {
       provider: {
         "@type": "CollegeOrUniversity",
         name: opts.providerName,
-        ...(opts.providerUrl && { url: opts.providerUrl }),
+        ...(opts.providerUrl && { url: absoluteUrl(opts.providerUrl) }),
+      },
+    }),
+    hasCourseInstance: {
+      "@type": "CourseInstance",
+      courseMode: modalidad,
+      ...(opts.duracionSemestres && {
+        // ISO 8601: un semestre son 6 meses.
+        courseSchedule: {
+          "@type": "Schedule",
+          repeatFrequency: "P6M",
+        },
+        timeRequired: `P${opts.duracionSemestres * 6}M`,
+      }),
+      ...(opts.lugar && {
+        location: { "@type": "Place", name: opts.lugar, address: opts.lugar },
+      }),
+    },
+    ...(opts.arancel && {
+      offers: {
+        "@type": "Offer",
+        price: opts.arancel,
+        priceCurrency: "CLP",
+        category: "Arancel anual",
+        availability: "https://schema.org/InStock",
       },
     }),
   };
@@ -200,7 +244,19 @@ export function newsArticleSchema(opts: {
   datePublished?: string;
   dateModified?: string;
   author?: string;
+  /** Cuerpo del artículo: permite que motores de IA lo citen sin ejecutar JS. */
+  articleBody?: string;
+  section?: string;
+  keywords?: string[];
 }) {
+  // Markdown fuera: el schema espera texto plano.
+  const cuerpo = opts.articleBody
+    ?.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_>`~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
   return {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
@@ -214,5 +270,11 @@ export function newsArticleSchema(opts: {
     author: { "@type": "Organization", name: opts.author || SITE.name },
     publisher: { "@id": `${SITE_URL}/#organization` },
     mainEntityOfPage: absoluteUrl(opts.url),
+    ...(opts.section && { articleSection: opts.section }),
+    ...(opts.keywords?.length && { keywords: opts.keywords.join(", ") }),
+    ...(cuerpo && {
+      articleBody: cuerpo,
+      wordCount: cuerpo.split(/\s+/).length,
+    }),
   };
 }

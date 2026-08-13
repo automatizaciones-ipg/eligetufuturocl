@@ -117,10 +117,10 @@ export default function EventosCharlas() {
             <MonitorPlay className="w-4 h-4" /> Conecta con tu futuro
           </div>
 
-          <h2 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <h1 className="font-black italic uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-6 leading-[1.05] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             Ferias, Charlas y <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#D946EF] to-[#3B82F6]">Open Days</span>
-          </h2>
+          </h1>
 
           <p className="text-gray-300 max-w-2xl text-lg md:text-xl animate-fade-in-up font-medium leading-relaxed" style={{ animationDelay: '0.2s' }}>
             Explora los campus, asiste a ferias vocacionales y resuelve tus dudas conversando directamente con estudiantes, instituciones y el DEMRE.

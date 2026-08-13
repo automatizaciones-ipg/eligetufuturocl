@@ -1,11 +1,39 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ContactoForm from "../../components/ContactoForm";
+import { breadcrumbSchema, SITE, SITE_URL } from "../../lib/seo";
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Contacto", url: "/contacto" },
+  ]),
+  {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: "Contacto - Elige Tu Futuro",
+    url: `${SITE_URL}/contacto`,
+    mainEntity: {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      email: SITE.email,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "orientación vocacional",
+        email: SITE.email,
+        areaServed: "CL",
+        availableLanguage: "Spanish",
+      },
+    },
+  },
+];
 ---
 
 <Layout
-  title="Contacto - EligeTuFuturo"
-  description="¿Tienes dudas sobre carreras, instituciones o el proceso de admisión en Chile? Contáctanos y recibe orientación del equipo de Elige Tu Futuro."
+  title="Contacto: Resuelve tus Dudas de Admisión"
+  description="¿Tienes dudas sobre carreras, instituciones o el proceso de admisión en Chile? Escríbenos y recibe orientación del equipo de Elige Tu Futuro."
+  canonical="/contacto"
+  jsonLd={jsonLd}
 >
   <main class="min-h-screen bg-[#F4F5F9]">
     <ContactoForm client:load />

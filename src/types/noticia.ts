@@ -37,3 +37,28 @@ export interface Noticia {
     tags: string[] | null;
     created_at: string;
   }
+
+/**
+ * Convierte la fila snake_case de Supabase al modelo camelCase del front.
+ * Punto único de mapeo: lo usan tanto el servidor (para sembrar el HTML de
+ * /noticia/[id] y /noticias) como los componentes que refrescan en cliente.
+ */
+export function mapearNoticia(row: NoticiaRow): Noticia {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    extracto: row.extracto,
+    categoria: row.categoria,
+    color: row.color,
+    autor: row.autor,
+    imagenPrincipal: row.imagen_principal,
+    imagenesSecundarias: row.imagenes_secundarias || [],
+    cuerpoMarkdown: row.cuerpo_markdown,
+    enlacesReferencia: row.enlaces_referencia || [],
+    estado: row.estado,
+    destacada: row.destacada,
+    tiempoLectura: row.tiempo_lectura,
+    tags: row.tags || [],
+    createdAt: row.created_at,
+  };
+}

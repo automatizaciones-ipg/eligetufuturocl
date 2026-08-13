@@ -8,6 +8,8 @@ import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
 import { SITE_URL } from "../lib/seo";
 import { esCodigoRutaValido } from "../utils/formatters";
+import { indiceCarreras } from "../services/carrerasIndex";
+import { REGIONES } from "../utils/regiones";
 
 export const prerender = true;
 
@@ -29,32 +31,12 @@ const STATIC_ROUTES: UrlEntry[] = [
   { loc: "/herramientas/fuas", changefreq: "monthly", priority: 0.8 },
   { loc: "/herramientas/eventos", changefreq: "weekly", priority: 0.7 },
   { loc: "/herramientas/mercado-laboral", changefreq: "monthly", priority: 0.7 },
+  { loc: "/tendencias", changefreq: "weekly", priority: 0.7 },
+  { loc: "/carreras", changefreq: "weekly", priority: 0.9 },
   { loc: "/herramientas/solicitar-informacion", changefreq: "yearly", priority: 0.4 },
   { loc: "/contacto", changefreq: "yearly", priority: 0.5 },
   { loc: "/terminos-y-condiciones", changefreq: "yearly", priority: 0.3 },
 ];
-
-/** Trae todos los valores de una columna paginando de a 1000. */
-async function fetchAll(table: string, column: string): Promise<string[]> {
-  const out: string[] = [];
-  const limit = 1000;
-  let page = 0;
-  // Cap de seguridad para no exceder el límite de 50.000 URLs por sitemap.
-  while (page < 45) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(column)
-      .range(page * limit, (page + 1) * limit - 1);
-    if (error || !data || data.length === 0) break;
-    for (const row of data as unknown as Record<string, unknown>[]) {
-      const v = row[column];
-      if (v != null) out.push(String(v));
-    }
-    if (data.length < limit) break;
-    page++;
-  }
-  return out;
-}
 
 function xmlEscape(s: string): string {
   return s
@@ -68,15 +50,32 @@ export const GET: APIRoute = async () => {
   const entries: UrlEntry[] = [...STATIC_ROUTES];
 
   try {
-    const [carreras, instituciones] = await Promise.all([
-      fetchAll("carreras", "codigo_carrera"),
-      fetchAll("instituciones", "codigo_institucion"),
-    ]);
+    // Todo sale del mismo índice que genera las páginas, de modo que el sitemap
+    // no pueda declarar una URL que no exista ni omitir una que sí.
+    // `canonico` marca las fichas indistinguibles entre sí (mismo programa,
+    // sede y jornada), que se excluyen: el sitemap debe declarar solo URLs
+    // canónicas, o se le pide a Google indexar duplicados a sabiendas.
+    const { canonico, porNombre, porCodigo, instituciones } = await indiceCarreras();
 
-    for (const id of carreras.filter(esCodigoRutaValido))
+    // Páginas hub. Van con prioridad alta: son las que responden a la búsqueda
+    // genérica y las que reparten autoridad hacia las fichas.
+    for (const slug of porNombre.keys())
+      entries.push({ loc: `/carreras/${slug}`, changefreq: "weekly", priority: 0.8 });
+    for (const region of REGIONES)
+      entries.push({
+        loc: `/carreras/region/${region.slug}`,
+        changefreq: "weekly",
+        priority: 0.8,
+      });
+
+    for (const id of porCodigo.keys()) {
+      if (canonico.has(id)) continue;
       entries.push({ loc: `/carrera/${id}`, changefreq: "monthly", priority: 0.7 });
-    for (const id of instituciones.filter(esCodigoRutaValido))
+    }
+    for (const id of instituciones.keys()) {
+      if (!esCodigoRutaValido(id)) continue;
       entries.push({ loc: `/institucion/${id}`, changefreq: "monthly", priority: 0.6 });
+    }
   } catch {
     // Si Supabase no responde en build, igual emitimos las rutas estáticas.
   }

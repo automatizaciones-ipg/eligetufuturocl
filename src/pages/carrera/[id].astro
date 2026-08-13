@@ -1,102 +1,122 @@
 ---
 // src/pages/carrera/[id].astro
 import type { GetStaticPaths } from "astro";
-import { supabase } from "../../../lib/supabase";
 import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { courseSchema, breadcrumbSchema } from "../../lib/seo";
-import { esCodigoRutaValido } from "../../utils/formatters";
+import {
+  formatearTitulo,
+  describirLugar,
+  describirJornada,
+  recortarDescripcion,
+  slugificar,
+} from "../../utils/formatters";
+import { regionPorValor } from "../../utils/regiones";
+import {
+  indiceCarreras,
+  variantesDelPrograma,
+  codigoCanonico,
+  carreraCompleta,
+} from "../../services/carrerasIndex";
 
 export const prerender = true;
 
+// Las rutas salen del mismo índice que luego sirve cada ficha, así que no hay
+// forma de que se generen rutas para códigos que la página no sepa resolver.
+// El índice ya descarta los `codigo_carrera` basura de la ingesta SIES con
+// `esCodigoRutaValido` (ver src/services/carrerasIndex.ts).
 export const getStaticPaths = (async () => {
-  let allCodes: any[] = [];
-  let hasMore = true;
-  let page = 0;
-  const limit = 1000;
-
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from("carreras")
-      .select("codigo_carrera")
-      .range(page * limit, (page + 1) * limit - 1);
-
-    if (error || !data || data.length === 0) {
-      hasMore = false;
-    } else {
-      allCodes = [...allCodes, ...data];
-      page++;
-    }
-  }
-
-  const codigosValidos = allCodes.filter((c) =>
-    esCodigoRutaValido(c.codigo_carrera),
-  );
-  const descartados = allCodes.length - codigosValidos.length;
-  if (descartados > 0) {
-    console.warn(
-      `[carrera/[id]] Se descartaron ${descartados} codigo_carrera inválidos (datos basura en Supabase).`,
-    );
-  }
-
-  return codigosValidos.map((carrera) => ({
-    params: { id: carrera.codigo_carrera.toString() },
-  }));
+  const { porCodigo } = await indiceCarreras();
+  return [...porCodigo.keys()].map((codigo) => ({ params: { id: codigo } }));
 }) satisfies GetStaticPaths;
 
 const { id } = Astro.params;
 
-const { data: carrera, error } = await supabase
-  .from("carreras")
-  .select(
-    `
-    *,
-    instituciones (
-      nombre,
-      tipo,
-      logo_url,
-      latitud,
-      longitud,
-      direccion
-    )
-  `,
-  )
-  .eq("codigo_carrera", id)
-  .single();
+// La ficha se resuelve desde el índice en memoria, no con una consulta por
+// página: son ~9.900 páginas prerenderizadas y esa consulta individual costaba
+// ~330 ms cada una, casi una hora de build en cada despliegue.
+const carrera = await carreraCompleta(id!);
 
-if (error || !carrera) {
+if (!carrera) {
   return Astro.redirect("/404");
 }
 
-const title = `${carrera.nombre_carrera} - ${carrera.instituciones?.nombre} | Elige Tu Futuro`;
+// ============================================================================
+// METADATOS DIFERENCIADOS
+// ----------------------------------------------------------------------------
+// El mismo programa se dicta hasta en 25 sedes y 4 jornadas, pero antes todas
+// esas fichas compartían <title>, descripción y H1 (solo "carrera - institución"):
+// 7.812 de las ~9.900 URLs eran duplicados a ojos de Google. Añadir sede y
+// jornada las vuelve páginas distintas y, de paso, captura la búsqueda local
+// ("técnico en enfermería puerto montt vespertino").
+// ============================================================================
+const institucionNombre =
+  carrera.instituciones?.nombre ?? "institución de educación superior";
+const nombreCarrera = formatearTitulo(carrera.nombre_carrera);
+const lugar = describirLugar(carrera.sede, carrera.region);
+const jornada = describirJornada(carrera.jornada);
 
-const institucionNombre = carrera.instituciones?.nombre ?? "institución de educación superior";
-const detalles = [
-  carrera.region && `Región: ${carrera.region}`,
-  carrera.jornada && `Jornada: ${carrera.jornada}`,
-  carrera.duracion_semestres && `Duración: ${carrera.duracion_semestres} semestres`,
-  carrera.empleabilidad_1er_anio &&
-    `Empleabilidad 1er año: ${carrera.empleabilidad_1er_anio}%`,
-]
-  .filter(Boolean)
-  .join(". ");
+const title = [
+  nombreCarrera,
+  lugar ? ` en ${lugar}` : "",
+  jornada ? ` (${jornada})` : "",
+  ` - ${institucionNombre}`,
+].join("");
 
-const description =
-  carrera.descripcion?.slice(0, 200) ||
-  `Estudia ${carrera.nombre_carrera} en ${institucionNombre} (Chile). ${detalles}. Conoce arancel, duración, jornada, acreditación y empleabilidad. Admisión 2026.`;
+// La descripción se compone con los datos reales de ESTA fila. Antes se usaba
+// `carrera.descripcion`, que es texto de plantilla: solo 1.440 variantes para
+// 9.901 fichas (una misma llegaba a repetirse en 360 páginas).
+const datos = [
+  jornada ? `jornada ${jornada.toLowerCase()}` : null,
+  carrera.duracion_semestres ? `${carrera.duracion_semestres} semestres` : null,
+  carrera.arancel_anual
+    ? `arancel $${Number(carrera.arancel_anual).toLocaleString("es-CL")}`
+    : null,
+  carrera.empleabilidad_1er_anio
+    ? `${(carrera.empleabilidad_1er_anio * 100).toFixed(0)}% de empleabilidad al 1er año`
+    : null,
+].filter(Boolean);
 
-const canonical = `/carrera/${id}`;
+const detalle = datos.join(", ");
+const description = recortarDescripcion(
+  `Estudia ${nombreCarrera} en ${institucionNombre}${lugar ? `, ${lugar}` : ""}. ` +
+    (detalle ? `${detalle.charAt(0).toUpperCase()}${detalle.slice(1)}. ` : "") +
+    "Compara y postula con datos oficiales SIES. Admisión 2026.",
+);
+
+// Las filas indistinguibles entre sí (mismo programa, sede y jornada) apuntan a
+// una sola URL canónica en vez de competir con metadatos idénticos.
+const canonical = `/carrera/${await codigoCanonico(String(id))}`;
+
+// Otras sedes y jornadas del mismo programa: enlazado interno entre hermanas.
+const variantes = await variantesDelPrograma(
+  carrera.nombre_carrera,
+  carrera.codigo_institucion,
+  String(id),
+);
+
+// Hub de la carrera y de la región: dan a esta ficha un "padre" temático al
+// que subir, en vez de colgar directamente de la home.
+const slugCarrera = slugificar(carrera.nombre_carrera);
+const regionMeta = regionPorValor(carrera.region);
+
 const jsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
-    { name: "Buscador de Carreras", url: "/herramientas/buscador" },
-    { name: carrera.nombre_carrera, url: canonical },
+    { name: "Carreras", url: "/carreras" },
+    { name: nombreCarrera, url: `/carreras/${slugCarrera}` },
+    { name: `${institucionNombre}${lugar ? ` - ${lugar}` : ""}`, url: canonical },
   ]),
   courseSchema({
-    name: carrera.nombre_carrera,
+    name: `${nombreCarrera}${lugar ? ` - ${lugar}` : ""}`,
     description,
     url: canonical,
     providerName: carrera.instituciones?.nombre,
+    providerUrl: `/institucion/${carrera.codigo_institucion}`,
+    arancel: carrera.arancel_anual,
+    duracionSemestres: carrera.duracion_semestres,
+    jornada: carrera.jornada,
+    lugar,
   }),
 ];
 ---
@@ -110,6 +130,105 @@ const jsonLd = [
 >
   <main class="min-h-screen bg-[#F4F5F9]">
     <CarreraDetalle carrera={carrera} client:load />
+
+    {/* Enlazado interno renderizado en el servidor: la ficha era una hoja sin
+        un solo enlace saliente, así que ni los buscadores ni los usuarios
+        podían pasar de aquí a la institución o a las otras sedes. */}
+    <nav
+      aria-label="Programas y ficha relacionados"
+      class="max-w-5xl mx-auto px-6 pb-20"
+    >
+      <div
+        class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 md:p-10"
+      >
+        <h2 class="text-xl font-black text-slate-800 tracking-tight mb-2">
+          Explora más sobre {nombreCarrera}
+        </h2>
+        <p class="text-sm text-slate-500 mb-6">
+          Compara esta carrera con otras sedes y revisa la ficha de la
+          institución.
+        </p>
+
+        <div class="flex flex-col gap-2">
+          <a
+            href={`/carreras/${slugCarrera}`}
+            class="inline-flex items-center gap-2 text-sm font-bold text-[#6544FF] hover:underline"
+          >
+            Ver dónde más se estudia {nombreCarrera} en Chile
+          </a>
+          <a
+            href={`/institucion/${carrera.codigo_institucion}`}
+            class="inline-flex items-center gap-2 text-sm font-bold text-[#6544FF] hover:underline"
+          >
+            Ver todas las carreras de {institucionNombre}
+          </a>
+          {
+            regionMeta && (
+              <a
+                href={`/carreras/region/${regionMeta.slug}`}
+                class="inline-flex items-center gap-2 text-sm font-bold text-[#6544FF] hover:underline"
+              >
+                Ver toda la oferta de la {regionMeta.nombre}
+              </a>
+            )
+          }
+        </div>
+
+        {
+          variantes.length > 0 && (
+            <div class="mt-8">
+              <h3 class="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">
+                {nombreCarrera} en otras sedes y jornadas
+              </h3>
+              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {variantes.map((v) => {
+                  const lugarV = describirLugar(v.sede, v.region);
+                  const jornadaV = describirJornada(v.jornada);
+                  return (
+                    <li>
+                      <a
+                        href={`/carrera/${v.codigo_carrera}`}
+                        class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-[#6544FF]/30 hover:bg-white transition-colors"
+                      >
+                        <span class="text-sm font-semibold text-slate-700">
+                          {lugarV || "Sede no informada"}
+                          {jornadaV && (
+                            <span class="text-slate-400 font-medium">
+                              {" "}
+                              · {jornadaV}
+                            </span>
+                          )}
+                        </span>
+                        {v.arancel_anual && (
+                          <span class="text-xs font-bold text-slate-500 shrink-0">
+                            ${Number(v.arancel_anual).toLocaleString("es-CL")}
+                          </span>
+                        )}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )
+        }
+
+        <div class="mt-8 pt-6 border-t border-slate-100 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <a href="/herramientas/buscador" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+            Buscador de carreras
+          </a>
+          <a href="/herramientas/calculadora" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+            Calcular mi puntaje ponderado
+          </a>
+          <a href="/herramientas/mercado-laboral" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+            Empleabilidad por carrera
+          </a>
+          <a href="/herramientas/fuas" class="text-slate-600 hover:text-[#6544FF] font-semibold">
+            Becas y gratuidad
+          </a>
+        </div>
+      </div>
+    </nav>
   </main>
 </Layout>
 

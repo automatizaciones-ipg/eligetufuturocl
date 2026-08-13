@@ -4,39 +4,50 @@ import Layout from "../../layouts/Layout.astro";
 import TestVocacionalComponent from "../../components/TestVocacional.tsx";
 import { faqSchema, breadcrumbSchema } from "../../lib/seo";
 
+// Fuente única de las FAQ: el mismo array alimenta el JSON-LD y el bloque
+// visible. Si el schema declara preguntas que no están en la página, Google lo
+// trata como marcado engañoso y descarta el rich result.
+const PREGUNTAS = [
+  {
+    question: "¿El test vocacional es gratis?",
+    answer:
+      "Sí. El test vocacional de Elige Tu Futuro es 100% gratuito y no requiere pago ni registro previo para conocer tu perfil.",
+  },
+  {
+    question: "¿Cuánto dura el test vocacional?",
+    answer:
+      "El test toma alrededor de 5 minutos. Son 12 preguntas que calculan tu perfil RIASEC y te recomiendan carreras e instituciones afines.",
+  },
+  {
+    question: "¿Cómo funciona el test vocacional?",
+    answer:
+      "Se basa en el modelo RIASEC (Realista, Investigador, Artístico, Social, Emprendedor y Convencional). Según tus respuestas se identifica tu área predominante y se cruzan tus intereses con la oferta académica chilena 2026 y datos de empleabilidad.",
+  },
+  {
+    question: "¿Qué obtengo al terminar el test?",
+    answer:
+      "Recibes tu perfil vocacional con porcentaje de afinidad, una lista de carreras recomendadas e instituciones destacadas en Chile, y la opción de recibir orientación personalizada.",
+  },
+  {
+    question: "¿El test vocacional sirve para elegir carrera en Chile?",
+    answer:
+      "Sí. Las recomendaciones se cruzan con la oferta académica chilena real (universidades, institutos profesionales y centros de formación técnica) usando los datos oficiales del SIES del MINEDUC, no con un catálogo genérico.",
+  },
+];
+
 const faqJsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
     { name: "Test Vocacional", url: "/herramientas/test-vocacional" },
   ]),
-  faqSchema([
-    {
-      question: "¿El test vocacional es gratis?",
-      answer:
-        "Sí. El test vocacional de Elige Tu Futuro es 100% gratuito y no requiere pago ni registro previo para conocer tu perfil.",
-    },
-    {
-      question: "¿Cuánto dura el test vocacional?",
-      answer:
-        "El test toma alrededor de 5 minutos. Son 12 preguntas que calculan tu perfil RIASEC y te recomiendan carreras e instituciones afines.",
-    },
-    {
-      question: "¿Cómo funciona el test vocacional?",
-      answer:
-        "Se basa en el modelo RIASEC (Realista, Investigador, Artístico, Social, Emprendedor y Convencional). Según tus respuestas se identifica tu área predominante y se cruzan tus intereses con la oferta académica chilena 2026 y datos de empleabilidad.",
-    },
-    {
-      question: "¿Qué obtengo al terminar el test?",
-      answer:
-        "Recibes tu perfil vocacional con porcentaje de afinidad, una lista de carreras recomendadas e instituciones destacadas en Chile, y la opción de recibir orientación personalizada.",
-    },
-  ]),
+  faqSchema(PREGUNTAS),
 ];
 ---
 
 <Layout
-  title="Test Vocacional Premium - Elige Tu Futuro"
-  description="Haz el test vocacional gratuito (modelo RIASEC) y descubre qué estudiar en Chile. Recibe carreras e instituciones recomendadas según tu perfil en 5 minutos."
+  title="Test Vocacional Gratis 2026: Descubre Qué Estudiar en Chile"
+  description="Test vocacional gratuito basado en el modelo RIASEC. En 5 minutos descubre tu perfil y qué carreras estudiar en Chile, con instituciones reales y datos de empleabilidad."
+  canonical="/herramientas/test-vocacional"
   jsonLd={faqJsonLd}
 >
   <div
@@ -57,8 +68,107 @@ const faqJsonLd = [
     </div>
 
     <div class="container mx-auto px-6 lg:px-8 relative z-10 w-full">
+      {/* Encabezado servido en HTML: el test entero vive dentro de una isla
+          React, así que sin esto la página no tenía ni <h1> ni texto que
+          posicionar para "test vocacional", su búsqueda más valiosa. */}
+      <header class="max-w-3xl mx-auto text-center mb-12">
+        <h1
+          class="font-black italic uppercase text-4xl md:text-6xl tracking-tight leading-[1.05] text-[#1E003E]"
+        >
+          Test <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-[#6544FF] to-[#947BFF]"
+            >vocacional</span
+          > gratis
+        </h1>
+        <p class="mt-5 text-lg text-[#1E003E]/70 leading-relaxed">
+          Descubre qué estudiar en Chile en 5 minutos. Son 12 preguntas basadas en
+          el modelo RIASEC, el mismo que usan los orientadores para identificar tu
+          perfil vocacional. Al terminar recibes tus áreas predominantes y una
+          lista de carreras e instituciones reales afines a ti, con datos
+          oficiales del SIES para la Admisión 2026.
+        </p>
+      </header>
+
       {/* El Componente Inmersivo */}
       <TestVocacionalComponent client:load />
+
+      <section class="max-w-3xl mx-auto mt-20">
+        <h2 class="text-2xl md:text-3xl font-black text-[#1E003E] tracking-tight text-center">
+          Cómo funciona el test vocacional
+        </h2>
+
+        <ol class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {
+            [
+              {
+                paso: "1",
+                titulo: "Respondes 12 preguntas",
+                texto:
+                  "Situaciones cotidianas, sin respuestas correctas ni incorrectas. Toma unos 5 minutos y no necesitas registrarte.",
+              },
+              {
+                paso: "2",
+                titulo: "Calculamos tu perfil RIASEC",
+                texto:
+                  "Tus respuestas se traducen en seis dimensiones: Realista, Investigador, Artístico, Social, Emprendedor y Convencional.",
+              },
+              {
+                paso: "3",
+                titulo: "Recibes carreras concretas",
+                texto:
+                  "Cruzamos tu perfil con la oferta académica chilena y su empleabilidad, para mostrarte carreras e instituciones reales.",
+              },
+            ].map((p) => (
+              <li class="bg-white rounded-[1.75rem] border border-gray-100 p-6 shadow-sm">
+                <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-[#6544FF] text-white font-black">
+                  {p.paso}
+                </span>
+                <h3 class="mt-4 font-black text-[#1E003E]">{p.titulo}</h3>
+                <p class="mt-2 text-sm text-[#1E003E]/70 leading-relaxed">{p.texto}</p>
+              </li>
+            ))
+          }
+        </ol>
+
+        <h2 class="text-2xl md:text-3xl font-black text-[#1E003E] tracking-tight mt-16 text-center">
+          Preguntas frecuentes
+        </h2>
+        <div class="mt-8 space-y-3">
+          {
+            PREGUNTAS.map((p) => (
+              <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+                <summary class="font-bold text-[#1E003E] cursor-pointer list-none flex justify-between items-center gap-4">
+                  {p.question}
+                  <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p class="mt-3 text-[#1E003E]/70 leading-relaxed">{p.answer}</p>
+              </details>
+            ))
+          }
+        </div>
+
+        <nav aria-label="Herramientas relacionadas" class="mt-14 text-center">
+          <p class="text-sm text-[#1E003E]/60 mb-3">
+            Cuando tengas tu perfil, sigue con:
+          </p>
+          <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+            <a href="/carreras" class="font-semibold text-[#6544FF] hover:underline">
+              Todas las carreras de Chile
+            </a>
+            <a href="/herramientas/calculadora" class="font-semibold text-[#6544FF] hover:underline">
+              Calcular tu puntaje ponderado
+            </a>
+            <a href="/herramientas/mercado-laboral" class="font-semibold text-[#6544FF] hover:underline">
+              Empleabilidad por carrera
+            </a>
+            <a href="/herramientas/fuas" class="font-semibold text-[#6544FF] hover:underline">
+              Becas y gratuidad
+            </a>
+          </div>
+        </nav>
+      </section>
     </div>
   </div>
 </Layout>

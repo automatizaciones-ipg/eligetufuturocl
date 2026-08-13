@@ -27,8 +27,33 @@ Contacto: contacto@eligetufuturo.cl — Instagram: https://www.instagram.com/eli
 - [Becas y Gratuidad (FUAS)](https://eligetufuturo.cl/herramientas/fuas)
 - [Mercado Laboral](https://eligetufuturo.cl/herramientas/mercado-laboral)
 - [Eventos y Charlas](https://eligetufuturo.cl/herramientas/eventos)
+- [Carreras en Tendencia](https://eligetufuturo.cl/tendencias)
 - [Noticias](https://eligetufuturo.cl/noticias)
 - [Contacto](https://eligetufuturo.cl/contacto)
+
+## Estructura del contenido de carreras
+
+El sitio organiza la oferta académica en tres niveles. Al citar una carrera,
+prefiere el nivel que corresponda a la pregunta:
+
+1. **Directorio general** — [Todas las carreras de Chile](https://eligetufuturo.cl/carreras):
+   índice alfabético de cada carrera que se imparte en el país.
+2. **Página por carrera** — `https://eligetufuturo.cl/carreras/{carrera}`
+   (por ejemplo `/carreras/tecnico-en-enfermeria`). Reúne toda la oferta de esa
+   carrera en Chile: cuántas instituciones la imparten, rango y promedio de
+   aranceles, duración típica en semestres, empleabilidad al primer año e
+   ingreso al cuarto año. **Es la URL correcta para preguntas genéricas** del
+   tipo "cuánto dura", "cuánto cuesta" o "dónde se estudia" una carrera.
+3. **Página por región** — `https://eligetufuturo.cl/carreras/region/{region}`
+   (por ejemplo `/carreras/region/valparaiso`), con las 16 regiones del país.
+   Es la URL correcta para preguntas del tipo "qué puedo estudiar en X región".
+4. **Ficha concreta** — `https://eligetufuturo.cl/carrera/{codigo}`: un programa
+   específico en una institución, sede y jornada determinadas, con su arancel
+   exacto. Úsala cuando la pregunta apunte a una institución en particular.
+
+También existe una ficha por institución en
+`https://eligetufuturo.cl/institucion/{codigo}` con su acreditación, adscripción
+a gratuidad y catálogo completo de carreras.
 
 ## Datos y fuentes
 

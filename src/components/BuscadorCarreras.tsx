@@ -67,69 +67,16 @@ const RESULTADOS_POR_PAGINA = 15;
 // ============================================================================
 // 3. HELPERS DE FORMATEO
 // ============================================================================
-const generarTipoInst = (tipoBD: string | null): string => {
-  if (!tipoBD) return "N/A";
-  if (tipoBD.includes("Universidades")) return "U";
-  if (tipoBD.includes("Institutos")) return "IP";
-  if (tipoBD.includes("Centros")) return "CFT";
-  return "N/A";
-};
-
-const generarSiglaInstitucion = (nombre: string): string => {
-  if (!nombre) return "N/A";
-  const palabras = nombre.replace(/\b(de|en|el|la|los|las|y)\b/gi, '').split(' ').filter(p => p.trim().length > 0);
-  if (palabras.length > 1) {
-    return (palabras[0][0] + (palabras[1]?.[0] || '') + (palabras[2]?.[0] || '')).toUpperCase().substring(0, 3);
-  }
-  return nombre.substring(0, 3).toUpperCase();
-};
-
-export const quitarAcentos = (str: string): string => {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
-
-export const formatearTitulo = (texto: string): string => {
-  if (!texto) return "";
-  const conectores = ['de', 'en', 'el', 'la', 'los', 'las', 'y', 'del', 'a', 'por', 'con', 'para'];
-  
-  const mapaTildes: Record<string, string> = {
-    'actuacion': 'actuación', 'administracion': 'administración', 'ingenieria': 'ingeniería',
-    'tecnico': 'técnico', 'tecnologia': 'tecnología', 'computacion': 'computación',
-    'informatica': 'informática', 'psicologia': 'psicología', 'pedagogia': 'pedagogía',
-    'educacion': 'educación', 'kinesiologia': 'kinesiología', 'odontologia': 'odontología',
-    'fonoaudiologia': 'fonoaudiología', 'nutricion': 'nutrición', 'biologia': 'biología',
-    'quimica': 'química', 'fisica': 'física', 'geologia': 'geología', 'agronomia': 'agronomía',
-    'electronica': 'electrónica', 'electrica': 'eléctrica', 'mecanica': 'mecánica',
-    'automatizacion': 'automatización', 'gestion': 'gestión', 'publico': 'público',
-    'publicas': 'públicas', 'juridica': 'jurídica', 'politica': 'política',
-    'politicas': 'políticas', 'antropologia': 'antropología', 'arqueologia': 'arqueología',
-    'sociologia': 'sociología', 'filosofia': 'filosofía', 'teologia': 'teología',
-    'musica': 'música', 'animacion': 'animación', 'gastronomia': 'gastronomía',
-    'estetica': 'estética', 'cosmetologia': 'cosmetología', 'logistica': 'logística',
-    'prevencion': 'prevención', 'construccion': 'construcción', 'comunicacion': 'comunicación',
-    'diseno': 'diseño', 'parvulo': 'párvulo', 'bilingue': 'bilingüe', 'ingles': 'inglés',
-    'enfermeria': 'enfermería', 'audicion': 'audición', 'optometria': 'optometría',
-    'clinico': 'clínico', 'radiologia': 'radiología', 'odontologico': 'odontológico',
-    'medico': 'médico', 'bioquimica': 'bioquímica', 'biotecnologia': 'biotecnología',
-    'estadistica': 'estadística', 'matematica': 'matemática', 'astronomia': 'astronomía',
-    'geofisica': 'geofísica', 'geografia': 'geografía', 'linguistica': 'lingüística',
-    'basica': 'básica', 'plasticas': 'plásticas', 'coreografia': 'coreografía', 
-    'grafico': 'gráfico', 'geomatica': 'geomática', 'topografia': 'topografía', 
-    'hoteleria': 'hotelería', 'television': 'televisión', 'fotografia': 'fotografía', 
-    'religion': 'religión', 'traduccion': 'traducción', 'interpretacion': 'interpretación', 
-    'fraces': 'francés', 'aleman': 'alemán', 'orientacion': 'orientación'
-  };
-
-  return texto.toLowerCase().split(' ').map((palabra, index) => {
-    const palabraLimpia = palabra.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-    const palabraCorregida = mapaTildes[palabraLimpia] 
-      ? palabra.replace(palabraLimpia, mapaTildes[palabraLimpia]) 
-      : palabra;
-
-    if (index > 0 && conectores.includes(palabraCorregida)) return palabraCorregida;
-    return palabraCorregida.charAt(0).toUpperCase() + palabraCorregida.slice(1);
-  }).join(' ');
-};
+// Helpers de formateo: viven en src/utils/formatters.ts para que las páginas
+// .astro puedan construir <title> y meta description con exactamente el mismo
+// criterio que la UI. Se re-exportan porque CalculadoraNem los importa de aquí.
+export { formatearTitulo, quitarAcentos } from "../utils/formatters";
+import {
+  formatearTitulo,
+  quitarAcentos,
+  generarTipoInst,
+  generarSiglaInstitucion,
+} from "../utils/formatters";
 
 const formatRegionLabel = (region: string): string => {
   if (region === "todas") return "Todas las Regiones";
@@ -185,18 +132,35 @@ function adaptarBD(bdData: any[]): CarreraUI[] {
 // ============================================================================
 // 4. COMPONENTE PRINCIPAL
 // ============================================================================
-export default function BuscadorCarreras() {
+interface BuscadorCarrerasProps {
+  /**
+   * Carreras, regiones e instituciones resueltas en el servidor. Sin esto el
+   * buscador se servía vacío y el HTML no traía ni un enlace a /carrera/: las
+   * ~9.900 fichas quedaban colgando solo del sitemap, sin enlazado interno.
+   */
+  datosIniciales?: any[];
+  regionesIniciales?: string[];
+  institucionesIniciales?: { nombre: string }[];
+  totalIniciales?: number;
+}
+
+export default function BuscadorCarreras({
+  datosIniciales = [],
+  regionesIniciales = [],
+  institucionesIniciales = [],
+  totalIniciales = 0,
+}: BuscadorCarrerasProps) {
   // --- ESTADOS DE BÚSQUEDA Y FILTROS ---
   const [busqueda, setBusqueda] = useState<string>("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("Todos");
-  const [regionFiltro, setRegionFiltro] = useState<string>("todas"); 
+  const [regionFiltro, setRegionFiltro] = useState<string>("todas");
   const [institucionFiltro, setInstitucionFiltro] = useState<string>("todas");
   const [orden, setOrden] = useState<string>("nombre_asc");
-  
+
   // --- ESTADOS DE DATOS ---
-  const [carreras, setCarreras] = useState<CarreraUI[]>([]);
-  const [listaInstituciones, setListaInstituciones] = useState<{nombre: string}[]>([]);
-  const [listaRegiones, setListaRegiones] = useState<string[]>([]);
+  const [carreras, setCarreras] = useState<CarreraUI[]>(() => adaptarBD(datosIniciales));
+  const [listaInstituciones, setListaInstituciones] = useState<{nombre: string}[]>(institucionesIniciales);
+  const [listaRegiones, setListaRegiones] = useState<string[]>(regionesIniciales);
   const [cargando, setCargando] = useState<boolean>(false);
   
   // --- ESTADOS UI ---
@@ -208,7 +172,7 @@ export default function BuscadorCarreras() {
   
   // --- PAGINACIÓN ---
   const [paginaActual, setPaginaActual] = useState<number>(1);
-  const [totalResultados, setTotalResultados] = useState<number>(0);
+  const [totalResultados, setTotalResultados] = useState<number>(totalIniciales);
 
   // Restaurar estado al volver atrás
   useEffect(() => {
@@ -219,8 +183,10 @@ export default function BuscadorCarreras() {
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
-  // Carga inicial de Filtros Dinámicos
+  // Carga inicial de Filtros Dinámicos (solo si el servidor no los sembró)
   useEffect(() => {
+    if (regionesIniciales.length > 0 && institucionesIniciales.length > 0) return;
+
     const cargarFiltros = async () => {
       try {
         const { data: instData } = await supabase.from('instituciones').select('nombre').order('nombre');

@@ -162,12 +162,12 @@ export default function FormularioContacto() {
             <Star className="w-4 h-4 fill-emerald-300/20" />
             Contacto Directo
           </div>
-          <h2 className="font-black uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-none">
+          <h1 className="font-black uppercase text-5xl md:text-6xl lg:text-7xl text-white tracking-tight mb-4 leading-none">
             Envíanos <br className="md:hidden" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-[#3B82F6] to-[#6544FF]">
               Tu Mensaje
             </span>
-          </h2>
+          </h1>
           <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
             Completa el formulario y te responderemos.
           </p>

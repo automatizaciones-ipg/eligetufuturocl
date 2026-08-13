@@ -1,16 +1,57 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import NoticiasExplora from "../components/NoticiasExplora.tsx";
+import { supabase } from "../../lib/supabase";
+import type { NoticiaRow } from "../types/noticia";
+import { breadcrumbSchema } from "../lib/seo";
+
+// SSR: el listado se sirve ya poblado. Con el fetch solo en cliente, el HTML no
+// contenía ni un enlace a /noticia/, así que los artículos quedaban huérfanos.
+export const prerender = false;
+
+let noticiasIniciales: NoticiaRow[] = [];
+try {
+  const { data } = await supabase
+    .from("noticias")
+    .select("*")
+    .eq("estado", "activado")
+    .order("created_at", { ascending: false });
+  noticiasIniciales = (data as NoticiaRow[] | null) || [];
+} catch {
+  // Si Supabase no responde, el componente reintenta en cliente.
+}
+
+const jsonLd = [
+  breadcrumbSchema([
+    { name: "Inicio", url: "/" },
+    { name: "Noticias", url: "/noticias" },
+  ]),
+  // ItemList: le describe a Google el listado completo de artículos.
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Artículos de orientación vocacional",
+    numberOfItems: noticiasIniciales.length,
+    itemListElement: noticiasIniciales.slice(0, 50).map((n, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `/noticia/${n.id}`,
+      name: n.titulo,
+    })),
+  },
+];
 ---
 
 <Layout
-  title="Explora tu Futuro | Noticias y Motivación"
-  description="Noticias, guías y motivación para tu futuro académico en Chile: orientación vocacional, becas, PAES, admisión y consejos para elegir carrera."
+  title="Noticias y Guías de Orientación Vocacional | Elige Tu Futuro"
+  description="Artículos, guías y consejos para tu futuro académico en Chile: orientación vocacional, becas, PAES, admisión y cómo elegir carrera. Actualizado cada semana."
+  canonical="/noticias"
+  jsonLd={jsonLd}
 >
   <main>
     {
       /* client:load es vital para que las animaciones y filtros de React funcionen de inmediato */
     }
-    <NoticiasExplora client:load />
+    <NoticiasExplora datosIniciales={noticiasIniciales} client:load />
   </main>
 </Layout>
