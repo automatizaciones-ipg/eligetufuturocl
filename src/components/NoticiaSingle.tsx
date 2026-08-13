@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Clock, BookOpen, Calendar, User, Link2, Share2, Bookmark, ArrowUpRight } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { markdownAHtml } from "../lib/markdown";
 import { supabase } from "../../lib/supabase";
 import { mapearNoticia, type Noticia, type NoticiaRow } from "../types/noticia";
 
@@ -20,6 +20,13 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
   const [noticia, setNoticia] = useState<Noticia | null>(noticiaInicial);
   const [cargando, setCargando] = useState<boolean>(!noticiaInicial);
   const [errorSeguridad, setErrorSeguridad] = useState<boolean>(false);
+
+  // Determinista: servidor y cliente producen el mismo HTML, así que la
+  // hidratación no encuentra diferencias.
+  const cuerpoHtml = useMemo(
+    () => markdownAHtml(noticia?.cuerpoMarkdown),
+    [noticia?.cuerpoMarkdown],
+  );
 
   useEffect(() => {
     // El servidor ya entregó el artículo: no hay nada que pedir.
@@ -157,29 +164,15 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
             "{noticia.extracto}"
           </p>
 
-          <article className="prose prose-slate max-w-none">
-            <ReactMarkdown
-              components={{
-                h1: ({ ...props }) => <h1 className="text-3xl md:text-4xl font-black text-slate-800 mt-10 mb-4 tracking-tight uppercase italic leading-tight" {...props} />,
-                h2: ({ ...props }) => <h2 className="text-2xl md:text-3xl font-black text-slate-800 mt-8 mb-3 tracking-tight" {...props} />,
-                h3: ({ ...props }) => <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-6 mb-2" {...props} />,
-                p: ({ ...props }) => <p className="text-base md:text-lg text-slate-600 font-medium leading-relaxed mb-6" {...props} />,
-                strong: ({ ...props }) => <strong className="font-black text-slate-900 bg-indigo-50/80 px-1 rounded" {...props} />,
-                ul: ({ ...props }) => <ul className="list-disc pl-6 space-y-2 mb-6 text-slate-600 font-medium" {...props} />,
-                ol: ({ ...props }) => <ol className="list-decimal pl-6 space-y-2 mb-6 text-slate-600 font-medium" {...props} />,
-                li: ({ ...props }) => <li className="pl-1" {...props} />,
-                blockquote: ({ ...props }) => (
-                  <blockquote className="bg-[#0A0518]/5 rounded-[2rem] p-6 my-8 border-l-8 border-[#1A1528] italic text-slate-700 font-medium" {...props} />
-                ),
-                img: ({ ...props }) => (
-                  <img className="w-full rounded-[2rem] my-8 shadow-md object-cover max-h-[400px]" alt={props.alt || "Imagen complementaria"} {...props} />
-                ),
-                hr: () => <hr className="my-10 border-slate-100" />
-              }}
-            >
-              {noticia.cuerpoMarkdown}
-            </ReactMarkdown>
-          </article>
+          {/* El markdown se convierte con `markdownAHtml` (código propio) en vez
+              de con react-markdown: esta ficha se renderiza en el servidor, y
+              arrastrar react-markdown al arranque del módulo hacía que Hostinger
+              devolviera 500 en todas las rutas de noticia. El conversor escapa
+              el HTML de origen, así que el contenido no puede inyectar marcado. */}
+          <article
+            className="prose prose-slate max-w-none"
+            dangerouslySetInnerHTML={{ __html: cuerpoHtml }}
+          />
 
           {/* Enlaces de referencia tipados */}
           {noticia.enlacesReferencia.length > 0 && (
