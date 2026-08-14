@@ -219,6 +219,26 @@ o isla que liste datos:
   minutos. Si necesitas un campo nuevo en una ficha, añádelo al índice, no una
   consulta.
 
+### Cuidado al pasar una isla de `client:only` a render en servidor
+
+Un componente que solo corría en el navegador puede arrastrar dependencias que
+el runtime de Hostinger no resuelve. Pasó con `/noticia/[id]` en ago 2026: al
+convertirla a SSR para que los buscadores vieran el artículo, `react-markdown`
+entró en el arranque del módulo en el servidor y **producción devolvió 500 en
+todas las rutas de noticia** mientras el mismo artefacto respondía 200 en local.
+El paquete estaba en `dependencies` y el build pasaba con exit 0.
+
+La pista para diagnosticarlo: fallaba incluso con un id inválido
+(`/noticia/xxx`), que no llega a consultar la base — señal de que el error está
+al cargar el módulo, no en los datos. Comparar los imports de una ruta que
+funciona con los de la que falla aísla al culpable.
+
+Se resolvió con `src/lib/markdown.ts`, un conversor Markdown→HTML propio: el
+código nuestro siempre entra en el bundle y no depende de la resolución de
+paquetes en el runtime. **Al hacer SSR de una isla que use una dependencia
+externa pesada o ESM-only, verifica la ruta en producción justo después del
+deploy.**
+
 ### El navegador no debe importar el cliente de Supabase en islas globales
 
 `Header.tsx` va con `client:load` en el Layout, o sea en **todas** las páginas.
