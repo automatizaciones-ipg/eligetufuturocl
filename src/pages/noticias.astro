@@ -35,7 +35,7 @@ const jsonLd = [
     itemListElement: noticiasIniciales.slice(0, 50).map((n, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `/noticia/${n.id}`,
+      url: `/noticia/${n.slug}`,
       name: n.titulo,
     })),
   },

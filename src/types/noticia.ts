@@ -3,6 +3,7 @@
 // Tipo para el uso interno en el Front-End (CamelCase)
 export interface Noticia {
     id: string;
+    slug: string;
     titulo: string;
     extracto: string;
     categoria: string;
@@ -16,12 +17,14 @@ export interface Noticia {
     destacada: boolean;
     tiempoLectura: string;
     tags: string[];
+    puntosClave: string[];
     createdAt: string;
   }
-  
+
   // Tipo exacto de cómo viene la fila desde PostgreSQL (Snake_Case)
   export interface NoticiaRow {
     id: string;
+    slug: string;
     titulo: string;
     extracto: string;
     categoria: string;
@@ -35,6 +38,7 @@ export interface Noticia {
     destacada: boolean;
     tiempo_lectura: string;
     tags: string[] | null;
+    puntos_clave: string[] | null;
     created_at: string;
   }
 
@@ -46,6 +50,7 @@ export interface Noticia {
 export function mapearNoticia(row: NoticiaRow): Noticia {
   return {
     id: row.id,
+    slug: row.slug,
     titulo: row.titulo,
     extracto: row.extracto,
     categoria: row.categoria,
@@ -59,6 +64,7 @@ export function mapearNoticia(row: NoticiaRow): Noticia {
     destacada: row.destacada,
     tiempoLectura: row.tiempo_lectura,
     tags: row.tags || [],
+    puntosClave: row.puntos_clave || [],
     createdAt: row.created_at,
   };
 }

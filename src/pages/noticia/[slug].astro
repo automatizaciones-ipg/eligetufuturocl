@@ -1,15 +1,15 @@
 ---
-// src/pages/noticia/[id].astro
+// src/pages/noticia/[slug].astro
 import Layout from "../../layouts/Layout.astro";
 import NoticiaSingle from "../../components/NoticiaSingle"; // Componente React
 import { supabase } from "../../../lib/supabase";
 import { mapearNoticia, type Noticia, type NoticiaRow } from "../../types/noticia";
 import { newsArticleSchema, breadcrumbSchema, SITE } from "../../lib/seo";
 
-// SSR: leemos cualquier ID en tiempo real desde la URL.
+// SSR: leemos cualquier slug en tiempo real desde la URL.
 export const prerender = false;
 
-const { id } = Astro.params;
+const { slug } = Astro.params;
 
 // El artículo se resuelve ENTERO en el servidor y se le pasa al componente como
 // prop. Antes se montaba con `client:only`, así que el cuerpo, el título visible
@@ -19,17 +19,37 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 let noticia: Noticia | null = null;
 
-if (id && UUID_RE.test(id)) {
+if (slug) {
   try {
     const { data } = await supabase
       .from("noticias")
       .select("*")
-      .eq("id", id)
+      .eq("slug", slug)
       .eq("estado", "activado") // Solo artículos publicados
       .single();
     if (data) noticia = mapearNoticia(data as NoticiaRow);
   } catch {
     // Si Supabase falla, se responde como "no disponible" en vez de romper.
+  }
+}
+
+// Compatibilidad con las URLs UUID viejas (antes de agregar `slug`): si el
+// segmento es un UUID que resuelve a una noticia, redirige 301 a su URL
+// canónica con nombre en vez de devolver 404. A diferencia del incidente de
+// ago 2026 (un redirect en el middleware horneó miles de páginas como stub
+// durante el BUILD), este redirect corre en una página `prerender: false` —
+// solo afecta al request puntual, no al build.
+if (!noticia && slug && UUID_RE.test(slug)) {
+  try {
+    const { data } = await supabase
+      .from("noticias")
+      .select("slug")
+      .eq("id", slug)
+      .eq("estado", "activado")
+      .single();
+    if (data?.slug) return Astro.redirect(`/noticia/${data.slug}`, 301);
+  } catch {
+    // Si falla, cae al 404 normal de abajo.
   }
 }
 
@@ -39,14 +59,14 @@ if (!noticia) {
   Astro.response.status = 404;
 }
 
-const titulo = noticia
-  ? `${noticia.titulo} | Explora Tu Futuro`
-  : "Artículo no disponible";
+// Seo.astro ya agrega " | {SITE.name}" si el título no lo incluye —sumar acá
+// un sufijo de marca distinto duplicaba el <title> en producción.
+const titulo = noticia ? noticia.titulo : "Artículo no disponible";
 const description = noticia
   ? (noticia.extracto || SITE.description).slice(0, 200)
   : "El artículo que buscas no está disponible. Explora las guías de orientación vocacional de Elige Tu Futuro.";
 const image = noticia?.imagenPrincipal || SITE.defaultOgImage;
-const canonical = `/noticia/${id}`;
+const canonical = `/noticia/${slug}`;
 const publishedTime = noticia?.createdAt
   ? new Date(noticia.createdAt).toISOString()
   : undefined;
@@ -70,6 +90,8 @@ const jsonLd = noticia
         articleBody: noticia.cuerpoMarkdown,
         section: noticia.categoria,
         keywords: noticia.tags,
+        // Le dice al motor de IA exactamente qué bloque leer/citar directo.
+        speakableSelector: noticia.puntosClave.length ? ".resumen-rapido" : undefined,
       }),
     ]
   : [];
@@ -93,7 +115,7 @@ const jsonLd = noticia
   {
     noticia ? (
       <NoticiaSingle
-        noticiaId={id as string}
+        slug={slug as string}
         noticiaInicial={noticia}
         client:load
       />

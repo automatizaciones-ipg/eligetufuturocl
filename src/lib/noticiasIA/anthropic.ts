@@ -18,8 +18,17 @@ const ARTICULO_SCHEMA = {
     cuerpo_markdown: { type: "string" },
     tags: { type: "array", items: { type: "string" } },
     image_search_keywords: { type: "array", items: { type: "string" } },
+    puntos_clave: { type: "array", items: { type: "string" } },
   },
-  required: ["titulo", "extracto", "categoria", "cuerpo_markdown", "tags", "image_search_keywords"],
+  required: [
+    "titulo",
+    "extracto",
+    "categoria",
+    "cuerpo_markdown",
+    "tags",
+    "image_search_keywords",
+    "puntos_clave",
+  ],
   additionalProperties: false,
 } as const;
 
@@ -50,6 +59,7 @@ ${evitar}Requisitos del artículo:
 - "cuerpo_markdown": 1500-2500 palabras en Markdown, con al menos 3 secciones "### ", una cita en blockquote ("> ..."), listas donde aporten claridad, y un cierre con conclusión práctica. NO incluyas imágenes embebidas en el markdown (las imágenes se agregan aparte). NO inventes URLs ni enlaces dentro del cuerpo.
 - "tags": 4 a 6 palabras clave en español, minúsculas, sin tildes si es ambiguo.
 - "image_search_keywords": 2 a 3 palabras clave EN INGLÉS para buscar fotos de stock relacionadas (ej. "student reading book", "focus study desk").
+- "puntos_clave": 3 a 5 oraciones, cada una autocontenida y citable por sí sola (debe tener sentido sin haber leído el resto del artículo) que respondan directamente una pregunta concreta que un estudiante haría sobre el tema. Nada de gancho ni relleno — son las respuestas, no el resumen del resumen.
 
 Responde únicamente con el artículo en el formato solicitado.`;
 }
@@ -68,7 +78,9 @@ function parseArticulo(json: unknown): GeneratedArticle {
     !Array.isArray(a.tags) ||
     !a.tags.every((t) => typeof t === "string") ||
     !Array.isArray(a.image_search_keywords) ||
-    !a.image_search_keywords.every((k) => typeof k === "string")
+    !a.image_search_keywords.every((k) => typeof k === "string") ||
+    !Array.isArray(a.puntos_clave) ||
+    !a.puntos_clave.every((p) => typeof p === "string")
   ) {
     throw new Error("La respuesta de Anthropic no calza con el esquema esperado de GeneratedArticle.");
   }

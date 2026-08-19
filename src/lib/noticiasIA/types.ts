@@ -16,6 +16,7 @@ export type GeneratedArticle = {
   cuerpo_markdown: string;
   tags: string[];
   image_search_keywords: string[];
+  puntos_clave: string[];
 };
 
 export type UnsplashImages = {

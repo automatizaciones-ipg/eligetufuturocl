@@ -1,8 +1,17 @@
 // src/pages/sitemap.xml.ts
 // ============================================================================
-// Sitemap XML generado en build. Combina rutas estáticas con las URLs
-// dinámicas (carreras, instituciones, noticias) consultadas desde Supabase.
-// Se prerenderiza a /sitemap.xml para servirse como archivo estático.
+// Sitemap XML combina rutas estáticas con las URLs dinámicas (carreras,
+// instituciones, noticias) consultadas desde Supabase.
+//
+// SSR (no prerender): las noticias las publica un cron semanal que escribe
+// directo en Supabase sin disparar un build/deploy en Hostinger. Si este
+// archivo se horneara en build (como antes), el sitemap quedaba congelado en
+// la última vez que alguien hizo `git push` y todo artículo publicado después
+// por el cron desaparecía del sitemap hasta el próximo deploy —en ago 2026 se
+// detectó con 19 de 25 noticias activas ausentes del sitemap en producción.
+// carreras/instituciones sí salen de un índice cacheado en memoria
+// (`carrerasIndex.ts`, una vez por proceso), así que este SSR no repite esas
+// consultas caras en cada request.
 // ============================================================================
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
@@ -11,7 +20,7 @@ import { esCodigoRutaValido } from "../utils/formatters";
 import { indiceCarreras } from "../services/carrerasIndex";
 import { REGIONES } from "../utils/regiones";
 
-export const prerender = true;
+export const prerender = false;
 
 type UrlEntry = {
   loc: string;
@@ -80,16 +89,17 @@ export const GET: APIRoute = async () => {
     // Si Supabase no responde en build, igual emitimos las rutas estáticas.
   }
 
-  // Noticias: id + fecha de actualización si está disponible.
+  // Noticias: slug (URL con nombre) + fecha de actualización si está disponible.
   try {
     const { data } = await supabase
       .from("noticias")
-      .select("id, created_at, estado")
+      .select("slug, created_at, estado")
       .limit(5000);
     for (const n of (data || []) as Record<string, any>[]) {
       if (n.estado && n.estado !== "activado") continue;
+      if (!n.slug) continue; // fila sin backfillear todavía, ver scripts/backfill-noticias-geo.mjs
       entries.push({
-        loc: `/noticia/${n.id}`,
+        loc: `/noticia/${n.slug}`,
         changefreq: "weekly",
         priority: 0.6,
         lastmod: n.created_at ? new Date(n.created_at).toISOString() : undefined,

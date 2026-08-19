@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { mapearNoticia, type Noticia, type NoticiaRow } from "../types/noticia";
 
 interface NoticiaSingleProps {
-  noticiaId: string;
+  slug: string;
   /**
    * Noticia ya resuelta en el servidor. Cuando llega, el artículo se renderiza
    * completo en el HTML (imprescindible para SEO: antes el cuerpo solo existía
@@ -16,7 +16,7 @@ interface NoticiaSingleProps {
   noticiaInicial?: Noticia | null;
 }
 
-export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: NoticiaSingleProps) {
+export default function NoticiaSingle({ slug, noticiaInicial = null }: NoticiaSingleProps) {
   const [noticia, setNoticia] = useState<Noticia | null>(noticiaInicial);
   const [cargando, setCargando] = useState<boolean>(!noticiaInicial);
   const [errorSeguridad, setErrorSeguridad] = useState<boolean>(false);
@@ -33,10 +33,10 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
     if (noticiaInicial) return;
 
     const fetchNoticiaCompleta = async () => {
-      // Cápsula de seguridad: Validar formato UUIDv4 para prevenir inyecciones o peticiones basura
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(noticiaId)) {
-        console.error("Alerta de seguridad: ID de noticia con formato inválido.");
+      // Cápsula de seguridad: validar formato de slug para prevenir inyecciones o peticiones basura
+      const slugRegex = /^[a-z0-9-]+$/;
+      if (!slugRegex.test(slug)) {
+        console.error("Alerta de seguridad: slug de noticia con formato inválido.");
         setErrorSeguridad(true);
         setCargando(false);
         return;
@@ -46,7 +46,7 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
         const { data, error } = await supabase
           .from('noticias')
           .select('*')
-          .eq('id', noticiaId)
+          .eq('slug', slug)
           .eq('estado', 'activado') // Seguridad: Solo permitir leer artículos activos
           .single();
 
@@ -60,8 +60,8 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
       }
     };
 
-    if (noticiaId) fetchNoticiaCompleta();
-  }, [noticiaId, noticiaInicial]);
+    if (slug) fetchNoticiaCompleta();
+  }, [slug, noticiaInicial]);
 
   // =========================================================================
   // UI SKELETON: Carga ultra sutil y veloz (Mejor UX percibido)
@@ -163,6 +163,25 @@ export default function NoticiaSingle({ noticiaId, noticiaInicial = null }: Noti
           <p className="text-xl md:text-2xl font-medium text-slate-600 leading-relaxed italic border-l-4 border-[#6544FF] pl-6 mb-10">
             "{noticia.extracto}"
           </p>
+
+          {/* Bloque citable para GEO: oraciones autocontenidas que un motor de
+              IA puede extraer como respuesta directa sin leer todo el
+              artículo. La clase `resumen-rapido` es el selector que apunta el
+              `speakable` del JSON-LD (ver newsArticleSchema en src/lib/seo.ts). */}
+          {noticia.puntosClave.length > 0 && (
+            <div className="resumen-rapido mb-10 p-6 rounded-[1.5rem] bg-indigo-50/60 border border-indigo-100">
+              <h2 className="text-xs font-black uppercase tracking-widest text-[#6544FF] mb-3">
+                Resumen rápido
+              </h2>
+              <ul className="space-y-2">
+                {noticia.puntosClave.map((punto, i) => (
+                  <li key={i} className="text-sm md:text-base text-slate-700 font-medium">
+                    {punto}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* El markdown se convierte con `markdownAHtml` (código propio) en vez
               de con react-markdown: esta ficha se renderiza en el servidor, y

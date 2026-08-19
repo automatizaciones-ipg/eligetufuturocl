@@ -248,6 +248,8 @@ export function newsArticleSchema(opts: {
   articleBody?: string;
   section?: string;
   keywords?: string[];
+  /** Selector CSS del bloque "resumen citable" (GEO): le dice al motor qué fragmento leer/citar directo. */
+  speakableSelector?: string;
 }) {
   // Markdown fuera: el schema espera texto plano.
   const cuerpo = opts.articleBody
@@ -272,6 +274,12 @@ export function newsArticleSchema(opts: {
     mainEntityOfPage: absoluteUrl(opts.url),
     ...(opts.section && { articleSection: opts.section }),
     ...(opts.keywords?.length && { keywords: opts.keywords.join(", ") }),
+    ...(opts.speakableSelector && {
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: [opts.speakableSelector],
+      },
+    }),
     ...(cuerpo && {
       articleBody: cuerpo,
       wordCount: cuerpo.split(/\s+/).length,

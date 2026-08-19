@@ -35,7 +35,7 @@ const [{ data: carrerasTop }, { data: carrerasUA }, { data: carrerasIPG }, { dat
     .ilike('instituciones.nombre', '%ipg%')
     .limit(8),
   supabaseBuild.from('noticias')
-    .select('id, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada')
+    .select('id, slug, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada')
     .order('created_at', { ascending: false })
     .limit(12),
 ]);

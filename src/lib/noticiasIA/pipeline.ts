@@ -9,6 +9,7 @@ import { buscarImagenes } from "./unsplash";
 import { armarEnlacesReferencia } from "./enlaces";
 import { colorParaCategoria } from "./categorias";
 import { calcularTiempoLectura } from "./readingTime";
+import { slugificar } from "../../utils/formatters";
 import type { PipelineResult } from "./types";
 
 const AUTOR = "Redacción Explora";
@@ -59,8 +60,12 @@ export async function runNoticiaIAJob(): Promise<PipelineResult> {
     const tiempoLectura = calcularTiempoLectura(articulo.cuerpo_markdown);
 
     const noticiaId = randomUUID();
+    // Slug legible para la URL pública (/noticia/<slug>): el título aporta el
+    // "nombre" y el sufijo del UUID garantiza unicidad sin una consulta extra.
+    const slug = `${slugificar(articulo.titulo)}-${noticiaId.slice(0, 8)}`;
     const { error: insertNoticiaError } = await supabase.from("noticias").insert({
       id: noticiaId,
+      slug,
       titulo: articulo.titulo,
       extracto: articulo.extracto,
       categoria: articulo.categoria,
@@ -74,6 +79,7 @@ export async function runNoticiaIAJob(): Promise<PipelineResult> {
       destacada: true,
       tiempo_lectura: tiempoLectura,
       tags: articulo.tags,
+      puntos_clave: articulo.puntos_clave,
     });
 
     if (insertNoticiaError) {

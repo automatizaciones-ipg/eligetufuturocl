@@ -22,6 +22,7 @@ import GenerandoLoader from "./GenerandoLoader";
 // --- INTERFACES DE TYPESCRIPT ---
 interface NoticiaDB {
   id: string | number;
+  slug: string;
   titulo: string;
   extracto: string;
   categoria: string;
@@ -34,6 +35,7 @@ interface NoticiaDB {
 
 interface NoticiaUI {
   id: string | number;
+  slug: string;
   titulo: string;
   extracto: string;
   categoria: string;
@@ -130,7 +132,7 @@ function procesarNoticias(rawData: NoticiaDB[]): NoticiaUI[] {
       day: 'numeric', month: 'short', year: 'numeric'
     });
     return {
-      id: item.id, titulo: item.titulo.trim(), extracto: item.extracto,
+      id: item.id, slug: item.slug, titulo: item.titulo.trim(), extracto: item.extracto,
       categoria: item.categoria || "General", autor: item.autor || "Equipo Editorial",
       imagenPrincipal: item.imagen_principal || fallbackImg,
       tiempoLectura: item.tiempo_lectura || "5 min",
@@ -173,7 +175,7 @@ export default function NoticiasDestacadas({ datosIniciales }: { datosIniciales?
         // Asumiendo una tabla 'noticias' en Supabase. Ajusta los campos según tu DB.
         const { data, error } = await supabase
           .from('noticias')
-          .select('id, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada')
+          .select('id, slug, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada')
           .order('created_at', { ascending: false })
           .limit(12);
 
@@ -445,8 +447,8 @@ export default function NoticiasDestacadas({ datosIniciales }: { datosIniciales?
 
                   {/* Footer Con Enlace Seguro */}
                   <div className="mt-auto pt-4 flex justify-between items-center border-t border-gray-100 justify-center">
-                    <a 
-                      href={`/noticia/${noticia.id}`}
+                    <a
+                      href={`/noticia/${noticia.slug}`}
                       onClick={(e) => {
                         if (isDragging) e.preventDefault();
                         else setAccediendoId(noticia.id);
