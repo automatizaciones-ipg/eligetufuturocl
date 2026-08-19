@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import GenerandoLoader from "./GenerandoLoader";
 import { supabase } from "../../lib/supabase";
+import { enlaceCarrera } from "../utils/enlaces";
 
 // ============================================================================
 // INTERFACES (Tipado Estricto)
@@ -16,6 +17,7 @@ import { supabase } from "../../lib/supabase";
 interface CarreraDB {
   id: number;
   codigo_carrera: string | number;
+  slug: string;
   nombre_carrera: string;
   empleabilidad_1er_anio: number | null;
   ingreso_promedio_4to_anio: string | null;
@@ -47,6 +49,7 @@ interface TemaCarrera {
 interface CarreraUI {
   id: number;
   codigo_carrera: string | number;
+  slug: string;
   carrera: string;
   institucion: string;
   tipoInst: string;
@@ -290,6 +293,7 @@ function adaptarMercadoLaboral(rawData: CarreraDB[]): CarreraUI[] {
     carrerasUnicas.push({
       id: item.id,
       codigo_carrera: item.codigo_carrera,
+      slug: item.slug,
       carrera: item.nombre_carrera.trim(),
       institucion: instNombre,
       tipoInst: instTipo,
@@ -361,6 +365,7 @@ export default function MercadoLaboral({ datosIniciales = [] }: MercadoLaboralPr
           .select(`
             id,
             codigo_carrera,
+            slug,
             nombre_carrera,
             empleabilidad_1er_anio,
             ingreso_promedio_4to_anio,
@@ -422,11 +427,11 @@ export default function MercadoLaboral({ datosIniciales = [] }: MercadoLaboralPr
     }
   };
 
-  const handleNavegar = (e: React.MouseEvent, codigo: string | number) => {
+  const handleNavegar = (e: React.MouseEvent, codigo: string | number, slug: string) => {
     e.preventDefault();
     setAccediendoId(codigo);
     setTimeout(() => {
-      window.location.href = `/carrera/${codigo}`;
+      window.location.href = enlaceCarrera(slug);
     }, 400);
   };
 
@@ -585,8 +590,8 @@ export default function MercadoLaboral({ datosIniciales = [] }: MercadoLaboralPr
                   style={{ animation: `fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${i * 50}ms both` }}
                 >
                   <a
-                    href={`/carrera/${carrera.codigo_carrera}`}
-                    onClick={(e) => handleNavegar(e, carrera.codigo_carrera)}
+                    href={enlaceCarrera(carrera.slug)}
+                    onClick={(e) => handleNavegar(e, carrera.codigo_carrera, carrera.slug)}
                     className={`group relative flex flex-col bg-white rounded-[2.5rem] p-5 border border-gray-100/80 shadow-[0_10px_35px_rgba(0,0,0,0.03)] transition-all duration-300 h-full cursor-pointer ${carrera.tema.borderHover} hover:-translate-y-1.5`}
                   >
                     

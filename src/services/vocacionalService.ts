@@ -7,6 +7,7 @@ export const buscarCarrerasPorPerfil = async (queryOr: string): Promise<CarreraD
     .select(`
       id,
       codigo_carrera,
+      slug,
       nombre_carrera,
       region,
       jornada,

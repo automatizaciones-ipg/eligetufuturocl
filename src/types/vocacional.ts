@@ -32,6 +32,7 @@ export interface DatosUsuario {
 export interface CarreraDB {
   id?: number;
   codigo_carrera?: string | null;
+  slug?: string | null;
   nombre_carrera: string;
   region?: string | null;
   jornada?: string | null;

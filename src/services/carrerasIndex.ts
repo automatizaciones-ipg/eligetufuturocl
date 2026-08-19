@@ -17,6 +17,8 @@ import { esCodigoRutaValido, slugificar } from "../utils/formatters";
 export type CarreraIndexada = {
   id?: number;
   codigo_carrera: string;
+  /** URL con nombre (/carrera/<slug>) — columna real, poblada por trigger en Supabase (ver migraciones 0006/0007). */
+  slug: string;
   nombre_carrera: string;
   codigo_institucion: string | number;
   sede: string | null;
@@ -34,6 +36,8 @@ export type CarreraIndexada = {
 
 export type InstitucionIndexada = {
   codigo_institucion: string | number;
+  /** URL con nombre (/institucion/<slug>) — columna real, poblada por trigger en Supabase. */
+  slug: string;
   nombre: string;
   tipo: string | null;
   acreditada: boolean | null;
@@ -66,6 +70,10 @@ type Indice = {
   instituciones: Map<string, InstitucionIndexada>;
   /** código de carrera → su fila completa, para servir la ficha sin consultar. */
   porCodigo: Map<string, CarreraIndexada>;
+  /** slug de ficha de carrera → código, para resolver /carrera/[slug]. */
+  porSlugCarrera: Map<string, string>;
+  /** slug de institución → código, para resolver /institucion/[slug]. */
+  porSlugInstitucion: Map<string, string>;
 };
 
 /** Clave de agrupación: mismo programa en la misma institución. */
@@ -104,14 +112,22 @@ async function construir(): Promise<Indice> {
   // Las instituciones caben de sobra en memoria (~120) y tanto las páginas hub
   // como la ficha de carrera necesitan sus datos sin consultar por página.
   const instituciones = new Map<string, InstitucionIndexada>();
+  const porSlugInstitucion = new Map<string, string>();
   {
     const { data } = await supabase
       .from("instituciones")
       .select(
-        "codigo_institucion, nombre, tipo, acreditada, adscrita_gratuidad, logo_url, latitud, longitud, direccion",
+        "codigo_institucion, slug, nombre, tipo, acreditada, adscrita_gratuidad, logo_url, latitud, longitud, direccion",
       );
     for (const i of (data ?? []) as unknown as InstitucionIndexada[]) {
+      // Mismo filtro que ya se aplicaba solo en getStaticPaths de
+      // institucion/[id].astro: basura de ingesta SIES (":", espacios, etc.)
+      // no puede convertirse en carpeta de build. Se filtra acá también para
+      // que el índice sea la única fuente de verdad de qué institución tiene
+      // ficha.
+      if (!esCodigoRutaValido(i.codigo_institucion)) continue;
       instituciones.set(String(i.codigo_institucion), i);
+      if (i.slug) porSlugInstitucion.set(i.slug, String(i.codigo_institucion));
     }
   }
 
@@ -121,11 +137,13 @@ async function construir(): Promise<Indice> {
   const nombrePorSlug = new Map<string, string>();
   const porRegion = new Map<string, CarreraIndexada[]>();
   const porCodigo = new Map<string, CarreraIndexada>();
+  const porSlugCarrera = new Map<string, string>();
 
   for (const fila of filas) {
     if (!esCodigoRutaValido(fila.codigo_carrera)) continue;
 
     porCodigo.set(String(fila.codigo_carrera), fila);
+    if (fila.slug) porSlugCarrera.set(fila.slug, String(fila.codigo_carrera));
 
     const kp = clavePrograma(fila.nombre_carrera, fila.codigo_institucion);
     const lista = variantes.get(kp);
@@ -193,6 +211,8 @@ async function construir(): Promise<Indice> {
     porRegion,
     instituciones,
     porCodigo,
+    porSlugCarrera,
+    porSlugInstitucion,
   };
 }
 
@@ -212,6 +232,8 @@ export function indiceCarreras(): Promise<Indice> {
         porRegion: new Map(),
         instituciones: new Map(),
         porCodigo: new Map(),
+        porSlugCarrera: new Map(),
+        porSlugInstitucion: new Map(),
       } as Indice;
     });
   }
@@ -228,10 +250,13 @@ export async function variantesDelPrograma(
   codigoActual: string,
   limite = 12,
 ): Promise<CarreraIndexada[]> {
-  const { variantes } = await indiceCarreras();
+  const { variantes, canonico } = await indiceCarreras();
   const lista = variantes.get(clavePrograma(nombreCarrera, codigoInstitucion)) ?? [];
   return lista
     .filter((c) => String(c.codigo_carrera) !== String(codigoActual))
+    // Los códigos duplicados (canonico) ya no generan página propia — enlazar
+    // a uno rompería en un 404.
+    .filter((c) => !canonico.has(String(c.codigo_carrera)))
     .slice(0, limite);
 }
 
@@ -353,6 +378,7 @@ export async function carreraCompleta(
     ...fila,
     instituciones: inst
       ? {
+          slug: inst.slug,
           nombre: inst.nombre,
           tipo: inst.tipo,
           logo_url: inst.logo_url,
@@ -372,6 +398,45 @@ export async function institucionDelIndice(
 ): Promise<InstitucionIndexada | undefined> {
   const { instituciones } = await indiceCarreras();
   return instituciones.get(String(codigo));
+}
+
+/** Ficha completa de carrera resuelta por su slug (/carrera/[slug]). */
+export async function carreraCompletaPorSlug(
+  slug: string,
+): Promise<CarreraConInstitucion | null> {
+  const { porSlugCarrera } = await indiceCarreras();
+  const codigo = porSlugCarrera.get(slug);
+  if (!codigo) return null;
+  return carreraCompleta(codigo);
+}
+
+/** Institución resuelta por su slug (/institucion/[slug]). */
+export async function institucionPorSlug(
+  slug: string,
+): Promise<InstitucionIndexada | undefined> {
+  const { porSlugInstitucion, instituciones } = await indiceCarreras();
+  const codigo = porSlugInstitucion.get(slug);
+  if (!codigo) return undefined;
+  return instituciones.get(codigo);
+}
+
+/**
+ * Slugs de todas las fichas de carrera publicables: una por
+ * programa+institución+sede+jornada distinto. Los códigos duplicados
+ * (basura de ingesta SIES, ver `canonico`) no generan página propia.
+ */
+export async function slugsDeFichasCarrera(): Promise<string[]> {
+  const { porCodigo, canonico } = await indiceCarreras();
+  return [...porCodigo.values()]
+    .filter((c) => !canonico.has(String(c.codigo_carrera)))
+    .map((c) => c.slug)
+    .filter(Boolean);
+}
+
+/** Slugs de todas las instituciones publicables. */
+export async function slugsDeInstituciones(): Promise<string[]> {
+  const { instituciones } = await indiceCarreras();
+  return [...instituciones.values()].map((i) => i.slug).filter(Boolean);
 }
 
 /** Oferta académica de una institución, un enlace por programa distinto. */

@@ -1,76 +1,50 @@
 ---
-// src/pages/institucion/[id].astro
+// src/pages/institucion/[slug].astro
 import type { GetStaticPaths } from "astro";
 import { supabase } from "../../../lib/supabase";
 import InstitucionDetalle from "../../components/InstitucionDetalle";
 import Layout from "../../layouts/Layout.astro";
 import { educationalOrgSchema, breadcrumbSchema } from "../../lib/seo";
-import {
-  esCodigoRutaValido,
-  formatearTitulo,
-  describirLugar,
-  recortarDescripcion,
-} from "../../utils/formatters";
-import { carrerasDeInstitucion } from "../../services/carrerasIndex";
+import { formatearTitulo, describirLugar, recortarDescripcion } from "../../utils/formatters";
+import { enlaceCarrera } from "../../utils/enlaces";
+import { carrerasDeInstitucion, slugsDeInstituciones } from "../../services/carrerasIndex";
 
 // ============================================================================
-// 1. GENERACIÓN DE RUTAS (SOLO TRAEMOS LOS IDs - ¡VUELA!)
+// 1. GENERACIÓN DE RUTAS — sale del índice compartido (ya cacheado por
+//    proceso), en vez de una consulta paginada propia como antes.
 // ============================================================================
 export const prerender = true;
 
 export const getStaticPaths = (async () => {
-  let allCodes: any[] = [];
-  let hasMore = true;
-  let page = 0;
-  const limit = 1000;
-
-  // Solo pedimos la columna "codigo_institucion". Esto hace que la consulta sea
-  // super ligera, evitando cuellos de botella.
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from("instituciones")
-      .select("codigo_institucion")
-      .range(page * limit, (page + 1) * limit - 1);
-
-    if (error || !data || data.length === 0) {
-      hasMore = false;
-    } else {
-      allCodes = [...allCodes, ...data];
-      page++;
-    }
-  }
-
-  // Retornamos SOLO el param de la URL, sin pasar data pesada por props.
-  // Filtramos códigos basura para no romper el build ni crear URLs inválidas.
-  return allCodes
-    .filter((inst) => esCodigoRutaValido(inst.codigo_institucion))
-    .map((inst) => ({
-      params: { id: inst.codigo_institucion.toString() },
-    }));
+  const slugs = await slugsDeInstituciones();
+  return slugs.map((slug) => ({ params: { slug } }));
 }) satisfies GetStaticPaths;
 
 // ============================================================================
-// 2. OBTENEMOS EL ID DE LA URL Y BUSCAMOS SU DATA ESPECÍFICA
+// 2. OBTENEMOS EL SLUG DE LA URL Y BUSCAMOS SU DATA ESPECÍFICA
 // ============================================================================
-const { id } = Astro.params;
+const { slug } = Astro.params;
 
-// Traemos los detalles ÚNICAMENTE de la institución a la que el usuario hizo clic
+// Traemos los detalles ÚNICAMENTE de la institución a la que el usuario hizo
+// clic — `select("*")` a propósito: la ficha usa columnas (descripcion,
+// anios_acreditacion) que no viven en el índice en memoria (ese solo trae el
+// subconjunto que necesitan las páginas hub).
 const { data: institucion, error } = await supabase
   .from("instituciones")
   .select("*")
-  .eq("codigo_institucion", id)
-  .single(); // .single() hace que traiga un objeto exacto
+  .eq("slug", slug)
+  .single();
 
-// Si la institución no existe o escriben un ID falso, redireccionamos a 404
+// Si la institución no existe o escriben un slug falso, redireccionamos a 404
 if (error || !institucion) {
   return Astro.redirect("/404");
 }
 
-const canonical = `/institucion/${id}`;
+const canonical = `/institucion/${slug}`;
 
 // Oferta académica: sale del índice en memoria (una consulta para todo el
 // build), no de una consulta por página.
-const carreras = await carrerasDeInstitucion(id!, 60);
+const carreras = await carrerasDeInstitucion(institucion.codigo_institucion, 60);
 
 const tipoLegible = institucion.tipo
   ? String(institucion.tipo)
@@ -118,7 +92,7 @@ const jsonLd = [
           itemListElement: carreras.map((c, i) => ({
             "@type": "ListItem",
             position: i + 1,
-            url: `/carrera/${c.codigo_carrera}`,
+            url: enlaceCarrera(c.slug),
             name: formatearTitulo(c.nombre_carrera),
           })),
         },
@@ -160,7 +134,7 @@ const jsonLd = [
                 return (
                   <li>
                     <a
-                      href={`/carrera/${c.codigo_carrera}`}
+                      href={enlaceCarrera(c.slug)}
                       class="block p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-[#6544FF]/30 hover:bg-white transition-colors"
                     >
                       <span class="block text-sm font-semibold text-slate-700">

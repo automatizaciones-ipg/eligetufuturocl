@@ -14,6 +14,7 @@ import {
   recortarDescripcion,
 } from "../../../utils/formatters";
 import { REGIONES, regionPorSlug } from "../../../utils/regiones";
+import { enlaceInstitucion } from "../../../utils/enlaces";
 import {
   carrerasPorRegion,
   calcularEstadisticas,
@@ -62,6 +63,7 @@ const institucionesRegion = codigosInstitucion
     const inst = catalogoInstituciones.get(codigo);
     return {
       codigo,
+      slug: inst?.slug ?? null,
       nombre: inst?.nombre ?? "Institución no informada",
       acreditada: inst?.acreditada ?? null,
       gratuidad: inst?.adscrita_gratuidad ?? null,
@@ -188,7 +190,7 @@ const jsonLd = [
             institucionesRegion.map((i) => (
               <li>
                 <a
-                  href={`/institucion/${i.codigo}`}
+                  href={i.slug ? enlaceInstitucion(i.slug) : "/herramientas/instituciones"}
                   class="block h-full bg-white rounded-2xl border border-slate-100 p-5 hover:border-[#6544FF]/40 hover:shadow-md transition-all"
                 >
                   <p class="font-bold text-[#1A1528] leading-snug">{i.nombre}</p>

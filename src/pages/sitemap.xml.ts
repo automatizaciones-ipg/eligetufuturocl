@@ -16,9 +16,9 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
 import { SITE_URL } from "../lib/seo";
-import { esCodigoRutaValido } from "../utils/formatters";
 import { indiceCarreras } from "../services/carrerasIndex";
 import { REGIONES } from "../utils/regiones";
+import { enlaceCarrera, enlaceInstitucion } from "../utils/enlaces";
 
 export const prerender = false;
 
@@ -77,13 +77,15 @@ export const GET: APIRoute = async () => {
         priority: 0.8,
       });
 
-    for (const id of porCodigo.keys()) {
-      if (canonico.has(id)) continue;
-      entries.push({ loc: `/carrera/${id}`, changefreq: "monthly", priority: 0.7 });
+    // Los códigos duplicados (canonico) ya no generan página propia — no hay
+    // nada que excluir explícitamente, cada fila en porCodigo es publicable.
+    for (const [id, carrera] of porCodigo) {
+      if (canonico.has(id) || !carrera.slug) continue;
+      entries.push({ loc: enlaceCarrera(carrera.slug), changefreq: "monthly", priority: 0.7 });
     }
-    for (const id of instituciones.keys()) {
-      if (!esCodigoRutaValido(id)) continue;
-      entries.push({ loc: `/institucion/${id}`, changefreq: "monthly", priority: 0.6 });
+    for (const inst of instituciones.values()) {
+      if (!inst.slug) continue;
+      entries.push({ loc: enlaceInstitucion(inst.slug), changefreq: "monthly", priority: 0.6 });
     }
   } catch {
     // Si Supabase no responde en build, igual emitimos las rutas estáticas.

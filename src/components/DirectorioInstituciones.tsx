@@ -8,10 +8,12 @@ import {
   X, ChevronDown, SlidersHorizontal, Building
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { enlaceInstitucion } from "../utils/enlaces";
 
 // --- INTERFACES SUPABASE ESTRICTAS ---
 interface InstitucionDB {
   codigo_institucion: number;
+  slug: string;
   nombre: string;
   tipo: string;
   adscrita_gratuidad: boolean;
@@ -88,6 +90,7 @@ function adaptarInstituciones(data: any[]): InstitucionUI[] {
 
     return {
       codigo_institucion: item.codigo_institucion,
+      slug: item.slug,
       nombre: item.nombre,
       tipo: item.tipo,
       adscrita_gratuidad: item.adscrita_gratuidad,
@@ -157,6 +160,7 @@ export default function DirectorioInstituciones({ datosIniciales = [] }: Directo
           .from('instituciones')
           .select(`
             codigo_institucion,
+            slug,
             nombre,
             tipo,
             adscrita_gratuidad,
@@ -243,11 +247,11 @@ export default function DirectorioInstituciones({ datosIniciales = [] }: Directo
     return nombre.split(' ').map((n) => n[0]).join('').substring(0, 3).toUpperCase();
   };
 
-  const handleNavegar = (e: React.MouseEvent, id: number) => {
+  const handleNavegar = (e: React.MouseEvent, id: number, slug: string) => {
     e.preventDefault();
     setNavegandoA(id);
     setTimeout(() => {
-      window.location.href = `/institucion/${id}`;
+      window.location.href = enlaceInstitucion(slug);
     }, 400);
   };
 
@@ -493,9 +497,9 @@ export default function DirectorioInstituciones({ datosIniciales = [] }: Directo
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {institucionesPaginadas.map((inst, i) => (
                   <article key={`${inst.codigo_institucion}-${paginaActual}`}>
-                    <a 
-                      href={`/institucion/${inst.codigo_institucion}`}
-                      onClick={(e) => handleNavegar(e, inst.codigo_institucion)}
+                    <a
+                      href={enlaceInstitucion(inst.slug)}
+                      onClick={(e) => handleNavegar(e, inst.codigo_institucion, inst.slug)}
                       className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full cursor-pointer
                         ${navegandoA === inst.codigo_institucion 
                           ? 'scale-[0.98] opacity-90 z-50' 

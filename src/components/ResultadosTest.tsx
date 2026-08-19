@@ -4,6 +4,7 @@ import {
   Trophy, Mail, Phone, User, CheckCircle2, Send, MessageSquare
 } from "lucide-react";
 import type { AreaRIASEC, CarreraDB, DatosUsuario, PerfilVocacional } from "../types/vocacional";
+import { enlaceCarrera } from "../utils/enlaces";
 
 interface ResultadosProps {
   areaPredominante: AreaRIASEC;
@@ -184,7 +185,7 @@ export default function ResultadosTest({ areaPredominante, perfilInfo, carrerasD
                     </div>
                     
                     <a
-                      href={item.codigo_carrera ? `/carrera/${item.codigo_carrera}` : "#"}
+                      href={item.slug ? enlaceCarrera(item.slug) : "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full inline-flex items-center justify-center gap-2 bg-[#1A1528] text-white font-bold py-3 rounded-xl text-xs group-hover:bg-[#6544FF] transition-colors shadow-sm"

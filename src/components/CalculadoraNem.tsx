@@ -8,7 +8,8 @@ import {
   AlertTriangle, Trash2, Landmark, XCircle
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { generarTipoInst, generarSiglaInstitucion, esCodigoRutaValido } from "../utils/formatters";
+import { generarTipoInst, generarSiglaInstitucion } from "../utils/formatters";
+import { enlaceCarrera } from "../utils/enlaces";
 import { formatearTitulo, quitarAcentos, PALETA_COLORES, barajar } from "./BuscadorCarreras";
 
 // ============================================================================
@@ -27,8 +28,9 @@ interface CarreraSupabaseRaw {
   id: number;
   // OJO: codigo_carrera es `text` en Supabase (no numérico), y el SIES a veces
   // mete códigos basura duplicados ahí — la identidad única real es `id`
-  // (bigint PK). codigo_carrera se usa solo para armar el link a /carrera/[id].
+  // (bigint PK). codigo_carrera ya no se usa para el link (ver slug).
   codigo_carrera: string;
+  slug: string;
   codigo_institucion: number | null;
   nombre_carrera: string;
   jornada: string | null;
@@ -126,6 +128,7 @@ interface PuntajeCalculado {
 interface CarreraSimuladorUI {
   id: number;
   codigoCarrera: string;
+  slug: string;
   nombre: string;
   institucion: string;
   tipoInst: string;
@@ -340,6 +343,7 @@ function adaptarCarrera(
   return {
     id: item.id,
     codigoCarrera: item.codigo_carrera,
+    slug: item.slug,
     nombre: formatearTitulo(item.nombre_carrera),
     institucion: formatearTitulo(instNombre),
     tipoInst: generarTipoInst(instObj?.tipo || null),
@@ -368,7 +372,7 @@ function adaptarCarrera(
 // sumar acá requisito_ingreso/usa_demre/puntaje_corte_referencial/ponderacion_*
 // y borrar el cruce por JSON.
 const CAMPOS_SIMULADOR = `
-  id, codigo_carrera, codigo_institucion, nombre_carrera, jornada, sede,
+  id, codigo_carrera, slug, codigo_institucion, nombre_carrera, jornada, sede,
   region, arancel_anual, duracion_semestres,
   empleabilidad_1er_anio, acreditacion_carrera,
   instituciones!inner (nombre, tipo, logo_url)
@@ -1572,9 +1576,9 @@ export default function CalculadoraNem() {
                     <td className="py-3 pr-4 text-sm font-bold text-gray-500">Ficha</td>
                     {comparando.map((c) => (
                       <td key={c.id} className="py-3 px-3">
-                        {esCodigoRutaValido(c.codigoCarrera) ? (
+                        {c.slug ? (
                           <a
-                            href={`/carrera/${c.codigoCarrera}`}
+                            href={enlaceCarrera(c.slug)}
                             className="inline-block text-xs font-bold text-[#6544FF] bg-[#6544FF]/10 hover:bg-[#6544FF]/20 rounded-xl px-4 py-2 transition-colors"
                           >
                             Ver detalle
@@ -1613,7 +1617,7 @@ export default function CalculadoraNem() {
             {carrerasPagina.map((carrera, idx) => {
               const seleccionada = comparando.some(c => c.id === carrera.id);
               const comparadorLleno = comparando.length >= 3 && !seleccionada;
-              const detalleValido = esCodigoRutaValido(carrera.codigoCarrera);
+              const detalleValido = Boolean(carrera.slug);
               // Solo en la primera posición del orden actual (página 1), y
               // solo cuando realmente sabemos su fórmula — nunca "mejor
               // opción" para una carrera sin ponderación conocida.
@@ -1708,7 +1712,7 @@ export default function CalculadoraNem() {
                   <div className="flex items-center gap-2">
                     {detalleValido ? (
                       <a
-                        href={`/carrera/${carrera.codigoCarrera}`}
+                        href={enlaceCarrera(carrera.slug)}
                         className="flex-1 text-center text-xs font-bold text-[#6544FF] bg-[#6544FF]/10 hover:bg-[#6544FF]/20 rounded-xl py-2.5 transition-colors"
                       >
                         Ver detalle

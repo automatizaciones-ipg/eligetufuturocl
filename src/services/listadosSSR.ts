@@ -35,7 +35,7 @@ async function memo<T>(clave: string, cargar: () => Promise<T>, vacio: T): Promi
 
 /** Campos mínimos que la tarjeta del buscador necesita para pintarse. */
 const CAMPOS_BUSCADOR =
-  "codigo_carrera, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)";
+  "codigo_carrera, slug, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)";
 
 /** Primera página de carreras, ordenada por nombre (estable y cacheable). */
 export function carrerasIniciales(limite = 30) {
@@ -112,6 +112,7 @@ export function institucionesDirectorio() {
     async () => {
       const { data, error } = await supabase.from("instituciones").select(`
           codigo_institucion,
+          slug,
           nombre,
           tipo,
           adscrita_gratuidad,
@@ -132,7 +133,7 @@ export function carrerasDestacadasHome() {
     "home:carreras-destacadas",
     async () => {
       const CAMPOS =
-        "id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)";
+        "id, codigo_carrera, slug, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)";
       const [{ data: top, error: e1 }, { data: ua, error: e2 }, { data: ipg, error: e3 }] =
         await Promise.all([
           supabase
@@ -178,7 +179,7 @@ export function carrerasMercadoLaboral(limite = 200) {
       const { data, error } = await supabase
         .from("carreras")
         .select(
-          "id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner (nombre, tipo, logo_url)",
+          "id, codigo_carrera, slug, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner (nombre, tipo, logo_url)",
         )
         .not("empleabilidad_1er_anio", "is", null)
         .not("ingreso_promedio_4to_anio", "is", null)

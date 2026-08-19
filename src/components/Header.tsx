@@ -5,6 +5,7 @@ import {
   Building2, CalendarDays, Calculator, GraduationCap, ArrowRight,
   Loader2
 } from "lucide-react";
+import { enlaceCarrera, enlaceInstitucion } from "../utils/enlaces";
 
 // ============================================================================
 // 1. INTERFACES (TIPADO ESTRICTO)
@@ -30,12 +31,14 @@ interface DynamicItem {
 // Forma de la respuesta de /api/buscar (el endpoint ya aplana la institución).
 interface CarreraResp {
   codigo_carrera: number;
+  slug: string;
   nombre_carrera: string;
   institucion: string;
 }
 
 interface InstitucionResp {
   codigo_institucion: number;
+  slug: string;
   nombre: string;
   tipo: string;
 }
@@ -155,7 +158,7 @@ export default function Header() {
             tipo: 'institucion',
             titulo: inst.nombre,
             subtitulo: inst.tipo || 'Educación Superior',
-            url: `/institucion/${inst.codigo_institucion}`,
+            url: enlaceInstitucion(inst.slug),
             icono: <Building2 className="w-5 h-5" />
           });
         }
@@ -167,7 +170,7 @@ export default function Header() {
             tipo: 'carrera',
             titulo: car.nombre_carrera,
             subtitulo: car.institucion || 'Institución no informada',
-            url: `/carrera/${car.codigo_carrera}`,
+            url: enlaceCarrera(car.slug),
             icono: <GraduationCap className="w-5 h-5" />
           });
         }

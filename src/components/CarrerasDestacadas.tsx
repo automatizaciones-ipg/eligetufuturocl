@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import GenerandoLoader from "./GenerandoLoader";
 import { supabase } from "../../lib/supabase";
+import { enlaceCarrera } from "../utils/enlaces";
 
 // --- INTERFACES DE TYPESCRIPT ---
 interface InstitucionDB {
@@ -21,6 +22,7 @@ interface InstitucionDB {
 interface CarreraDB {
   id: number;
   codigo_carrera: string | number;
+  slug: string;
   nombre_carrera: string;
   empleabilidad_1er_anio: number | null;
   ingreso_promedio_4to_anio: string | null;
@@ -32,6 +34,7 @@ interface CarreraDB {
 interface CarreraUI {
   id: number;
   codigo_carrera: string | number;
+  slug: string;
   carrera: string;
   institucion: string;
   tipoInst: string;
@@ -162,7 +165,7 @@ function adaptarCarrera(item: CarreraDB): { ui: CarreraUI; llave: string } {
     .replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ");
   return {
     ui: {
-      id: item.id, codigo_carrera: item.codigo_carrera,
+      id: item.id, codigo_carrera: item.codigo_carrera, slug: item.slug,
       carrera: item.nombre_carrera.trim(), institucion: nombreInst,
       tipoInst: inst?.tipo || "Universidades", logoInst: inst?.logo_url || fallbackLogo,
       empleabilidad: empleabilidadReal,
@@ -258,7 +261,7 @@ export default function CarrerasDestacadas({ datosIniciales }: { datosIniciales?
     const fetchTopCarreras = async () => {
       setCargando(true);
       try {
-        const CAMPOS = 'id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)';
+        const CAMPOS = 'id, codigo_carrera, slug, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)';
         const [{ data: top }, { data: ua }, { data: ipg }] = await Promise.all([
           // Top por empleabilidad (orden orgánico del ranking)
           supabase.from('carreras').select(CAMPOS)
@@ -550,8 +553,8 @@ export default function CarrerasDestacadas({ datosIniciales }: { datosIniciales?
                   {/* Footer */}
                   <footer className="mt-auto pt-4 flex justify-between items-center border-t border-gray-100 justify-center">
                     {/* MEJORA SEO: aria-label explícito para el lector de pantalla */}
-                    <a 
-                      href={`/carrera/${carrera.codigo_carrera}`}
+                    <a
+                      href={enlaceCarrera(carrera.slug)}
                       aria-label={`Ver detalles completos de la carrera ${carrera.carrera} en ${carrera.institucion}`}
                       onClick={(e) => {
                         if (isDragging) e.preventDefault();

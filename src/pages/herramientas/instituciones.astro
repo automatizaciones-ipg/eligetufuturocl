@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import DirectorioInstitucionesComponent from "../../components/DirectorioInstituciones.tsx";
 import { breadcrumbSchema, faqSchema } from "../../lib/seo";
 import { institucionesDirectorio } from "../../services/listadosSSR";
+import { enlaceInstitucion } from "../../utils/enlaces";
 
 // Directorio resuelto en el servidor: el HTML sale con los enlaces a
 // /institucion/, que antes solo aparecían tras hidratar en el navegador.
@@ -49,7 +50,7 @@ const jsonLd = [
     itemListElement: instituciones.slice(0, 100).map((i: any, idx: number) => ({
       "@type": "ListItem",
       position: idx + 1,
-      url: `/institucion/${i.codigo_institucion}`,
+      url: enlaceInstitucion(i.slug),
       name: i.nombre,
     })),
   },

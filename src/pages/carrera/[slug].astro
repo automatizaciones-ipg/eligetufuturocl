@@ -1,5 +1,5 @@
 ---
-// src/pages/carrera/[id].astro
+// src/pages/carrera/[slug].astro
 import type { GetStaticPaths } from "astro";
 import CarreraDetalle from "../../components/CarreraDetalle";
 import Layout from "../../layouts/Layout.astro";
@@ -11,31 +11,31 @@ import {
   recortarDescripcion,
   slugificar,
 } from "../../utils/formatters";
+import { enlaceCarrera, enlaceInstitucion } from "../../utils/enlaces";
 import { regionPorValor } from "../../utils/regiones";
 import {
-  indiceCarreras,
   variantesDelPrograma,
-  codigoCanonico,
-  carreraCompleta,
+  carreraCompletaPorSlug,
+  slugsDeFichasCarrera,
 } from "../../services/carrerasIndex";
 
 export const prerender = true;
 
-// Las rutas salen del mismo índice que luego sirve cada ficha, así que no hay
-// forma de que se generen rutas para códigos que la página no sepa resolver.
-// El índice ya descarta los `codigo_carrera` basura de la ingesta SIES con
-// `esCodigoRutaValido` (ver src/services/carrerasIndex.ts).
+// Una ruta por ficha publicable (programa+institución+sede+jornada distinto).
+// Los códigos duplicados por basura de ingesta SIES (`canonico`, ver
+// carrerasIndex.ts) ya no generan página propia — antes competían con
+// metadatos idénticos y un <link rel="canonical"> hacia otra URL.
 export const getStaticPaths = (async () => {
-  const { porCodigo } = await indiceCarreras();
-  return [...porCodigo.keys()].map((codigo) => ({ params: { id: codigo } }));
+  const slugs = await slugsDeFichasCarrera();
+  return slugs.map((slug) => ({ params: { slug } }));
 }) satisfies GetStaticPaths;
 
-const { id } = Astro.params;
+const { slug } = Astro.params;
 
 // La ficha se resuelve desde el índice en memoria, no con una consulta por
-// página: son ~9.900 páginas prerenderizadas y esa consulta individual costaba
+// página: son ~9.600 páginas prerenderizadas y esa consulta individual costaba
 // ~330 ms cada una, casi una hora de build en cada despliegue.
-const carrera = await carreraCompleta(id!);
+const carrera = await carreraCompletaPorSlug(slug!);
 
 if (!carrera) {
   return Astro.redirect("/404");
@@ -84,15 +84,19 @@ const description = recortarDescripcion(
     "Compara y postula con datos oficiales SIES. Admisión 2026.",
 );
 
-// Las filas indistinguibles entre sí (mismo programa, sede y jornada) apuntan a
-// una sola URL canónica en vez de competir con metadatos idénticos.
-const canonical = `/carrera/${await codigoCanonico(String(id))}`;
+// Cada ficha generada YA es la canónica (los duplicados de `canonico` no
+// llegan a generar página, ver getStaticPaths arriba) — el canonical es
+// simplemente su propia URL.
+const canonical = enlaceCarrera(carrera.slug);
+const institucionUrl = carrera.instituciones?.slug
+  ? enlaceInstitucion(carrera.instituciones.slug)
+  : "/herramientas/instituciones";
 
 // Otras sedes y jornadas del mismo programa: enlazado interno entre hermanas.
 const variantes = await variantesDelPrograma(
   carrera.nombre_carrera,
   carrera.codigo_institucion,
-  String(id),
+  String(carrera.codigo_carrera),
 );
 
 // Hub de la carrera y de la región: dan a esta ficha un "padre" temático al
@@ -112,7 +116,7 @@ const jsonLd = [
     description,
     url: canonical,
     providerName: carrera.instituciones?.nombre,
-    providerUrl: `/institucion/${carrera.codigo_institucion}`,
+    providerUrl: institucionUrl,
     arancel: carrera.arancel_anual,
     duracionSemestres: carrera.duracion_semestres,
     jornada: carrera.jornada,
@@ -157,7 +161,7 @@ const jsonLd = [
             Ver dónde más se estudia {nombreCarrera} en Chile
           </a>
           <a
-            href={`/institucion/${carrera.codigo_institucion}`}
+            href={institucionUrl}
             class="inline-flex items-center gap-2 text-sm font-bold text-[#6544FF] hover:underline"
           >
             Ver todas las carreras de {institucionNombre}
@@ -187,7 +191,7 @@ const jsonLd = [
                   return (
                     <li>
                       <a
-                        href={`/carrera/${v.codigo_carrera}`}
+                        href={enlaceCarrera(v.slug)}
                         class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-[#6544FF]/30 hover:bg-white transition-colors"
                       >
                         <span class="text-sm font-semibold text-slate-700">

@@ -10,12 +10,14 @@ import {
   X
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { enlaceCarrera } from "../utils/enlaces";
 
 // ============================================================================
 // 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
 // ============================================================================
 interface SupabaseCarreraJoin {
   codigo_carrera: number;
+  slug: string;
   nombre_carrera: string;
   region: string | null;
   duracion_semestres: number | null;
@@ -29,6 +31,7 @@ interface SupabaseCarreraJoin {
 
 export interface CarreraUI {
   id: number;
+  slug: string;
   nombre: string;
   sigla: string;
   institucion: string;
@@ -85,7 +88,7 @@ const formatRegionLabel = (region: string): string => {
 };
 
 // Campos comunes para la consulta de carreras
-const CAMPOS_BUSCADOR = `codigo_carrera, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)`;
+const CAMPOS_BUSCADOR = `codigo_carrera, slug, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)`;
 
 // Mezcla aleatoria (Fisher-Yates) para el modo explorar
 export function barajar<T>(arr: T[]): T[] {
@@ -116,6 +119,7 @@ function adaptarBD(bdData: any[]): CarreraUI[] {
     }
     return {
       id: item.codigo_carrera,
+      slug: item.slug,
       nombre: formatearTitulo(item.nombre_carrera),
       sigla: generarSiglaInstitucion(instNombre),
       institucion: formatearTitulo(instNombre),
@@ -265,6 +269,7 @@ export default function BuscadorCarreras({
         .from('carreras')
         .select(`
           codigo_carrera,
+          slug,
           nombre_carrera,
           region,
           duracion_semestres,
@@ -345,12 +350,12 @@ export default function BuscadorCarreras({
     }
   };
 
-  const handleNavegarACarrera = (e: React.MouseEvent<HTMLAnchorElement>, id: number) => {
+  const handleNavegarACarrera = (e: React.MouseEvent<HTMLAnchorElement>, id: number, slug: string) => {
     e.preventDefault();
     setNavegandoA(id);
     setTimeout(() => {
-      window.location.href = `/carrera/${id}`;
-    }, 400); 
+      window.location.href = enlaceCarrera(slug);
+    }, 400);
   };
 
   const totalPaginas = Math.ceil(totalResultados / RESULTADOS_POR_PAGINA);
@@ -662,9 +667,9 @@ export default function BuscadorCarreras({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {carreras.map((carrera, i) => (
                   <article key={`${carrera.id}-${paginaActual}`}>
-                    <a 
-                      href={`/carrera/${carrera.id}`}
-                      onClick={(e) => handleNavegarACarrera(e, carrera.id)}
+                    <a
+                      href={enlaceCarrera(carrera.slug)}
+                      onClick={(e) => handleNavegarACarrera(e, carrera.id, carrera.slug)}
                       aria-label={`Ver detalles de la carrera ${carrera.nombre} impartida por ${carrera.institucion}`}
                       title={`Ver detalles de ${carrera.nombre}`}
                       className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full cursor-pointer

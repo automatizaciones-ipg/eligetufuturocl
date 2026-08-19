@@ -46,12 +46,12 @@ export const GET: APIRoute = async ({ url }) => {
     const [resCarreras, resInstituciones] = await Promise.all([
       supabase
         .from("carreras")
-        .select("codigo_carrera, nombre_carrera, instituciones(nombre)")
+        .select("codigo_carrera, slug, nombre_carrera, instituciones(nombre)")
         .ilike("nombre_carrera", `%${patron}%`)
         .limit(4),
       supabase
         .from("instituciones")
-        .select("codigo_institucion, nombre, tipo")
+        .select("codigo_institucion, slug, nombre, tipo")
         .ilike("nombre", `%${patron}%`)
         .limit(2),
     ]);
@@ -60,6 +60,7 @@ export const GET: APIRoute = async ({ url }) => {
       const inst = Array.isArray(c.instituciones) ? c.instituciones[0] : c.instituciones;
       return {
         codigo_carrera: c.codigo_carrera,
+        slug: c.slug,
         nombre_carrera: c.nombre_carrera,
         institucion: inst?.nombre ?? "Institución no informada",
       };
@@ -67,6 +68,7 @@ export const GET: APIRoute = async ({ url }) => {
 
     const instituciones = (resInstituciones.data ?? []).map((i: any) => ({
       codigo_institucion: i.codigo_institucion,
+      slug: i.slug,
       nombre: i.nombre,
       tipo: i.tipo ?? "Educación Superior",
     }));

@@ -12,6 +12,7 @@ import Layout from "../../layouts/Layout.astro";
 import { breadcrumbSchema, faqSchema } from "../../lib/seo";
 import { formatearTitulo, recortarDescripcion } from "../../utils/formatters";
 import { regionPorValor } from "../../utils/regiones";
+import { enlaceCarrera } from "../../utils/enlaces";
 import {
   slugsDeCarreras,
   carrerasPorSlug,
@@ -30,7 +31,17 @@ export const getStaticPaths = (async () => {
 
 const { slug } = Astro.params;
 
-const filas = await carrerasPorSlug(slug!);
+const filasCrudas = await carrerasPorSlug(slug!);
+if (filasCrudas.length === 0) {
+  return Astro.redirect("/404");
+}
+
+const { instituciones: catalogoInstituciones, canonico } = await indiceCarreras();
+
+// Los códigos duplicados por basura de ingesta SIES no generan página propia
+// (ver getStaticPaths de carrera/[slug].astro) — se descartan acá para que
+// ninguna oferta de este hub termine enlazando a un código sin ficha.
+const filas = filasCrudas.filter((f) => !canonico.has(String(f.codigo_carrera)));
 if (filas.length === 0) {
   return Astro.redirect("/404");
 }
@@ -38,7 +49,6 @@ if (filas.length === 0) {
 const nombreCrudo = (await nombreDeSlug(slug!)) ?? filas[0].nombre_carrera;
 const nombre = formatearTitulo(nombreCrudo);
 const stats = calcularEstadisticas(filas);
-const { instituciones: catalogoInstituciones } = await indiceCarreras();
 
 const pesos = (v: number | null) =>
   v == null ? null : `$${Math.round(v).toLocaleString("es-CL")}`;
@@ -165,7 +175,7 @@ const jsonLd = [
     itemListElement: ofertas.slice(0, 100).map((o, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `/carrera/${o.representante.codigo_carrera}`,
+      url: enlaceCarrera(o.representante.slug),
       name: `${nombre} - ${o.nombre}`,
     })),
   },
@@ -255,7 +265,7 @@ const METRICAS = [
             ofertas.map((o) => (
               <li>
                 <a
-                  href={`/carrera/${o.representante.codigo_carrera}`}
+                  href={enlaceCarrera(o.representante.slug)}
                   class="block h-full bg-white rounded-2xl border border-slate-100 p-5 hover:border-[#6544FF]/40 hover:shadow-md transition-all"
                 >
                   <p class="font-bold text-[#1A1528] leading-snug">{o.nombre}</p>
