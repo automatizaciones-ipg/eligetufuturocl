@@ -3,28 +3,30 @@ import Layout from "../../layouts/Layout.astro";
 import EventosCharlas from "../../components/EventosCharlas.tsx";
 import { breadcrumbSchema, faqSchema } from "../../lib/seo";
 
+const PREGUNTAS_FRECUENTES = [
+  {
+    question: "¿Qué es una feria vocacional?",
+    answer:
+      "Es un evento donde varias universidades, institutos profesionales y centros de formación técnica presentan su oferta académica en un mismo lugar. Puedes conversar con admisión, resolver dudas de aranceles y becas, y conocer las carreras de primera fuente en una sola visita.",
+  },
+  {
+    question: "¿Las charlas y casas abiertas tienen costo?",
+    answer:
+      "No. Las ferias vocacionales, charlas de orientación y casas abiertas (open days) de las instituciones son gratuitas y abiertas a estudiantes y apoderados. Algunas piden inscripción previa por capacidad.",
+  },
+  {
+    question: "¿Cuándo conviene asistir a una feria vocacional?",
+    answer:
+      "Lo ideal es entre tercero y cuarto medio, antes del periodo de postulación. Así llegas con tiempo para comparar instituciones, revisar requisitos de admisión y planificar el financiamiento con el FUAS.",
+  },
+];
+
 const jsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
     { name: "Eventos y Charlas", url: "/herramientas/eventos" },
   ]),
-  faqSchema([
-    {
-      question: "¿Qué es una feria vocacional?",
-      answer:
-        "Es un evento donde varias universidades, institutos profesionales y centros de formación técnica presentan su oferta académica en un mismo lugar. Puedes conversar con admisión, resolver dudas de aranceles y becas, y conocer las carreras de primera fuente en una sola visita.",
-    },
-    {
-      question: "¿Las charlas y casas abiertas tienen costo?",
-      answer:
-        "No. Las ferias vocacionales, charlas de orientación y casas abiertas (open days) de las instituciones son gratuitas y abiertas a estudiantes y apoderados. Algunas piden inscripción previa por capacidad.",
-    },
-    {
-      question: "¿Cuándo conviene asistir a una feria vocacional?",
-      answer:
-        "Lo ideal es entre tercero y cuarto medio, antes del periodo de postulación. Así llegas con tiempo para comparar instituciones, revisar requisitos de admisión y planificar el financiamiento con el FUAS.",
-    },
-  ]),
+  faqSchema(PREGUNTAS_FRECUENTES),
 ];
 ---
 
@@ -38,5 +40,26 @@ const jsonLd = [
     <div class="">
       <EventosCharlas client:load />
     </div>
+
+    <section aria-labelledby="faq-eventos" class="max-w-3xl mx-auto px-4 py-16">
+      <h2 id="faq-eventos" class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight text-center">
+        Preguntas frecuentes
+      </h2>
+      <div class="mt-8 space-y-3">
+        {
+          PREGUNTAS_FRECUENTES.map((p) => (
+            <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+              <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                {p.question}
+                <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 text-[#1A1528]/70 leading-relaxed">{p.answer}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
   </div>
 </Layout>

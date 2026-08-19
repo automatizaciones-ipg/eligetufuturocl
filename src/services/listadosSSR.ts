@@ -126,6 +126,50 @@ export function institucionesDirectorio() {
   );
 }
 
+/** Carreras destacadas de la home: top por empleabilidad + socias (U. Autónoma, IPG). */
+export function carrerasDestacadasHome() {
+  return memo<any[]>(
+    "home:carreras-destacadas",
+    async () => {
+      const CAMPOS =
+        "id, codigo_carrera, nombre_carrera, empleabilidad_1er_anio, ingreso_promedio_4to_anio, arancel_anual, instituciones!inner(nombre, tipo, logo_url)";
+      const [{ data: top, error: e1 }, { data: ua, error: e2 }, { data: ipg, error: e3 }] =
+        await Promise.all([
+          supabase
+            .from("carreras")
+            .select(CAMPOS)
+            .not("empleabilidad_1er_anio", "is", null)
+            .not("ingreso_promedio_4to_anio", "is", null)
+            .order("empleabilidad_1er_anio", { ascending: false })
+            .limit(25),
+          supabase.from("carreras").select(CAMPOS).ilike("instituciones.nombre", "%aut_noma%").limit(8),
+          supabase.from("carreras").select(CAMPOS).ilike("instituciones.nombre", "%ipg%").limit(8),
+        ]);
+      if (e1 || e2 || e3) throw e1 || e2 || e3;
+      return [...(top ?? []), ...(ua ?? []), ...(ipg ?? [])];
+    },
+    [],
+  );
+}
+
+/** Noticias destacadas de la home (carrusel). */
+export function noticiasDestacadasHome(limite = 12) {
+  return memo<any[]>(
+    `home:noticias:${limite}`,
+    async () => {
+      const { data, error } = await supabase
+        .from("noticias")
+        .select("id, slug, titulo, extracto, categoria, autor, imagen_principal, tiempo_lectura, created_at, destacada")
+        .eq("estado", "activado")
+        .order("created_at", { ascending: false })
+        .limit(limite);
+      if (error) throw error;
+      return data ?? [];
+    },
+    [],
+  );
+}
+
 /** Carreras con datos de empleabilidad, para el ranking de mercado laboral. */
 export function carrerasMercadoLaboral(limite = 200) {
   return memo<any[]>(

@@ -6,33 +6,35 @@ import Layout from "../../layouts/Layout.astro";
 import CalculadoraNem from "../../components/CalculadoraNem.tsx";
 import { breadcrumbSchema, faqSchema } from "../../lib/seo";
 
+const PREGUNTAS_FRECUENTES = [
+  {
+    question: "¿Cómo se calcula el puntaje ponderado de postulación?",
+    answer:
+      "Cada carrera define qué porcentaje pesa cada factor: NEM, Ranking de Notas, Competencia Lectora, Competencia Matemática M1 y la prueba electiva (M2, Historia o Ciencias). El puntaje ponderado es la suma de cada puntaje multiplicado por su ponderación. El simulador aplica la fórmula oficial publicada por cada carrera.",
+  },
+  {
+    question: "¿Qué es el NEM y cómo se convierte a puntaje?",
+    answer:
+      "El NEM (Notas de Enseñanza Media) es el promedio de tus calificaciones de 1° a 4° medio. Se convierte a una escala de 100 a 1000 puntos mediante una tabla oficial del DEMRE: un 6,0 equivale aproximadamente a 750 puntos y un 7,0 a 1000.",
+  },
+  {
+    question: "¿Qué es el Ranking de Notas?",
+    answer:
+      "El Ranking compara tu rendimiento con el de las promociones anteriores de tu propio colegio. Si estás por sobre ese promedio histórico, obtienes un puntaje superior al NEM; si no, se te asigna el mismo puntaje NEM. Nunca te perjudica.",
+  },
+  {
+    question: "¿El simulador me dice si quedo en la carrera?",
+    answer:
+      "Te muestra tu puntaje ponderado real por carrera y lo compara con el puntaje del último matriculado de años anteriores cuando la universidad lo publica, o con el promedio de los admitidos según el SIES. Es una referencia orientadora: los puntajes de corte cambian cada año según la demanda.",
+  },
+];
+
 const jsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
     { name: "Calculadora PAES y NEM", url: "/herramientas/calculadora" },
   ]),
-  faqSchema([
-    {
-      question: "¿Cómo se calcula el puntaje ponderado de postulación?",
-      answer:
-        "Cada carrera define qué porcentaje pesa cada factor: NEM, Ranking de Notas, Competencia Lectora, Competencia Matemática M1 y la prueba electiva (M2, Historia o Ciencias). El puntaje ponderado es la suma de cada puntaje multiplicado por su ponderación. El simulador aplica la fórmula oficial publicada por cada carrera.",
-    },
-    {
-      question: "¿Qué es el NEM y cómo se convierte a puntaje?",
-      answer:
-        "El NEM (Notas de Enseñanza Media) es el promedio de tus calificaciones de 1° a 4° medio. Se convierte a una escala de 100 a 1000 puntos mediante una tabla oficial del DEMRE: un 6,0 equivale aproximadamente a 750 puntos y un 7,0 a 1000.",
-    },
-    {
-      question: "¿Qué es el Ranking de Notas?",
-      answer:
-        "El Ranking compara tu rendimiento con el de las promociones anteriores de tu propio colegio. Si estás por sobre ese promedio histórico, obtienes un puntaje superior al NEM; si no, se te asigna el mismo puntaje NEM. Nunca te perjudica.",
-    },
-    {
-      question: "¿El simulador me dice si quedo en la carrera?",
-      answer:
-        "Te muestra tu puntaje ponderado real por carrera y lo compara con el puntaje del último matriculado de años anteriores cuando la universidad lo publica, o con el promedio de los admitidos según el SIES. Es una referencia orientadora: los puntajes de corte cambian cada año según la demanda.",
-    },
-  ]),
+  faqSchema(PREGUNTAS_FRECUENTES),
 ];
 ---
 
@@ -46,5 +48,28 @@ const jsonLd = [
     <div class="relative z-10 w-full">
       <CalculadoraNem client:visible />
     </div>
+  </div>
+
+  <div class="bg-[#fafafa]">
+    <section aria-labelledby="faq-calculadora" class="max-w-3xl mx-auto px-4 py-16">
+      <h2 id="faq-calculadora" class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight text-center">
+        Preguntas frecuentes
+      </h2>
+      <div class="mt-8 space-y-3">
+        {
+          PREGUNTAS_FRECUENTES.map((p) => (
+            <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+              <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                {p.question}
+                <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 text-[#1A1528]/70 leading-relaxed">{p.answer}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
   </div>
 </Layout>

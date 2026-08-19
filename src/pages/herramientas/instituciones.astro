@@ -20,6 +20,22 @@ const cfts = instituciones.filter((i: any) =>
 ).length;
 const conGratuidad = instituciones.filter((i: any) => i.adscrita_gratuidad).length;
 
+const PREGUNTAS_FRECUENTES = [
+  {
+    question: "¿Cuántas instituciones de educación superior hay en el directorio?",
+    answer: `El directorio reúne ${total} instituciones chilenas: ${universidades} universidades, ${ips} institutos profesionales (IP) y ${cfts} centros de formación técnica (CFT), con datos oficiales del SIES (MINEDUC).`,
+  },
+  {
+    question: "¿Cómo sé si una institución está adscrita a gratuidad?",
+    answer: `Cada ficha indica si la institución está adscrita a gratuidad y si cuenta con acreditación de la CNA. Actualmente ${conGratuidad} de las instituciones del directorio están adscritas a gratuidad.`,
+  },
+  {
+    question: "¿Qué diferencia hay entre universidad, IP y CFT?",
+    answer:
+      "Las universidades imparten carreras profesionales con licenciatura y programas de posgrado; los institutos profesionales entregan títulos profesionales sin licenciatura; los centros de formación técnica otorgan títulos de técnico de nivel superior, con carreras más cortas y orientadas al oficio.",
+  },
+];
+
 const jsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
@@ -37,21 +53,7 @@ const jsonLd = [
       name: i.nombre,
     })),
   },
-  faqSchema([
-    {
-      question: "¿Cuántas instituciones de educación superior hay en el directorio?",
-      answer: `El directorio reúne ${total} instituciones chilenas: ${universidades} universidades, ${ips} institutos profesionales (IP) y ${cfts} centros de formación técnica (CFT), con datos oficiales del SIES (MINEDUC).`,
-    },
-    {
-      question: "¿Cómo sé si una institución está adscrita a gratuidad?",
-      answer: `Cada ficha indica si la institución está adscrita a gratuidad y si cuenta con acreditación de la CNA. Actualmente ${conGratuidad} de las instituciones del directorio están adscritas a gratuidad.`,
-    },
-    {
-      question: "¿Qué diferencia hay entre universidad, IP y CFT?",
-      answer:
-        "Las universidades imparten carreras profesionales con licenciatura y programas de posgrado; los institutos profesionales entregan títulos profesionales sin licenciatura; los centros de formación técnica otorgan títulos de técnico de nivel superior, con carreras más cortas y orientadas al oficio.",
-    },
-  ]),
+  faqSchema(PREGUNTAS_FRECUENTES),
 ];
 ---
 
@@ -68,5 +70,26 @@ const jsonLd = [
         client:load
       />
     </div>
+
+    <section aria-labelledby="faq-instituciones" class="max-w-3xl mx-auto px-4 py-16">
+      <h2 id="faq-instituciones" class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight text-center">
+        Preguntas frecuentes
+      </h2>
+      <div class="mt-8 space-y-3">
+        {
+          PREGUNTAS_FRECUENTES.map((p) => (
+            <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+              <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                {p.question}
+                <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 text-[#1A1528]/70 leading-relaxed">{p.answer}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
   </div>
 </Layout>

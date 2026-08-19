@@ -4,28 +4,30 @@ import Layout from "../../layouts/Layout.astro";
 import CalendarioPaesComponent from "../../components/CalendarioPaes.tsx";
 import { breadcrumbSchema, faqSchema } from "../../lib/seo";
 
+const PREGUNTAS_FRECUENTES = [
+  {
+    question: "¿Cuándo se rinde la PAES 2026?",
+    answer:
+      "La PAES regular se rinde a fines de noviembre o comienzos de diciembre, en jornadas consecutivas para Competencia Lectora, Competencia Matemática M1, M2 y las pruebas electivas de Historia y Ciencias. En esta página encuentras el calendario con las fechas exactas del proceso de Admisión 2026.",
+  },
+  {
+    question: "¿Cuándo se publican los resultados de la PAES?",
+    answer:
+      "Los puntajes se publican a comienzos de enero, unos días antes de que se abra el periodo de postulación centralizada a las universidades adscritas al Sistema de Acceso.",
+  },
+  {
+    question: "¿Cuánto dura el periodo de postulación?",
+    answer:
+      "El periodo de postulación centralizada dura unos tres días tras la publicación de puntajes. Puedes postular hasta a diez carreras en orden de preferencia y modificar tu lista mientras el sistema siga abierto.",
+  },
+];
+
 const jsonLd = [
   breadcrumbSchema([
     { name: "Inicio", url: "/" },
     { name: "Calendario PAES", url: "/herramientas/calendario" },
   ]),
-  faqSchema([
-    {
-      question: "¿Cuándo se rinde la PAES 2026?",
-      answer:
-        "La PAES regular se rinde a fines de noviembre o comienzos de diciembre, en jornadas consecutivas para Competencia Lectora, Competencia Matemática M1, M2 y las pruebas electivas de Historia y Ciencias. En esta página encuentras el calendario con las fechas exactas del proceso de Admisión 2026.",
-    },
-    {
-      question: "¿Cuándo se publican los resultados de la PAES?",
-      answer:
-        "Los puntajes se publican a comienzos de enero, unos días antes de que se abra el periodo de postulación centralizada a las universidades adscritas al Sistema de Acceso.",
-    },
-    {
-      question: "¿Cuánto dura el periodo de postulación?",
-      answer:
-        "El periodo de postulación centralizada dura unos tres días tras la publicación de puntajes. Puedes postular hasta a diez carreras en orden de preferencia y modificar tu lista mientras el sistema siga abierto.",
-    },
-  ]),
+  faqSchema(PREGUNTAS_FRECUENTES),
 ];
 ---
 
@@ -39,5 +41,26 @@ const jsonLd = [
     <div class="relative z-10 w-full">
       <CalendarioPaesComponent client:load />
     </div>
+
+    <section aria-labelledby="faq-calendario" class="max-w-3xl mx-auto px-4 py-16">
+      <h2 id="faq-calendario" class="text-2xl md:text-3xl font-black text-[#1A1528] tracking-tight text-center">
+        Preguntas frecuentes
+      </h2>
+      <div class="mt-8 space-y-3">
+        {
+          PREGUNTAS_FRECUENTES.map((p) => (
+            <details class="bg-white rounded-2xl border border-gray-100 p-5 group">
+              <summary class="font-bold text-[#1A1528] cursor-pointer list-none flex justify-between items-center gap-4">
+                {p.question}
+                <span class="text-[#6544FF] text-xl group-open:rotate-45 transition-transform">
+                  +
+                </span>
+              </summary>
+              <p class="mt-3 text-[#1A1528]/70 leading-relaxed">{p.answer}</p>
+            </details>
+          ))
+        }
+      </div>
+    </section>
   </div>
 </Layout>

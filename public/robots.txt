@@ -1,45 +1,80 @@
 # robots.txt — Elige Tu Futuro (https://eligetufuturo.cl)
 # ============================================================
 # Política: indexación abierta para buscadores y motores de IA.
+#
+# Un bot que matchea un grupo con su nombre exacto (ej. "GPTBot") ignora por
+# completo el grupo "User-agent: *" — no hay herencia entre grupos en la
+# spec de robots.txt. Por eso cada bloque de IA repite los mismos Disallow
+# del grupo general: si no, quedarían técnicamente autorizados a rastrear
+# /admin/ y /api/, que el resto de bots tiene prohibido.
 
 User-agent: *
 Allow: /
-
-# No indexar respuestas de formularios, endpoints de API ni el panel admin
 Disallow: /api/
 Disallow: /*?q=
 Disallow: /admin/
 
 # ─── Motores de IA / GEO (Generative Engine Optimization) ───
-# Permitimos explícitamente a los rastreadores de IA citar el contenido.
+# Permitimos explícitamente a los rastreadores de IA citar el contenido,
+# con las mismas exclusiones que el resto (panel admin, endpoints de API).
 User-agent: GPTBot
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: Claude-Web
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 User-agent: CCBot
 Allow: /
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /admin/
 
 Sitemap: https://eligetufuturo.cl/sitemap.xml
