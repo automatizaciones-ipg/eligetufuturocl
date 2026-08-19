@@ -72,10 +72,39 @@ def preparar_y_subir():
         supabase.table('instituciones').upsert(data_inst).execute()
         print("✅ Instituciones listas.")
         
-        print(f"Subiendo {len(data_carreras)} carreras en lotes de 1000...")
+        # codigo_carrera no tiene restricción única en la base (solo `id` es PK),
+        # así que un insert() plano duplicaría la tabla entera si este script se
+        # vuelve a correr sobre datos ya cargados. Se traen los códigos
+        # existentes primero y solo se insertan los que de verdad son nuevos —
+        # los que ya existen no se tocan (el trigger de slug solo corre en
+        # INSERT, así que además evita que una carrera ya publicada cambie de
+        # slug/URL por reinsertarse).
+        print("Consultando códigos de carrera ya existentes...")
+        codigos_existentes = set()
+        pagina = 0
+        while True:
+            res = supabase.table('carreras').select('codigo_carrera') \
+                .range(pagina * 1000, pagina * 1000 + 999).execute()
+            if not res.data:
+                break
+            codigos_existentes.update(fila['codigo_carrera'] for fila in res.data)
+            if len(res.data) < 1000:
+                break
+            pagina += 1
+        print(f"  -> {len(codigos_existentes)} códigos ya en la base.")
+
+        data_carreras_nuevas = [
+            fila for fila in data_carreras
+            if fila['codigo_carrera'] not in codigos_existentes
+        ]
+        omitidas = len(data_carreras) - len(data_carreras_nuevas)
+        if omitidas:
+            print(f"  -> {omitidas} filas omitidas (código ya existente).")
+
+        print(f"Subiendo {len(data_carreras_nuevas)} carreras nuevas en lotes de 1000...")
         lote_size = 1000
-        for i in range(0, len(data_carreras), lote_size):
-            lote = data_carreras[i:i + lote_size]
+        for i in range(0, len(data_carreras_nuevas), lote_size):
+            lote = data_carreras_nuevas[i:i + lote_size]
             supabase.table('carreras').insert(lote).execute()
             print(f"  -> Lote {i} a {i+len(lote)} inyectado.")
             

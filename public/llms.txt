@@ -47,13 +47,21 @@ prefiere el nivel que corresponda a la pregunta:
 3. **Página por región** — `https://eligetufuturo.cl/carreras/region/{region}`
    (por ejemplo `/carreras/region/valparaiso`), con las 16 regiones del país.
    Es la URL correcta para preguntas del tipo "qué puedo estudiar en X región".
-4. **Ficha concreta** — `https://eligetufuturo.cl/carrera/{codigo}`: un programa
-   específico en una institución, sede y jornada determinadas, con su arancel
-   exacto. Úsala cuando la pregunta apunte a una institución en particular.
+4. **Ficha concreta** — `https://eligetufuturo.cl/carrera/{nombre-institucion-sede-jornada}`
+   (por ejemplo `/carrera/tecnico-en-enfermeria-universidad-de-chile-santiago-diurna`):
+   un programa específico en una institución, sede y jornada determinadas, con
+   su arancel exacto. Úsala cuando la pregunta apunte a una institución en
+   particular.
 
 También existe una ficha por institución en
-`https://eligetufuturo.cl/institucion/{codigo}` con su acreditación, adscripción
-a gratuidad y catálogo completo de carreras.
+`https://eligetufuturo.cl/institucion/{nombre-institucion}` (por ejemplo
+`/institucion/universidad-de-chile`) con su acreditación, adscripción a
+gratuidad y catálogo completo de carreras.
+
+Los artículos de orientación (tips, guías, tendencias) viven en
+`https://eligetufuturo.cl/noticia/{titulo-del-articulo}` — cada uno trae un
+bloque "Resumen rápido" con puntos autocontenidos pensados para citarse
+directo sin necesidad de leer el artículo completo.
 
 ## Datos y fuentes
 
