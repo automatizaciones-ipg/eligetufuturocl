@@ -1,16 +1,17 @@
 // src/components/BuscadorCarreras.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { trackEvent } from "../lib/analytics";
-import { 
-  Search, SlidersHorizontal, Building, MapPin, Clock, Calculator, 
-  ChevronRight, ChevronDown, Loader2, ChevronLeft, CheckCircle2, 
+import {
+  Search, SlidersHorizontal, Building, MapPin, Clock, Calculator,
+  ChevronRight, ChevronDown, Loader2, ChevronLeft, CheckCircle2,
   ArrowLeft, Globe, GraduationCap,
-  X
+  X, Scale, Trash2
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { enlaceCarrera } from "../utils/enlaces";
+import { absoluteUrl } from "../lib/seo";
 
 // ============================================================================
 // 1. INTERFACES ESTRICTAS (TYPE-SAFETY)
@@ -22,6 +23,9 @@ interface SupabaseCarreraJoin {
   region: string | null;
   duracion_semestres: number | null;
   arancel_anual: number | null;
+  empleabilidad_1er_anio: number | null;
+  ingreso_promedio_4to_anio: string | null;
+  acreditacion_carrera: string | null;
   instituciones: {
     nombre: string;
     tipo: string;
@@ -41,6 +45,11 @@ export interface CarreraUI {
   duracion: string;
   color: string;
   logoUrl: string;
+  // Campos para el comparador (ver COMPARADOR más abajo) — mismo formato que
+  // ya usan MercadoLaboral.tsx y CalculadoraNem.tsx para las mismas columnas.
+  empleabilidad: string;
+  ingreso: string;
+  acreditacion: string;
 }
 
 // ============================================================================
@@ -88,7 +97,16 @@ const formatRegionLabel = (region: string): string => {
 };
 
 // Campos comunes para la consulta de carreras
-const CAMPOS_BUSCADOR = `codigo_carrera, slug, nombre_carrera, region, duracion_semestres, arancel_anual, instituciones!inner (nombre, tipo, logo_url)`;
+const CAMPOS_BUSCADOR = `codigo_carrera, slug, nombre_carrera, region, duracion_semestres, arancel_anual, empleabilidad_1er_anio, ingreso_promedio_4to_anio, acreditacion_carrera, instituciones!inner (nombre, tipo, logo_url)`;
+
+// Extrae el número de un string ya formateado para la UI ("$1.234.567",
+// "85%", "10 Semestres") — usado por el comparador para destacar el mejor
+// valor de cada fila. "No informado"/"No informada" → null (no comparable).
+// Mismo criterio que CalculadoraNem.tsx (comparador de la calculadora NEM).
+function numeroDe(txt: string): number | null {
+  const digitos = txt.replace(/\D/g, "");
+  return digitos ? Number(digitos) : null;
+}
 
 // Mezcla aleatoria (Fisher-Yates) para el modo explorar
 export function barajar<T>(arr: T[]): T[] {
@@ -128,7 +146,10 @@ function adaptarBD(bdData: any[]): CarreraUI[] {
       puntaje: item.arancel_anual ? `$${item.arancel_anual.toLocaleString('es-CL')}` : "Arancel no informado",
       duracion: item.duracion_semestres ? `${item.duracion_semestres} Semestres` : "Duración no informada",
       color: PALETA_COLORES[index % PALETA_COLORES.length],
-      logoUrl: logoUrl || fallbackLogo
+      logoUrl: logoUrl || fallbackLogo,
+      empleabilidad: item.empleabilidad_1er_anio ? `${(item.empleabilidad_1er_anio * 100).toFixed(1)}%` : "No informada",
+      ingreso: item.ingreso_promedio_4to_anio || "No informado",
+      acreditacion: item.acreditacion_carrera || "No informada",
     };
   });
 }
@@ -166,6 +187,14 @@ export default function BuscadorCarreras({
   const [listaInstituciones, setListaInstituciones] = useState<{nombre: string}[]>(institucionesIniciales);
   const [listaRegiones, setListaRegiones] = useState<string[]>(regionesIniciales);
   const [cargando, setCargando] = useState<boolean>(false);
+
+  // --- COMPARADOR (máx. 4, mismo patrón que el de CalculadoraNem.tsx) ---
+  // Solo se guardan los ids; `cacheComparador` acumula (nunca se vacía solo)
+  // cada tanda de resultados que llega de Supabase, así una carrera agregada
+  // al comparador sigue disponible aunque el usuario después busque otra
+  // cosa, cambie de filtro o de página.
+  const [comparandoIds, setComparandoIds] = useState<(string | number)[]>([]);
+  const [cacheComparador, setCacheComparador] = useState<Map<string | number, CarreraUI>>(new Map());
   
   // --- ESTADOS UI ---
   const [erroresLogos, setErroresLogos] = useState<number[]>([]);
@@ -209,6 +238,16 @@ export default function BuscadorCarreras({
     };
     cargarFiltros();
   }, []);
+
+  // Fusiona una tanda de resultados adaptados en el cache del comparador,
+  // sin pisar lo que ya estaba (mismo patrón que rawPorId en CalculadoraNem.tsx).
+  const acumularEnCache = (adaptadas: CarreraUI[]) => {
+    setCacheComparador(prev => {
+      const next = new Map(prev);
+      adaptadas.forEach(c => next.set(c.id, c));
+      return next;
+    });
+  };
 
   // --- CONSULTA SERVER-SIDE A SUPABASE ---
   const fetchCarreras = useCallback(async () => {
@@ -260,7 +299,9 @@ export default function BuscadorCarreras({
           if (!vistos.has(it.codigo_carrera)) { vistos.add(it.codigo_carrera); acumulado.push(it); }
         }
 
-        setCarreras(adaptarBD(acumulado));
+        const adaptadasExplorar = adaptarBD(acumulado);
+        setCarreras(adaptadasExplorar);
+        acumularEnCache(adaptadasExplorar);
         setCargando(false);
         return;
       }
@@ -274,6 +315,9 @@ export default function BuscadorCarreras({
           region,
           duracion_semestres,
           arancel_anual,
+          empleabilidad_1er_anio,
+          ingreso_promedio_4to_anio,
+          acreditacion_carrera,
           instituciones!inner (nombre, tipo, logo_url)
         `, { count: 'exact' });
 
@@ -329,7 +373,9 @@ export default function BuscadorCarreras({
       }
 
       if (data) {
-        setCarreras(adaptarBD(data as unknown as any[]));
+        const adaptadas = adaptarBD(data as unknown as any[]);
+        setCarreras(adaptadas);
+        acumularEnCache(adaptadas);
       }
     } catch (err) {
       console.error("Error consultando Supabase:", err);
@@ -360,6 +406,57 @@ export default function BuscadorCarreras({
 
   const totalPaginas = Math.ceil(totalResultados / RESULTADOS_POR_PAGINA);
 
+  // --- COMPARADOR: lógica (calco de CalculadoraNem.tsx, tope 4 en vez de 3) ---
+  const MAX_COMPARADOR = 4;
+
+  const comparando = useMemo(() => {
+    return comparandoIds
+      .map(id => cacheComparador.get(id))
+      .filter((item): item is CarreraUI => !!item);
+  }, [comparandoIds, cacheComparador]);
+
+  const toggleComparar = (carrera: CarreraUI) => {
+    setComparandoIds(prev => {
+      const yaEsta = prev.includes(carrera.id);
+      if (yaEsta) return prev.filter(id => id !== carrera.id);
+      if (prev.length >= MAX_COMPARADOR) return prev;
+      return [...prev, carrera.id];
+    });
+  };
+
+  // Índice de la carrera con el mejor valor de una fila del comparador.
+  // -1 (nadie destacado) si hay menos de 2 valores comparables o hay empate
+  // en el mejor valor — mismo criterio que CalculadoraNem.tsx.
+  const mejorEn = (vals: (number | null)[], modo: "max" | "min"): number => {
+    let mejorIdx = -1;
+    let mejorVal: number | null = null;
+    vals.forEach((v, i) => {
+      if (v === null) return;
+      if (mejorVal === null || (modo === "max" ? v > mejorVal : v < mejorVal)) {
+        mejorVal = v;
+        mejorIdx = i;
+      }
+    });
+    const comparables = vals.filter((v): v is number => v !== null);
+    if (comparables.length < 2 || comparables.filter(v => v === mejorVal).length > 1) return -1;
+    return mejorIdx;
+  };
+  const idxMejorArancel = mejorEn(comparando.map(c => numeroDe(c.puntaje)), "min");
+  const idxMejorDuracion = mejorEn(comparando.map(c => numeroDe(c.duracion)), "min");
+  const idxMejorEmpleabilidad = mejorEn(comparando.map(c => numeroDe(c.empleabilidad)), "max");
+
+  // Celda del comparador que destaca en verde el mejor valor de su fila.
+  const CeldaComparador = ({ valor, esMejor }: { valor: string; esMejor: boolean }) => (
+    <td className="py-3 px-3 text-sm font-semibold text-gray-700">
+      {esMejor ? (
+        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-2 py-1 font-bold">
+          {valor}
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+        </span>
+      ) : valor}
+    </td>
+  );
+
   const generarArregloPaginacion = () => {
     const paginas: (number | string)[] = [];
     if (totalPaginas <= 5) {
@@ -384,6 +481,10 @@ export default function BuscadorCarreras({
         "@type": "Course",
         "name": carrera.nombre,
         "description": `Carrera de ${carrera.nombre} impartida por ${carrera.institucion} en ${carrera.region}. Duración: ${carrera.duracion}. Arancel: ${carrera.puntaje}.`,
+        // Sin `url` un motor de IA/buscador no puede resolver a qué página
+        // real corresponde cada entrada de la lista — solo tenía nombre y
+        // descripción, sin forma de llegar a la ficha.
+        "url": absoluteUrl(enlaceCarrera(carrera.slug)),
         "provider": {
           "@type": "EducationalOrganization",
           "name": carrera.institucion,
@@ -663,28 +764,132 @@ export default function BuscadorCarreras({
               </p>
             </div>
 
+            {/* ==========================================================
+                COMPARADOR — mismo patrón visual que el de la Calculadora
+                NEM (CalculadoraNem.tsx), con los parámetros propios de esta
+                búsqueda (sin puntaje ponderado: acá no hay notas del
+                usuario, es comparación directa de datos de la carrera).
+            ========================================================== */}
+            {comparando.length > 0 && (
+              <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100 p-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-black text-lg text-[#1A1528] flex items-center gap-2">
+                    <Scale className="w-5 h-5 text-[#6544FF]" /> Comparando {comparando.length} de {MAX_COMPARADOR} carreras
+                  </h3>
+                  <button
+                    onClick={() => setComparandoIds([])}
+                    className="text-xs font-bold text-gray-400 hover:text-rose-500 transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Limpiar
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[560px] border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="text-left text-xs font-bold text-gray-400 uppercase tracking-wider pb-4 pr-4 w-40">Carrera</th>
+                        {comparando.map((c) => (
+                          <th key={c.id} className="text-left pb-4 px-3 min-w-[180px]">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-bold text-sm text-[#1A1528] leading-snug line-clamp-2">{c.nombre}</p>
+                                <p className="text-xs text-gray-400 font-medium mt-1">{c.institucion}</p>
+                              </div>
+                              <button onClick={() => toggleComparar(c)} className="text-gray-300 hover:text-rose-500 transition-colors shrink-0">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Arancel Anual</td>
+                        {comparando.map((c, i) => (
+                          <CeldaComparador key={c.id} valor={c.puntaje} esMejor={i === idxMejorArancel} />
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Duración</td>
+                        {comparando.map((c, i) => (
+                          <CeldaComparador key={c.id} valor={c.duracion} esMejor={i === idxMejorDuracion} />
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Empleabilidad 1er año</td>
+                        {comparando.map((c, i) => (
+                          <CeldaComparador key={c.id} valor={c.empleabilidad} esMejor={i === idxMejorEmpleabilidad} />
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Ingreso Promedio 4to año</td>
+                        {comparando.map((c) => (
+                          <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.ingreso}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Acreditación</td>
+                        {comparando.map((c) => (
+                          <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.acreditacion}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Tipo de Institución</td>
+                        {comparando.map((c) => (
+                          <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.tipoInst}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Región</td>
+                        {comparando.map((c) => (
+                          <td key={c.id} className="py-3 px-3 text-sm font-semibold text-gray-700">{c.region}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3 pr-4 text-sm font-bold text-gray-500">Ficha</td>
+                        {comparando.map((c) => (
+                          <td key={c.id} className="py-3 px-3">
+                            {c.slug ? (
+                              <a
+                                href={enlaceCarrera(c.slug)}
+                                className="inline-block text-xs font-bold text-[#6544FF] bg-[#6544FF]/10 hover:bg-[#6544FF]/20 rounded-xl px-4 py-2 transition-colors"
+                              >
+                                Ver detalle
+                              </a>
+                            ) : (
+                              <span className="text-xs font-semibold text-gray-300">No disponible</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {!cargando && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {carreras.map((carrera, i) => (
-                  <article key={`${carrera.id}-${paginaActual}`}>
-                    <a
-                      href={enlaceCarrera(carrera.slug)}
-                      onClick={(e) => handleNavegarACarrera(e, carrera.id, carrera.slug)}
-                      aria-label={`Ver detalles de la carrera ${carrera.nombre} impartida por ${carrera.institucion}`}
-                      title={`Ver detalles de ${carrera.nombre}`}
-                      className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full cursor-pointer
-                        ${navegandoA === carrera.id 
-                          ? 'scale-[0.98] opacity-90 z-50' 
-                          : 'hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)]'
-                        }`}
-                      style={{ animationDelay: `${(i % 10) * 50}ms` }}
-                    >
-                      
-                      {/* --- BORDE CON GRADIENTE SUTIL (visible solo en hover) --- */}
-                      <div className={`absolute inset-0 rounded-[2.5rem] bg-gradient-to-br ${carrera.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`} aria-hidden="true"></div>
+                {carreras.map((carrera, i) => {
+                  const seleccionada = comparando.some(c => c.id === carrera.id);
+                  const comparadorLleno = comparando.length >= MAX_COMPARADOR && !seleccionada;
+                  return (
+                  <article
+                    key={`${carrera.id}-${paginaActual}`}
+                    className={`group relative flex flex-col bg-white rounded-[2.5rem] p-[2px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-500 ease-out h-full
+                      ${navegandoA === carrera.id
+                        ? 'scale-[0.98] opacity-90 z-50'
+                        : 'hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)]'
+                      }`}
+                    style={{ animationDelay: `${(i % 10) * 50}ms` }}
+                  >
+                    {/* --- BORDE CON GRADIENTE SUTIL (visible solo en hover) --- */}
+                    <div className={`absolute inset-0 rounded-[2.5rem] bg-gradient-to-br ${carrera.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10`} aria-hidden="true"></div>
 
-                      {/* --- CONTENIDO INTERNO DE LA CARD --- */}
-                      <div className="relative flex flex-col bg-white rounded-[2.4rem] p-6 h-full z-10">
+                    {/* --- CONTENIDO INTERNO DE LA CARD --- */}
+                    <div className="relative flex flex-col bg-white rounded-[2.4rem] p-6 h-full z-10">
                         
                         {/* --- CAPA DE ANIMACIÓN DE CARGA --- */}
                         {navegandoA === carrera.id && (
@@ -746,8 +951,20 @@ export default function BuscadorCarreras({
                             2. NOMBRE DE LA CARRERA
                         ============================================ */}
                         <div className="relative z-10 mb-4">
-                          <h3 className="text-lg font-bold text-[#1A1528] tracking-normal group-hover:text-[#6544FF] transition-colors duration-300 line-clamp-2 leading-relaxed">
-                            {carrera.nombre}
+                          {/* El nombre también linkea a la ficha: además de la
+                              UX (accesos rápidos), el texto del link real
+                              —el nombre de la carrera, no un genérico "Ver
+                              detalle"— es la señal de anchor text que Google
+                              usa para entender de qué trata la página de
+                              destino. */}
+                          <h3 className="text-lg font-bold text-[#1A1528] tracking-normal line-clamp-2 leading-relaxed">
+                            <a
+                              href={enlaceCarrera(carrera.slug)}
+                              onClick={(e) => handleNavegarACarrera(e, carrera.id, carrera.slug)}
+                              className="group-hover:text-[#6544FF] transition-colors duration-300"
+                            >
+                              {carrera.nombre}
+                            </a>
                           </h3>
                         </div>
 
@@ -781,10 +998,39 @@ export default function BuscadorCarreras({
                           </div>
                         </div>
 
+                        {/* ============================================
+                            5. FOOTER: VER DETALLE + AGREGAR A COMPARACIÓN
+                        ============================================ */}
+                        <div className="relative z-10 flex items-center gap-2 mt-4">
+                          <a
+                            href={enlaceCarrera(carrera.slug)}
+                            onClick={(e) => handleNavegarACarrera(e, carrera.id, carrera.slug)}
+                            aria-label={`Ver detalles de la carrera ${carrera.nombre} impartida por ${carrera.institucion}`}
+                            title={`Ver detalles de ${carrera.nombre}`}
+                            className="flex-1 text-center text-xs font-bold text-[#6544FF] bg-[#6544FF]/10 hover:bg-[#6544FF]/20 rounded-xl py-2.5 transition-colors"
+                          >
+                            Ver detalle
+                          </a>
+                          <button
+                            onClick={() => toggleComparar(carrera)}
+                            disabled={comparadorLleno}
+                            title={comparadorLleno ? `Máximo ${MAX_COMPARADOR} carreras para comparar` : "Agregar a comparación"}
+                            className={`flex-1 text-xs font-bold rounded-xl py-2.5 transition-colors flex items-center justify-center gap-1.5 ${
+                              seleccionada
+                                ? 'bg-[#6544FF] text-white'
+                                : comparadorLleno
+                                  ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            <Scale className="w-3.5 h-3.5" /> {seleccionada ? 'En comparación' : 'Comparar'}
+                          </button>
+                        </div>
+
                       </div>
-                    </a>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             )}
 
